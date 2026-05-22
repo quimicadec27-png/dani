@@ -1,0 +1,1902 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DANI - Asistente de Química DEC</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #0284c7;
+            --primary-dark: #0369a1;
+            --primary-light: #e0f2fe;
+            --accent: #10b981;
+            --accent-light: #d1fae5;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --bg-gradient: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #d0e7ff 100%);
+            --chat-bg: rgba(255, 255, 255, 0.85);
+            --text-dark: #0f172a;
+            --text-muted: #475569;
+            --border-color: rgba(226, 232, 240, 0.8);
+            --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+            --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Reset and Base Styles */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-gradient);
+            color: var(--text-dark);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Decorative Background Elements */
+        .bg-blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            z-index: 0;
+            opacity: 0.6;
+        }
+        .blob-1 {
+            width: 300px;
+            height: 300px;
+            background-color: #bae6fd;
+            top: -50px;
+            left: -50px;
+        }
+        .blob-2 {
+            width: 400px;
+            height: 400px;
+            background-color: #a7f3d0;
+            bottom: -100px;
+            right: -100px;
+        }
+
+        /* Main Chat Container */
+        .chat-app {
+            width: 450px;
+            height: 700px;
+            max-width: 95vw;
+            max-height: 92vh;
+            background: var(--chat-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            border-radius: 24px;
+            box-shadow: var(--shadow-lg);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            z-index: 10;
+            position: relative;
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        /* App Header */
+        .chat-header {
+            padding: 16px 20px;
+            background: rgba(255, 255, 255, 0.7);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .avatar-container {
+            position: relative;
+            width: 48px;
+            height: 48px;
+        }
+
+        .avatar {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary) 0%, #06b6d4 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            font-size: 20px;
+            box-shadow: 0 4px 6px -1px rgba(2, 132, 199, 0.3);
+        }
+
+        .status-dot {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            width: 12px;
+            height: 12px;
+            background-color: var(--accent);
+            border: 2px solid white;
+            border-radius: 50%;
+        }
+
+        .status-dot.pulsing {
+            animation: pulse 1.8s infinite;
+        }
+
+        .header-info h2 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 2px;
+        }
+
+        .header-info span {
+            font-size: 12px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .icon-btn {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            transition: var(--transition);
+        }
+
+        .icon-btn:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+            color: var(--text-dark);
+        }
+
+        /* Message Display Area */
+        .chat-body {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            scroll-behavior: smooth;
+        }
+
+        /* Scrollbar styles */
+        .chat-body::-webkit-scrollbar {
+            width: 6px;
+        }
+        .chat-body::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .chat-body::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 3px;
+        }
+        .chat-body::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        /* Message Bubbles */
+        .message-row {
+            display: flex;
+            width: 100%;
+            animation: messageSlideIn 0.3s ease-out;
+        }
+
+        .message-row.user {
+            justify-content: flex-end;
+        }
+
+        .message-row.assistant {
+            justify-content: flex-start;
+        }
+
+        .message-bubble {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 16px;
+            font-size: 14.5px;
+            line-height: 1.5;
+            word-wrap: break-word;
+        }
+
+        .user .message-bubble {
+            background-color: var(--primary);
+            color: white;
+            border-bottom-right-radius: 4px;
+            box-shadow: 0 4px 10px -2px rgba(2, 132, 199, 0.25);
+        }
+
+        .assistant .message-bubble {
+            background-color: white;
+            color: var(--text-dark);
+            border-bottom-left-radius: 4px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .message-bubble p {
+            margin-bottom: 8px;
+        }
+
+        .message-bubble p:last-child {
+            margin-bottom: 0;
+        }
+
+        .message-time {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.7);
+            text-align: right;
+            margin-top: 4px;
+            display: block;
+        }
+
+        .assistant .message-time {
+            color: var(--text-muted);
+        }
+
+        /* Suggested Questions Chips */
+        .suggestion-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 12px 20px;
+            background: rgba(255, 255, 255, 0.5);
+            border-top: 1px solid rgba(226, 232, 240, 0.5);
+        }
+
+        .suggestion-chip {
+            background-color: white;
+            border: 1px solid var(--border-color);
+            color: var(--primary-dark);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12.5px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .suggestion-chip:hover {
+            background-color: var(--primary-light);
+            border-color: var(--primary);
+            transform: translateY(-1px);
+        }
+
+        /* Message Input Bar */
+        .chat-input-bar {
+            padding: 16px 20px;
+            background: white;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .input-wrapper {
+            flex: 1;
+            position: relative;
+        }
+
+        .chat-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            font-family: inherit;
+            font-size: 14.5px;
+            outline: none;
+            transition: var(--transition);
+            background-color: #f8fafc;
+        }
+
+        .chat-input:focus {
+            border-color: var(--primary);
+            background-color: white;
+            box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+        }
+
+        .send-btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            cursor: pointer;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+            box-shadow: 0 4px 6px -1px rgba(2, 132, 199, 0.3);
+        }
+
+        .send-btn:hover {
+            background-color: var(--primary-dark);
+            transform: scale(1.05);
+        }
+
+        .send-btn:disabled {
+            background-color: #cbd5e1;
+            color: #94a3b8;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        /* Typing Indicator Animation */
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 8px 12px;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--text-muted);
+            border-radius: 50%;
+            opacity: 0.6;
+            animation: typingBounce 1.4s infinite ease-in-out both;
+        }
+
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+        /* Configuration Modal */
+        .modal-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(15, 23, 42, 0.5);
+            backdrop-filter: blur(4px);
+            z-index: 100;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: var(--transition);
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .settings-modal {
+            background: white;
+            border-radius: 20px;
+            width: 88%;
+            max-width: 380px;
+            padding: 24px;
+            box-shadow: var(--shadow-lg);
+            transform: translateY(20px);
+            transition: var(--transition);
+        }
+
+        .modal-overlay.active .settings-modal {
+            transform: translateY(0);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-header h3 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .close-btn {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            color: var(--text-muted);
+            font-size: 20px;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .input-group-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            font-family: inherit;
+            font-size: 14px;
+            outline: none;
+            transition: var(--transition);
+        }
+
+        .form-input:focus {
+            border-color: var(--primary);
+        }
+
+        .toggle-btn {
+            background: #f1f5f9;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 0 12px;
+            cursor: pointer;
+            font-size: 12px;
+            color: var(--text-muted);
+            transition: var(--transition);
+        }
+
+        .toggle-btn:hover {
+            background: #e2e8f0;
+        }
+
+        .mode-toggle-group {
+            display: flex;
+            background-color: #f1f5f9;
+            padding: 4px;
+            border-radius: 10px;
+            gap: 4px;
+        }
+
+        .mode-pill {
+            flex: 1;
+            text-align: center;
+            padding: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: var(--transition);
+            user-select: none;
+        }
+
+        .mode-pill.active {
+            background-color: white;
+            color: var(--primary-dark);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .info-box {
+            background-color: var(--primary-light);
+            border-radius: 10px;
+            padding: 12px;
+            font-size: 12px;
+            color: var(--primary-dark);
+            line-height: 1.4;
+            margin-bottom: 20px;
+        }
+
+        .save-btn {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-family: inherit;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: var(--transition);
+            box-shadow: 0 4px 6px -1px rgba(2, 132, 199, 0.2);
+        }
+
+        .save-btn:hover {
+            background-color: var(--primary-dark);
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.96); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        @keyframes messageSlideIn {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        @keyframes typingBounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+
+        /* Responsive Mobile Layout */
+        @media (max-width: 500px) {
+            body {
+                padding: 0;
+            }
+            .chat-app {
+                width: 100vw;
+                height: 100vh;
+                max-width: 100%;
+                max-height: 100%;
+                border-radius: 0;
+                border: none;
+            }
+            .bg-blob {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Decorative blobs -->
+    <div class="bg-blob blob-1"></div>
+    <div class="bg-blob blob-2"></div>
+
+    <!-- Chat App Widget -->
+    <div class="chat-app">
+        <!-- Header -->
+        <header class="chat-header">
+            <div class="header-left">
+                <div class="avatar-container">
+                    <div class="avatar">Q</div>
+                    <div class="status-dot pulsing" id="statusDot"></div>
+                </div>
+                <div class="header-info">
+                    <h2>DANI</h2>
+                    <span id="statusText">
+                        <svg width="8" height="8" viewBox="0 0 8 8" fill="none" style="margin-top: 1px;">
+                            <circle cx="4" cy="4" r="3" fill="#10b981"/>
+                        </svg>
+                        Química DEC (Offline)
+                    </span>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button class="icon-btn" id="clearChatBtn" title="Reiniciar chat">
+                    <!-- Reset trash icon -->
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                </button>
+                <button class="icon-btn" id="settingsBtn" title="Configuración">
+                    <!-- Settings gear icon -->
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Message Body -->
+        <main class="chat-body" id="chatBody"></main>
+
+        <!-- Suggestion Chips -->
+        <div class="suggestion-container" id="suggestionContainer">
+            <button class="suggestion-chip" onclick="sendSuggestion('¿Cuál es el pedido mínimo? 📦')">¿Pedido mínimo? 📦</button>
+            <button class="suggestion-chip" onclick="sendSuggestion('¿Qué formas de pago aceptan? 💳')">Formas de pago 💳</button>
+            <button class="suggestion-chip" onclick="sendSuggestion('¿Cuánto sale el Jabón Líquido Premium? 🧴')">Jabón Premium 🧴</button>
+            <button class="suggestion-chip" onclick="sendSuggestion('¿Tienen desinfectantes? 🧼')">Desinfectantes 🧼</button>
+        </div>
+
+        <!-- Input Panel -->
+        <div class="chat-input-bar">
+            <div class="input-wrapper">
+                <input type="text" class="chat-input" id="userInput" placeholder="Escribí tu mensaje acá..." autocomplete="off">
+            </div>
+            <button class="send-btn" id="sendBtn" disabled>
+                <!-- Send paper plane icon -->
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Configuration Modal Overlay -->
+        <div class="modal-overlay" id="settingsModal">
+            <div class="settings-modal">
+                <div class="modal-header">
+                    <h3>Configuración de DANI</h3>
+                    <button class="close-btn" id="closeSettingsBtn">&times;</button>
+                </div>
+
+                <div class="form-group">
+                    <label>Modo de Operación</label>
+                    <div class="mode-toggle-group">
+                        <div class="mode-pill active" id="modeOffline" onclick="setMode('offline')">Simulado / Offline</div>
+                        <div class="mode-pill" id="modeOnline" onclick="setMode('online')">Gemini API</div>
+                    </div>
+                </div>
+
+                <div class="form-group" id="apiKeyFormGroup" style="display: none;">
+                    <label for="apiKeyInput">Clave API de Gemini</label>
+                    <div class="input-group-row">
+                        <input type="password" class="form-input" id="apiKeyInput" placeholder="AIzaSy...">
+                        <button class="toggle-btn" id="toggleApiKeyVisibilityBtn">Ver</button>
+                    </div>
+                </div>
+
+                <div class="info-box" id="modeInfoText">
+                    <strong>Modo Offline</strong>: Funciona sin internet ni claves usando un motor local de coincidencia exacta y búsqueda de precios del catálogo.
+                </div>
+
+                <button class="save-btn" id="saveSettingsBtn">Guardar y Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 📄 KNOWLEDGE BASE STRINGS (EMBEDDED FILES) ---
+        
+        // Exact raw content of system_instruction_dani.md
+        const SYSTEM_INSTRUCTIONS_RAW = `
+# SYSTEM INSTRUCTION — DANI | Asistente de QUÍMICA DEC
+
+## 🔒 IDENTIDAD
+Sos **DANI**, el asistente virtual de atención al cliente de **Química DEC**, una empresa entrerriana fabricante de productos de limpieza con fórmulas ultra-concentradas de alta calidad.
+Tu rol es atender consultas de clientes actuales y potenciales, brindar información sobre productos y servicios, y guiar cada conversación hacia una acción comercial concreta: que el cliente complete su pedido a través del **carrito de compras de nuestra página web**.
+
+## 🎯 MISIÓN DE QUÍMICA DEC
+Ofrecer productos de limpieza de alta calidad y fórmulas ultra-concentradas, proporcionando soluciones innovadoras y un servicio de asesoramiento técnico experto para optimizar la higiene, el rendimiento y el ahorro de nuestros clientes al por mayor y menor.
+
+## 🔭 VISIÓN DE QUÍMICA DEC
+Ser la empresa referente en el sector de productos de limpieza, reconocida por su innovación, compromiso con la sostenibilidad a través de su línea ecológica y la excelencia en el desarrollo de soluciones especializadas para diversos nichos de mercado.
+
+## 💎 VALORES FUNDAMENTALES
+- Responsabilidad
+- Calidad
+- Seriedad
+- Eficacia
+
+## 🗣️ TONO DE VOZ
+**Profesional, vendedor amable y divertido.**
+- Hablás de **vos** (tuteo argentino rioplatense).
+- Transmitís confianza y cercanía, como un asesor que sabe del tema y te lo explica con onda.
+- Usás lenguaje claro, directo y positivo — nunca técnico ni rebuscado.
+- Podés meter algún emoji con criterio (✅, 💪, 🧴, 🔥, 📦) pero sin abusar.
+- Evitás ser robótico o frío. Sos cálido pero profesional.
+- Siempre con actitud de servicio y ganas de ayudar.
+
+## 📏 REGLAS DE RESPUESTA
+1. **Máximo 4 líneas** por mensaje. Formato pensado para WhatsApp o web — corto, escaneable, impactante.
+2. **Siempre terminá con una pregunta o llamada a la acción** (CTA).
+3. **Solo respondés sobre temas del negocio** de Química DEC: productos, precios, pedidos, entregas, asesoramiento técnico, catálogo, formas de pago. **No hacemos cotizaciones a medida** — trabajamos con nuestra lista de precios publicada en el carrito de compras de la web.
+4. **Si te preguntan algo fuera del negocio**, respondé exactamente:
+   "¡Gracias por tu mensaje! 😊 Solo te puedo ayudar con los productos de limpieza de Química DEC. ¿En qué te puedo asesorar hoy?"
+5. **Si no tenés el dato exacto** (un precio específico, disponibilidad de stock, un dato técnico que no figura en tu base), respondé exactamente:
+   "Para ese detalle te comunico con un asesor."
+6. **No inventés información.** Si algo no está en tu base de conocimiento, responde "Para ese detalle te comunico con un asesor."
+7. **No compartas información interna** (análisis DAFO, análisis de competencia, SOPs, márgenes de costos, precios de costo).
+8. **NUNCA compartas datos bancarios** (números de cuenta, CBU, CVU, alias). Si los piden, respondé: "Para los datos de pago te los facilita nuestro equipo al confirmar tu pedido desde la web 🛒"
+
+## ❓ PREGUNTAS FRECUENTES (FAQs)
+- **Precios y descuentos**: Están en nuestro carrito de compras online.
+- **Logística**: Entregas rápidas y eficientes. Plazo estimado en el pedido.
+- **Stock**: Inventario robusto.
+- **Pagos**: Efectivo o transferencia bancaria. No des datos bancarios directo.
+- **Pedido**: Por el carrito web.
+- **Mínimo**: Primera compra $80.000. Si son de Concepción del Uruguay (local), baja a $50.000. Envíos fuera de Concepción, mínimo $80.000.
+- **Devoluciones**: Si hay falla o faltante, reintegramos el dinero.
+- **Soporte**: Asesoramiento técnico gratis en la aplicación de productos.
+- **Personalización**: I+D colabora en desarrollos a medida (derivar al asesor).
+- **Biodegradable**: Son biodegradables, no contaminan, cumplen con regulaciones.
+`;
+
+        // Raw representation of productos_muestra_asistente_ia.md (used for Gemini and dynamic client parsing)
+        const PRODUCT_CATALOG_RAW = `
+## AEROSOL LYSOFORM DESINF/ FRUTOS DEL BOSQUE 380CC
+- **Categoría**: AEROSOL
+- **Precio de venta**: $ 4.807,54
+- **Stock actual**: 24 Unid.
+- **Código**: 7790520031426
+
+## DESINFECTANTE CIF (LAVANDA) 360GR
+- **Categoría**: AEROSOL
+- **Precio de venta**: $ 3.591,99
+- **Stock actual**: -18 Unid.
+- **Código**: 7791290795785
+
+## CIF CREMA MULTIUSO (ORIGINAL) 375G
+- **Categoría**: APLICADORES
+- **Precio de venta**: $ 2.049,06
+- **Stock actual**: -43 Unid.
+- **Código**: 7791290794238
+
+## CIF CREMA MULTIUSO (ORIGINAL) 750G
+- **Categoría**: APLICADORES
+- **Precio de venta**: $ 3.742,09
+- **Stock actual**: -23 Unid.
+- **Código**: 7791290794221
+
+## DETERGENTE CIF 500ML LIMA
+- **Categoría**: APLICADORES
+- **Precio de venta**: $ 3.218,43
+- **Stock actual**: -12 Unid.
+- **Código**: 7791290794115
+
+## REPASADOR NIDO ABEJA (ULTRA LIM) 36 X 45
+- **Categoría**: MINORISTA
+- **Precio de venta**: $ 742,40
+- **Stock actual**: -8 Unid.
+- **Código**: 190757823501
+
+## MOPA CON PAÑO MAKE
+- **Categoría**: MINORISTA
+- **Precio de venta**: $ 4.100,00
+- **Stock actual**: -1 Unid.
+- **Código**: 3555
+
+## JABON EN POLVO GRANBY ROSAS MATIC 3KG
+- **Categoría**: MINORISTA
+- **Precio de venta**: $ 9.700,00
+- **Stock actual**: -4 Unid.
+- **Código**: 7791290795105
+
+## AROMATIZANTE PARA AUTO (CARITAS) FRUTOS ROJOS
+- **Categoría**: AUTOMOVIL
+- **Precio de venta**: $ 3.220,60
+- **Stock actual**: 0 Unid.
+- **Código**: 3272
+
+## PINITOS DE GEL PARA AUTOS
+- **Categoría**: AUTOMOVIL
+- **Precio de venta**: $ 1.789,50
+- **Stock actual**: -17 Unid.
+- **Código**: 3866
+
+## AROMATIZANTE PARA AUTO (CARITAS)
+- **Categoría**: AUTOMOVIL
+- **Precio de venta**: $ 3.220,60
+- **Stock actual**: -2 Unid.
+- **Código**: 7798184686549
+
+## ESCOBILLA LAVA INODOROS SOLA (GLACO)
+- **Categoría**: BAÑO
+- **Precio de venta**: $ 1.468,85
+- **Stock actual**: -37 Unid.
+- **Código**: 763571347348
+
+## ALGODON DONCELLA 140GR
+- **Categoría**: BAÑO
+- **Precio de venta**: $ 1.664,35
+- **Stock actual**: -12 Unid.
+- **Código**: 7790940000026
+
+## ESCOBILLA LAVA INODOROS SOLA PALITO (GLACO)
+- **Categoría**: BAÑO
+- **Precio de venta**: $ 1.065,75
+- **Stock actual**: -16 Unid.
+- **Código**: 2312321321
+
+## BURLETE BAJO PUERTAS DOBLE COMPACTO RELLENO C/TRAPO
+- **Categoría**: BURLETE
+- **Precio de venta**: $ 3.120,00
+- **Stock actual**: -6 Unid.
+- **Código**: 31
+
+## BURLETE BAJO PUERTAS DOBLE COMPACTO RELLENO FRISELINA
+- **Categoría**: BURLETE
+- **Precio de venta**: $ 2.996,00
+- **Stock actual**: -6 Unid.
+- **Código**: 7795556882226
+
+## BURLETE DE ARENA BAJO PUERTAS DE CUERINA CON ARENA
+- **Categoría**: BURLETE
+- **Precio de venta**: $ 3.200,00
+- **Stock actual**: -2 Unid.
+- **Código**: 8558593612
+
+## CABO BARRENDERO GRUESO
+- **Categoría**: CABOS
+- **Precio de venta**: $ 1.948,10
+- **Stock actual**: 0 Unid.
+- **Código**: 2702269925
+
+## CABO DE MADERA P/SOPAPAS
+- **Categoría**: CABOS
+- **Precio de venta**: $ 330,00
+- **Stock actual**: -47 Unid.
+- **Código**: 7798092969444
+
+## CABO MADERA DE SEGUNDA 1,20MT X BULTO DE 50 UNIDADES No ofrecer en ventas
+- **Categoría**: CABOS
+- **Precio de venta**: $ 27.300,00
+- **Stock actual**: -2 Unid.
+- **Código**: 3960741482
+
+## CEPILLO DENTAL SUAVE CON ESTUCHE C/U (CONDOR) OFERTA
+- **Categoría**: CEPILLOS
+- **Precio de venta**: $ 682,01
+- **Stock actual**: -37 Unid.
+- **Código**: 7891055323519
+
+## CEPILLO LAVA ROPA (ASAPRATIC)
+- **Categoría**: CEPILLOS
+- **Precio de venta**: $ 1.812,50
+- **Stock actual**: 113 Unid.
+- **Código**: 7792459401080
+
+## CEPILLO DE MANO ANATÓMICO (MAKE)
+- **Categoría**: CEPILLOS
+- **Precio de venta**: $ 2.035,60
+- **Stock actual**: -1 Unid.
+- **Código**: 7798092967990
+
+## SECA PLATO ALMABRE 40CM NEGRO No ofrecer en ventas
+- **Categoría**: COCINA
+- **Precio de venta**: $ 16.755,70
+- **Stock actual**: 0 Unid.
+- **Código**: 2987
+
+## GUANTE AMARILLO TALLE (L) NUVIA
+- **Categoría**: COCINA
+- **Precio de venta**: $ 1.334,00
+- **Stock actual**: -5 Unid.
+- **Código**: 1655
+
+## GUANTE AMARILLO TALLE (M) NUVIA
+- **Categoría**: COCINA
+- **Precio de venta**: $ 1.334,00
+- **Stock actual**: 30 Unid.
+- **Código**: 1656
+
+## DIFUSORES D.E.C VARIAS FRAGANCIAS PRECIO DE C/U
+- **Categoría**: DIFUSORES
+- **Precio de venta**: $ 2.429,99
+- **Stock actual**: -56 Unid.
+- **Código**: 1511
+
+## DIFUSORES D.E.C X 12 UNIDADES $2369.25 C/U
+- **Categoría**: DIFUSORES
+- **Precio de venta**: $ 28.431,01
+- **Stock actual**: -1 Unid.
+- **Código**: 1512
+
+## VARILLA PARA REPUESTO DIFUSORES x10U
+- **Categoría**: DIFUSORES
+- **Precio de venta**: $ 280,00
+- **Stock actual**: -39 Unid.
+- **Código**: 7795345002804
+
+## ENVASE PULVERIZADOR SIMPLE X 500CC PET
+- **Categoría**: ENVASES
+- **Precio de venta**: $ 803,80
+- **Stock actual**: -17 Unid.
+- **Código**: 1528
+
+## TAMBOR DE 160LT
+- **Categoría**: ENVASES
+- **Precio de venta**: $ 21.780,00
+- **Stock actual**: -7 Unid.
+- **Código**: 2537
+
+## TAMBOR DE 230LT TAPA ARAÑA
+- **Categoría**: ENVASES
+- **Precio de venta**: $ 23.000,00
+- **Stock actual**: 25 Unid.
+- **Código**: 1234
+
+## Escobillón SANSON
+- **Categoría**: ESCOBILLONES
+- **Precio de venta**: $ 2.485,89
+- **Stock actual**: -1 Unid.
+- **Código**: 7798060304253
+
+## ESCOBILLON BARRENDERO CHICO (CARIÑO)
+- **Categoría**: ESCOBILLONES
+- **Precio de venta**: $ 3.001,31
+- **Stock actual**: -1 Unid.
+- **Código**: 7795513058879
+
+## Escobillón FARAON
+- **Categoría**: ESCOBILLONES
+- **Precio de venta**: $ 2.318,55
+- **Stock actual**: -9 Unid.
+- **Código**: 7798060304161
+
+## FIBRA ESPONJA AZUL LISITA MAKE S/STOCK No ofrecer en ventas
+- **Categoría**: ESPONJAS
+- **Precio de venta**: $ 0,00
+- **Stock actual**: 0 Unid.
+- **Código**: 1603
+
+## ESPONJA PLATEADA MAKE X 15GR S/STOCK
+- **Categoría**: ESPONJAS
+- **Precio de venta**: $ 0,00
+- **Stock actual**: -13 Unid.
+- **Código**: 7798092964012
+
+## ESPONJA LAVA COCHES ECONOMICA
+- **Categoría**: ESPONJAS
+- **Precio de venta**: $ 345,00
+- **Stock actual**: 0 Unid.
+- **Código**: 1589
+
+## FOCO LED 10W LICHT TRONIC
+- **Categoría**: FOCOS
+- **Precio de venta**: $ 1.360,46
+- **Stock actual**: -10 Unid.
+- **Código**: 6924548790640
+
+## ACONDICIONADOR SOBRE SEDAL (CREMA BALANCE)
+- **Categoría**: HIGIENE PERSONAL
+- **Precio de venta**: $ 229,50
+- **Stock actual**: -54 Unid.
+- **Código**: 77982735
+
+## ALICATE PARA UÑAS 7.8CM (G) C/U
+- **Categoría**: HIGIENE PERSONAL
+- **Precio de venta**: $ 882,60
+- **Stock actual**: 31 Unid.
+- **Código**: 6978936632005
+
+## CLOSE UP PASTA DENTAL MENTA FRESCA (CELESTE) X70GR
+- **Categoría**: HIGIENE PERSONAL
+- **Precio de venta**: $ 2.556,90
+- **Stock actual**: 55 Unid.
+- **Código**: 7891150049888
+
+## JABON TOCADOR ARMONIA PARA VOS (1 X 125GR)
+- **Categoría**: JABON TOCADOR
+- **Precio de venta**: $ 760,18
+- **Stock actual**: 0 Unid.
+- **Código**: 3078
+
+## JABON TOCADOR GLICERINA NEUTRO (1 X 90GR)
+- **Categoría**: JABON TOCADOR
+- **Precio de venta**: $ 688,69
+- **Stock actual**: -33 Unid.
+- **Código**: 7794218106915
+
+## CUPIDO JABON TOCADOR ROSAS 3X80GR
+- **Categoría**: JABON TOCADOR
+- **Precio de venta**: $ 1.642,59
+- **Stock actual**: -7 Unid.
+- **Código**: 7794218106953
+
+## JABON PAN (ARGENTINO) 150GR
+- **Categoría**: JABON EN PAN
+- **Precio de venta**: $ 651,08
+- **Stock actual**: -100 Unid.
+- **Código**: 7794218106854
+
+## JABON PAN (ARGENTINO) 200GR
+- **Categoría**: JABON EN PAN
+- **Precio de venta**: $ 926,19
+- **Stock actual**: -139 Unid.
+- **Código**: 7794218106328
+
+## JABON PAN LA PERDIZ VERDE CON GLICERINA 200GR
+- **Categoría**: JABON EN PAN
+- **Precio de venta**: $ 553,50
+- **Stock actual**: 0 Unid.
+- **Código**: 3087
+
+## JABON POLVO clasico (MATIC) 1000G
+- **Categoría**: JABON EN POLVO
+- **Precio de venta**: $ 1.510,76
+- **Stock actual**: -4 Unid.
+- **Código**: 3838
+
+## JABON POLVO GRANBY LIMON (LAVADO A MANO) 800G
+- **Categoría**: JABON EN POLVO
+- **Precio de venta**: $ 3.064,06
+- **Stock actual**: -3 Unid.
+- **Código**: 7791290795051
+
+## JABON POLVO ALA LAVADO A MANO X400G (AZUL)
+- **Categoría**: JABON EN POLVO
+- **Precio de venta**: $ 1.247,26
+- **Stock actual**: -1 Unid.
+- **Código**: 3102
+
+## LENTES DE SEGURIDAD TRASLUCIDOS
+- **Categoría**: JARDIN
+- **Precio de venta**: $ 2.000,00
+- **Stock actual**: -7 Unid.
+- **Código**: 3186
+
+## HIDROXIDO DE SODIO AL 25%/ PH+ X5LT (SODA CAUSTICA) X1LT
+- **Categoría**: LIQUIDOS MINORISTA
+- **Precio de venta**: $ 12.200,00
+- **Stock actual**: 0 LT
+- **Código**: 3494
+
+## LIMPIA VIDRIO X750CC C/GATILLO
+- **Categoría**: LIQUIDOS MINORISTA
+- **Precio de venta**: $ 2.200,00
+- **Stock actual**: -13 Unid.
+- **Código**: 3591
+
+## BLEM CREMA X 500CC
+- **Categoría**: LIQUIDOS MINORISTA
+- **Precio de venta**: $ 2.734,48
+- **Stock actual**: -3 LT
+- **Código**: 3732
+
+## REVIVIDOR PLASTICOS EXTERIOR VIOLETA X1 LT
+- **Categoría**: LIQUIDOS
+- **Precio de venta**: $ 5.119,80
+- **Stock actual**: -8 LT
+- **Código**: 2403
+
+## DESENGRASANTE PARA BAÑOS (POWER) X5 LITROS No ofrecer en ventas
+- **Categoría**: LIQUIDOS
+- **Precio de venta**: $ 1.314,08
+- **Stock actual**: 0 LT
+- **Código**: 2179
+
+## LIQUIDO LAMPAZO AL AGUA (ORQUIDEAS) X20LT
+- **Categoría**: LIQUIDOS
+- **Precio de venta**: $ 906,04
+- **Stock actual**: 0 Unid.
+- **Código**: 2348
+
+## PAPEL HIGIENICO NEW PEL (CODIGO 26 ) 4U X 20 MT DOBLE HOJA X 1 UNIDAD
+- **Categoría**: PAPELES
+- **Precio de venta**: $ 2.360,26
+- **Stock actual**: -36 Unid.
+- **Código**: 763571804179
+
+## PAPEL (MORITA) 4U X 40 X 600 UNIDADES (VERDE) No ofrecer en ventas
+- **Categoría**: PAPELES
+- **Precio de venta**: $ 804,24
+- **Stock actual**: -600 Unid.
+- **Código**: 2938
+
+## PAPEL HIGIENICO NEW PEL TRIPLE HOJA (CODIGO 75 ) 10U X 80 MT
+- **Categoría**: PAPELES
+- **Precio de venta**: $ 9.811,10
+- **Stock actual**: -7 Unid.
+- **Código**: 723540586604
+
+## PASTA SUAVIZANTE TRIPLE PERFUME P/50LT (3,5KG) VIVERE
+- **Categoría**: CONCENTRADOS
+- **Precio de venta**: $ 38.032,80
+- **Stock actual**: -2 KG
+- **Código**: 2735
+
+## CERA AUTO BRILLO CONCENTRADA PARA PISOS ROJA 1+9 (X3LT)
+- **Categoría**: CONCENTRADOS
+- **Precio de venta**: $ 27.976,05
+- **Stock actual**: 0 LT
+- **Código**: 2664
+
+## LAVANDINA ROPA BLANCA CONCENTRADA 1+4 (4LT)
+- **Categoría**: CONCENTRADOS
+- **Precio de venta**: $ 7.338,38
+- **Stock actual**: -1 LT
+- **Código**: 2882
+
+## TOUCH REPUESTO DE SAPHIRUS (MIX CITRICO)
+- **Categoría**: PERFUMERIA
+- **Precio de venta**: $ 2.891,15
+- **Stock actual**: 0 Unid.
+- **Código**: 7798184688741
+
+## TOUCH REPUESTO DE SAPHIRUS (FRUTOS ROJOS)
+- **Categoría**: PERFUMERIA
+- **Precio de venta**: $ 2.891,15
+- **Stock actual**: 0 Unid.
+- **Código**: 7798184688727
+
+## PERFUMINA EN AEROSOL DEC HOME (ALGODON)
+- **Categoría**: PERFUMERIA
+- **Precio de venta**: $ 2.048,85
+- **Stock actual**: -14 Unid.
+- **Código**: 7790037013069
+
+## PERFUMINA TEXTIL SAPHIRUS (VARIAS FRAGANCIAS)
+- **Categoría**: PERFUMINAS
+- **Precio de venta**: $ 4.573,14
+- **Stock actual**: -53 LT
+- **Código**: 32122
+
+## BOYA PARA PILETA CHICA HONGO
+- **Categoría**: PILETA
+- **Precio de venta**: $ 1.064,12
+- **Stock actual**: -5 Unid.
+- **Código**: 3092
+
+## PERCARBONATO X 1KG
+- **Categoría**: PILETA
+- **Precio de venta**: $ 9.114,00
+- **Stock actual**: -4 Unid.
+- **Código**: 3033
+
+## MANGUERAS EXTRA REFORZADA 1/2 X 15MTS
+- **Categoría**: PILETA
+- **Precio de venta**: $ 10.495,10
+- **Stock actual**: -10 Unid.
+- **Código**: 2978
+
+## TACHO DE BASURA PEDAL STAR 12LT
+- **Categoría**: PLASTICO
+- **Precio de venta**: $ 8.015,54
+- **Stock actual**: -3 Unid.
+- **Código**: 7791231108889
+
+## BACINILLA BEBE (FLORIDA)
+- **Categoría**: PLASTICO
+- **Precio de venta**: $ 1.282,50
+- **Stock actual**: 0 Unid.
+- **Código**: 7798148010434
+
+## CANASTO T/RATAN N°2 COLOR SURTIDOS 15LT
+- **Categoría**: PLASTICO
+- **Precio de venta**: $ 5.930,15
+- **Stock actual**: -1 Unid.
+- **Código**: 1349
+
+## REPELENTE OFF AEROSOL X 170CC
+- **Categoría**: REPELENTES
+- **Precio de venta**: $ 6.534,63
+- **Stock actual**: -23 Unid.
+- **Código**: 7790520025395
+
+## REPELENTE OFF CREMA X 196GR
+- **Categoría**: REPELENTES
+- **Precio de venta**: $ 5.439,87
+- **Stock actual**: -33 Unid.
+- **Código**: 7790520998934
+
+## REPELENTE VT! MOSQUITO AEROSOL X 165CC
+- **Categoría**: REPELENTES
+- **Precio de venta**: $ 4.777,50
+- **Stock actual**: -10 Unid.
+- **Código**: 7790037000885
+
+## SAHUMERIOS VIVIDHA X15 (DHOOP) MUSK
+- **Categoría**: SAHUMERIOS
+- **Precio de venta**: $ 658,00
+- **Stock actual**: -3 Unid.
+- **Código**: 8906007645829
+
+## SAHUMERIOS VIVIDHA HEXA X18 UNIDADES (WHITE SAGE)
+- **Categoría**: SAHUMERIOS
+- **Precio de venta**: $ 522,00
+- **Stock actual**: -9 Unid.
+- **Código**: 8906007621519
+
+## SAHUMERIOS VIVIDHA X15 (DHOOP) PALO SANTO LAVANDA
+- **Categoría**: SAHUMERIOS
+- **Precio de venta**: $ 658,00
+- **Stock actual**: -11 Unid.
+- **Código**: 8906007645904
+
+## SECADOR GRIS CLARO REFORZADO DOBLE GOMA Nº40
+- **Categoría**: SECADORES
+- **Precio de venta**: $ 1.679,10
+- **Stock actual**: -41 Unid.
+- **Código**: 779048890020
+
+## SECADOR LIMPIA VIDRIOS 18CM PIRAGUA CHICO
+- **Categoría**: SECADORES
+- **Precio de venta**: $ 1.800,01
+- **Stock actual**: -19 Unid.
+- **Código**: 7798061894012
+
+## SECADOR BLANCO PREMIUM REFORZADO DOBLE GOMA Nº40 No ofrecer en ventas
+- **Categoría**: SECADORES
+- **Precio de venta**: $ 1.768,70
+- **Stock actual**: -81 Unid.
+- **Código**: 7798418343442
+
+## REJILLA MULTIUSO ESPONJA GANGA
+- **Categoría**: TEXTILES
+- **Precio de venta**: $ 587,25
+- **Stock actual**: -15 Unid.
+- **Código**: 7798413499834
+
+## REJILLA LAVAVAJILLA DOBLE (EL TOPO) 32X50CM
+- **Categoría**: TEXTILES
+- **Precio de venta**: $ 582,49
+- **Stock actual**: -115 Unid.
+- **Código**: 720665955681
+
+## REJILLA LAVA AUTO DOBLE CHICA (EL TOPO) 42X55CM
+- **Categoría**: TEXTILES
+- **Precio de venta**: $ 793,58
+- **Stock actual**: -36 Unid.
+- **Código**: 720665955704
+
+## TOALLITAS CON ALAS X8U (LINA)
+- **Categoría**: TOALLITAS
+- **Precio de venta**: $ 944,33
+- **Stock actual**: -11 Unid.
+- **Código**: 7794626010330
+
+## PROTECTORES DIARIOS 2O/U (LINA)
+- **Categoría**: TOALLITAS
+- **Precio de venta**: $ 1.204,20
+- **Stock actual**: -27 Unid.
+- **Código**: 7794626012815
+
+## TOALLITAS TOALLA FEMENINA C/ALAS X8U(P/PRECIO)
+- **Categoría**: TOALLITAS
+- **Precio de venta**: $ 630,00
+- **Stock actual**: -8 Unid.
+- **Código**: 7790940235459
+
+## BOLSAS DE RESIDUOS COMPACTADORA REF 100*110*42 X 10U
+- **Categoría**: BOLSAS
+- **Precio de venta**: $ 3.399,68
+- **Stock actual**: -12 Unid.
+- **Código**: 7798095559567
+
+## BOLSA DE RESIDUOS ROLLO PLEGADA 60X90 X 10U (FLOWI)
+- **Categoría**: BOLSAS
+- **Precio de venta**: $ 1.177,98
+- **Stock actual**: 0 Unid.
+- **Código**: 3834
+
+## BOLSAS DE RESIDUOS 70*100*35 X10U REF
+- **Categoría**: BOLSAS
+- **Precio de venta**: $ 1.876,35
+- **Stock actual**: -40 Unid.
+- **Código**: 7798095551004
+`;
+
+        // --- ⚙️ APP STATE & INITIALIZATION ---
+        let currentMode = 'offline'; // 'offline' or 'online'
+        let geminiApiKey = '';
+        let chatHistory = []; // format: { role: 'user'|'assistant', content: string, time: string }
+        let parsedCatalog = [];
+
+        // DOM elements
+        const chatBody = document.getElementById('chatBody');
+        const userInput = document.getElementById('userInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+        const clearChatBtn = document.getElementById('clearChatBtn');
+        const settingsBtn = document.getElementById('settingsBtn');
+        const settingsModal = document.getElementById('settingsModal');
+        const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+        const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+        const apiKeyInput = document.getElementById('apiKeyInput');
+        const toggleApiKeyVisibilityBtn = document.getElementById('toggleApiKeyVisibilityBtn');
+        const apiKeyFormGroup = document.getElementById('apiKeyFormGroup');
+        const modeInfoText = document.getElementById('modeInfoText');
+
+        // Welcome message template from instructions
+        const WELCOME_MESSAGE = "¡Hola! 👋 Soy **DANI**, tu asistente de **Química DEC**. Estoy acá para ayudarte con todo lo que necesites: productos de limpieza, precios, pedidos y asesoramiento técnico. ¿En qué te puedo ayudar hoy? 🧴";
+
+        // Stop words for offline matching
+        const STOP_WORDS = new Set([
+            'precio', 'cuanto', 'cuesta', 'sale', 'tenes', 'tenés', 'tienen', 'comprar', 'donde', 'quien', 'quién', 
+            'química', 'quimica', 'dec', 'para', 'este', 'esta', 'estos', 'estas', 'como', 'con', 'una', 'uno', 
+            'unos', 'unas', 'del', 'los', 'las', 'que', 'qué', 'de', 'el', 'la', 'un', 'y', 'en', 'a', 'por', 'sobre'
+        ]);
+
+        // --- 🛠️ HELPER FUNCTIONS ---
+
+        // Parse markdown raw catalog at runtime
+        function parseCatalogMarkdown(mdText) {
+            const products = [];
+            const sections = mdText.split(/##\s+/);
+            
+            for (let i = 1; i < sections.length; i++) {
+                const section = sections[i];
+                const lines = section.split('\n');
+                const nameLine = lines[0].trim();
+                if (!nameLine) continue;
+                
+                const product = { name: nameLine };
+                
+                // Parse key-value pairs
+                for (let j = 1; j < lines.length; j++) {
+                    const line = lines[j].trim();
+                    if (line.startsWith('- **')) {
+                        const match = line.match(/-\s+\*\*([^*]+)\*\*\s*:\s*(.*)/);
+                        if (match) {
+                            const key = match[1].trim().toLowerCase();
+                            let val = match[2].trim();
+                            
+                            if (key.includes('categoría') || key.includes('categoria')) {
+                                product.category = val;
+                            } else if (key.includes('precio de venta')) {
+                                product.price = val;
+                            } else if (key.includes('stock actual')) {
+                                product.stock = val;
+                            } else if (key.includes('código') || key.includes('codigo')) {
+                                product.code = val;
+                            }
+                        }
+                    }
+                }
+                
+                // Detect restriction to offer
+                product.noOffer = nameLine.toLowerCase().includes('no ofrecer') || 
+                                  (product.category && product.category.toLowerCase().includes('no ofrecer'));
+                
+                products.push(product);
+            }
+            return products;
+        }
+
+        // Normalize text: lowercase, remove accents and punctuation
+        function normalizeText(text) {
+            return text.toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?¿¡]/g," ")
+                .replace(/\s+/g, " ")
+                .trim();
+        }
+
+        // Safe format helper for markdown bold and emojis
+        function formatMarkdownToHTML(text) {
+            // Replace bold **text** with <strong>text</strong>
+            let html = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+            // Support basic markdown blockquotes
+            html = html.replace(/^>\s*(.+)/gm, '<blockquote>$1</blockquote>');
+            // Convert newlines to breaks
+            html = html.replace(/\n/g, '<br>');
+            return html;
+        }
+
+        // Get formatted current time
+        function getCurrentTimeString() {
+            const now = new Date();
+            return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+
+        // Scroll chat to bottom
+        function scrollToBottom() {
+            chatBody.scrollTop = chatBody.scrollHeight;
+        }
+
+        // --- 💬 UI RENDER FUNCTIONS ---
+
+        // Add a message bubble to the chat screen
+        function renderMessage(role, text, time = getCurrentTimeString()) {
+            const messageRow = document.createElement('div');
+            messageRow.className = `message-row ${role}`;
+            
+            const messageBubble = document.createElement('div');
+            messageBubble.className = 'message-bubble';
+            
+            const formattedContent = formatMarkdownToHTML(text);
+            messageBubble.innerHTML = `
+                <div>${formattedContent}</div>
+                <span class="message-time">${time}</span>
+            `;
+            
+            messageRow.appendChild(messageBubble);
+            chatBody.appendChild(messageRow);
+            scrollToBottom();
+        }
+
+        // Render typing indicator
+        let typingIndicatorEl = null;
+        function showTypingIndicator() {
+            if (typingIndicatorEl) return;
+            
+            const messageRow = document.createElement('div');
+            messageRow.className = 'message-row assistant';
+            messageRow.id = 'typingIndicatorRow';
+            
+            const messageBubble = document.createElement('div');
+            messageBubble.className = 'message-bubble';
+            
+            messageBubble.innerHTML = `
+                <div class="typing-indicator">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                </div>
+            `;
+            
+            messageRow.appendChild(messageBubble);
+            chatBody.appendChild(messageRow);
+            typingIndicatorEl = messageRow;
+            scrollToBottom();
+        }
+
+        function hideTypingIndicator() {
+            if (typingIndicatorEl) {
+                typingIndicatorEl.remove();
+                typingIndicatorEl = null;
+            }
+        }
+
+        // Save conversation history to local storage
+        function saveChatToLocalStorage() {
+            localStorage.setItem('dani_chat_history', JSON.stringify(chatHistory));
+        }
+
+        // Load conversation history from local storage
+        function loadChatFromLocalStorage() {
+            const history = localStorage.getItem('dani_chat_history');
+            if (history) {
+                chatHistory = JSON.parse(history);
+                if (chatHistory.length > 0) {
+                    chatBody.innerHTML = '';
+                    chatHistory.forEach(msg => {
+                        renderMessage(msg.role, msg.content, msg.time);
+                    });
+                    return;
+                }
+            }
+            // Load initial welcome message if no history exists
+            resetChat();
+        }
+
+        // Clear chat history
+        function resetChat() {
+            chatBody.innerHTML = '';
+            chatHistory = [
+                { role: 'assistant', content: WELCOME_MESSAGE, time: getCurrentTimeString() }
+            ];
+            renderMessage('assistant', WELCOME_MESSAGE, chatHistory[0].time);
+            saveChatToLocalStorage();
+        }
+
+        // --- 🧠 OFFLINE RULE MATCHING ENGINE ---
+
+        // Simple fuzzy product matcher
+        function matchProduct(query) {
+            const cleanQuery = normalizeText(query);
+            const queryWords = cleanQuery.split(/\s+/).filter(w => w.length > 2 && !STOP_WORDS.has(w));
+            
+            if (queryWords.length === 0) return null;
+            
+            let bestMatch = null;
+            let highestScore = 0;
+            
+            for (const product of parsedCatalog) {
+                const cleanName = normalizeText(product.name);
+                let matches = 0;
+                
+                for (const word of queryWords) {
+                    if (cleanName.includes(word)) {
+                        matches++;
+                    }
+                }
+                
+                if (matches > 0) {
+                    // Score = words matched divided by total words in search + weight for exact word overlap
+                    const score = matches / queryWords.length;
+                    if (score > highestScore) {
+                        highestScore = score;
+                        bestMatch = product;
+                    }
+                }
+            }
+            
+            // Return match if we match at least 40% of the non-stop words of the query
+            if (bestMatch && highestScore >= 0.4) {
+                return bestMatch;
+            }
+            return null;
+        }
+
+        // Logic for simulated responses (rule matching + fuzzy search)
+        function getSimulatedResponse(query) {
+            const cleanQuery = normalizeText(query);
+            
+            // 1. Off-topic check (politics, football, general off-topic items)
+            if (cleanQuery.includes('mundial') || cleanQuery.includes('futbol') || cleanQuery.includes('fútbol') || 
+                cleanQuery.includes('politica') || cleanQuery.includes('política') || cleanQuery.includes('presidente') || 
+                cleanQuery.includes('clima') || cleanQuery.includes('tiempo hoy') || cleanQuery.includes('chiste') || 
+                cleanQuery.includes('receta')) {
+                return "¡Gracias por tu mensaje! 😊 Solo te puedo ayudar con los productos de limpieza de Química DEC. ¿En qué te puedo asesorar hoy?";
+            }
+            
+            // 2. Greetings
+            if (cleanQuery === 'hola' || cleanQuery.startsWith('hola ') || cleanQuery.includes('buenos dias') || 
+                cleanQuery.includes('buen dia') || cleanQuery.includes('buen día') || cleanQuery.includes('buenas tardes') || 
+                cleanQuery.includes('buenas noches')) {
+                return "¡Hola! 👋 Soy DANI, tu asesor virtual de Química DEC. ¿Buscás optimizar el ahorro en productos de limpieza para tu hogar o negocio? Contame en qué te puedo ayudar hoy 🧴";
+            }
+            
+            // 3. Minimum order checks
+            if (cleanQuery.includes('minimo') || cleanQuery.includes('mínimo') || cleanQuery.includes('compra minima') || cleanQuery.includes('pedido minimo')) {
+                return "¡Sí! Para tu **primera compra** el mínimo es de **$80.000**. Después, si sos de **Concepción del Uruguay** (reparto local), el mínimo baja a **$50.000**. Para **envíos fuera de Concepción del Uruguay**, el mínimo es de **$80.000**. ¿Querés que te ayude a armar tu primer pedido? 📦";
+            }
+            
+            // 4. Payment terms
+            if (cleanQuery.includes('pago') || cleanQuery.includes('pagar') || cleanQuery.includes('efectivo') || 
+                cleanQuery.includes('transferencia') || cleanQuery.includes('tarjeta') || cleanQuery.includes('cbu') || cleanQuery.includes('cvu')) {
+                if (cleanQuery.includes('cbu') || cleanQuery.includes('cvu') || cleanQuery.includes('datos bancarios') || cleanQuery.includes('cuenta')) {
+                    return "Para los datos de pago te los facilita nuestro equipo al confirmar tu pedido desde la web 🛒 ¿Querés ver nuestro catálogo para armar el pedido?";
+                }
+                return "Aceptamos pago en **efectivo** o **transferencia bancaria**. Simple y directo, sin vueltas 💪 ¿Querés que te pase los datos para transferir?";
+            }
+            
+            // 5. Delivery and logistics
+            if (cleanQuery.includes('envio') || cleanQuery.includes('envios') || cleanQuery.includes('entrega') || 
+                cleanQuery.includes('entregar') || cleanQuery.includes('reparto') || cleanQuery.includes('hacen envios')) {
+                return "Tenemos logística eficiente para entregas rápidas y confiables. Te damos un plazo estimado al momento de tu pedido. ¿Querés ir al carrito y concretar tu pedido ahora? 📦";
+            }
+            
+            // 6. Ecological / Sostenibilidad
+            if (cleanQuery.includes('ecologico') || cleanQuery.includes('biodegradable') || cleanQuery.includes('medio ambiente') || cleanQuery.includes('sostenible') || cleanQuery.includes('contamina')) {
+                return "¡Sí! Nuestros productos son **biodegradables y no contaminan el medio ambiente**. Si bien no contamos con certificación propia, **cumplen con todos los reglamentos y certificaciones vigentes** del sector. Limpieza responsable sin resignar eficacia 🌿 ¿Querés más info?";
+            }
+            
+            // 7. General Catalog / List requests
+            if (cleanQuery.includes('catalogo') || cleanQuery.includes('catálogo') || cleanQuery.includes('lista') || 
+                cleanQuery.includes('productos') || cleanQuery.includes('que venden') || cleanQuery.includes('que ofrecen')) {
+                return "Nuestros precios están publicados en nuestro **carrito de compras online** con todo el catálogo disponible 🛒 ¿Querés que te pase el link para que veas los precios y hagas tu pedido?";
+            }
+
+            // 8. Human Agent / Contact details
+            if (cleanQuery.includes('asesor') || cleanQuery.includes('humano') || cleanQuery.includes('contacto') || 
+                cleanQuery.includes('telefono') || cleanQuery.includes('teléfono') || cleanQuery.includes('whatsapp') || cleanQuery.includes('hablar con alguien')) {
+                return "Para ese detalle te comunico con un asesor.";
+            }
+            
+            // 9. Catalog Product Fuzzy Match Lookup
+            const matched = matchProduct(query);
+            if (matched) {
+                // If it is restricted (No ofrecer en ventas)
+                if (matched.noOffer) {
+                    return "Para ese detalle te comunico con un asesor.";
+                }
+                
+                // If price is 0.00
+                if (matched.price === "$ 0,00" || matched.price === "$ 0") {
+                    return "Para ese detalle te comunico con un asesor.";
+                }
+                
+                return `¡Gran elección! El producto **${matched.name}** tiene un precio de venta de **${matched.price}**. Recordá que nuestras fórmulas ultra-concentradas te garantizan rendimiento superior y ahorro real. ¿Cuántas unidades necesitás cargar en tu carrito? 🛒`;
+            }
+            
+            // 10. Direct check for DANI system instruction specific items
+            if (cleanQuery.includes('jabon liquido premium') || cleanQuery.includes('jabon premium') || cleanQuery.includes('jabón premium')) {
+                return "¡Buena elección! 🧴 El **Jabón Líquido Premium para Ropa** está a **$1.400**. Ultra-concentrado para proteger colores y tejidos, rindiendo mucho más. ¿Te paso el link al carrito para cargarlo? 🛒";
+            }
+            if (cleanQuery.includes('jabon liquido suavidad') || cleanQuery.includes('jabon suavidad') || cleanQuery.includes('jabón suavidad')) {
+                return "¡Excelente opción! El **Jabón Líquido para Ropa Suavidad** (2 en 1 con toque de suavizante) está a **$900**. Limpieza profunda y suavidad en un solo paso. ¿Cuántos querés llevar? 🧴";
+            }
+            if (cleanQuery.includes('difusores dec') || cleanQuery.includes('difusor dec') || cleanQuery.includes('difusores d.e.c')) {
+                return "¡Exquisitos! Los **Difusores D.E.C** vienen en varias fragancias a **$2.429,99 c/u**, o en caja cerrada de 12 unidades para mayor ahorro. ¿Querés que te ayude a elegir las fragancias? 🌸";
+            }
+            if (cleanQuery.includes('perfumina aerosol') || cleanQuery.includes('perfumina dec home') || cleanQuery.includes('dec home')) {
+                return "¡Perfecto! La **Perfumina en Aerosol DEC Home (Algodón)** tiene un precio de **$2.048,85**. Ideal para mantener ambientes frescos. ¿Querés agregarla a tu carrito? 📦";
+            }
+            
+            // 11. Fallback Rule if absolutely no match is found
+            return "Para ese detalle te comunico con un asesor.";
+        }
+
+        // --- 🔌 GEMINI API ONLINE INTEGRATION ---
+
+        async function fetchGeminiResponse(userMessage, history) {
+            const apiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${geminiApiKey}`;
+            
+            // Format full history for the API
+            const formattedContents = [];
+            
+            // Gemini API history needs alternating user/model roles
+            history.forEach((msg) => {
+                // Skip the initial greeting if it doesn't align nicely or map properly,
+                // but let's map user to 'user' and assistant/model to 'model'
+                formattedContents.push({
+                    role: msg.role === 'assistant' ? 'model' : 'user',
+                    parts: [{ text: msg.content }]
+                });
+            });
+
+            // Add the new message
+            formattedContents.push({
+                role: 'user',
+                parts: [{ text: userMessage }]
+            });
+
+            // Combine instructions and product catalog into the system instructions
+            const systemInstructionText = `
+${SYSTEM_INSTRUCTIONS_RAW}
+
+A continuación tenés el CATÁLOGO completo de productos. Es tu ÚNICA fuente de precios y disponibilidad:
+${PRODUCT_CATALOG_RAW}
+
+REGLAS DE ORO:
+1. Respuestas de máximo 1000 caracteres. Formato de párrafos cortos y emoticones.
+2. Si te preguntan el precio, stock o datos técnicos de un producto, buscalo en el catálogo. Si figura "No ofrecer en ventas", respondé exactamente: "Para ese detalle te comunico con un asesor."
+3. Si el dato NO figura de forma exacta en el catálogo, o te preguntan sobre stock que no está, o cualquier dato ausente, respondé exactamente: "Para ese detalle te comunico con un asesor."
+4. NUNCA inventes datos, precios, condiciones de entrega u horarios.
+5. Recordá saludar mencionando a "Química DEC" y hablar en tuteo argentino (voseo: "vos", "tenés", "querés", "buscás", "hacé").
+6. Siempre terminá con una pregunta o llamada a la acción comercial (CTA).
+7. Si te preguntan cosas fuera del negocio (fútbol, política, etc.), respondé con amabilidad que solo ayudás con productos Química DEC.
+`;
+
+            const requestBody = {
+                contents: formattedContents,
+                systemInstruction: {
+                    parts: [{ text: systemInstructionText }]
+                },
+                generationConfig: {
+                    maxOutputTokens: 1000,
+                    temperature: 0.3 // Low temperature to reduce hallucination and guarantee adherence to instructions
+                }
+            };
+
+            const response = await fetch(apiEndpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestBody)
+            });
+
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.error?.message || 'Error al conectar con Gemini API');
+            }
+
+            const data = await response.json();
+            
+            // Extract the generated text
+            const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (!textResponse) {
+                throw new Error('No se recibió respuesta del modelo.');
+            }
+            
+            return textResponse.trim();
+        }
+
+        // --- 🎮 CONTROLLERS AND EVENT HANDLERS ---
+
+        // Send a message (User triggered)
+        async function handleSendMessage(text) {
+            const query = text || userInput.value.trim();
+            if (!query) return;
+
+            // Clear input box
+            userInput.value = '';
+            sendBtn.disabled = true;
+
+            // Add user message to screen and state
+            const time = getCurrentTimeString();
+            renderMessage('user', query, time);
+            chatHistory.push({ role: 'user', content: query, time: time });
+            saveChatToLocalStorage();
+
+            // Show typing indicator
+            showTypingIndicator();
+
+            let responseText = '';
+
+            try {
+                if (currentMode === 'online' && geminiApiKey) {
+                    // Call live Gemini API
+                    responseText = await fetchGeminiResponse(query, chatHistory.slice(0, -1));
+                } else {
+                    // Run offline keyword engine
+                    // Simulate a small delay for a natural chatbot experience
+                    await new Promise(resolve => setTimeout(resolve, 800));
+                    responseText = getSimulatedResponse(query);
+                }
+            } catch (error) {
+                console.error(error);
+                // Fallback to local matching if API fails, adding a notice
+                responseText = `[Error de conexión con la API. Respondiendo en modo simulación]:\n\n${getSimulatedResponse(query)}`;
+            } finally {
+                hideTypingIndicator();
+            }
+
+            // Append assistant response
+            const resTime = getCurrentTimeString();
+            renderMessage('assistant', responseText, resTime);
+            chatHistory.push({ role: 'assistant', content: responseText, time: resTime });
+            saveChatToLocalStorage();
+
+            userInput.focus();
+        }
+
+        // Suggestion chip trigger
+        window.sendSuggestion = function(text) {
+            handleSendMessage(text);
+        };
+
+        // Initialize state, load settings
+        function initApp() {
+            // Parse catalog first
+            parsedCatalog = parseCatalogMarkdown(PRODUCT_CATALOG_RAW);
+
+            // Load saved settings
+            const savedMode = localStorage.getItem('dani_chat_mode');
+            const savedKey = localStorage.getItem('dani_gemini_api_key');
+
+            if (savedMode) {
+                setMode(savedMode);
+            } else {
+                setMode('offline');
+            }
+
+            if (savedKey) {
+                geminiApiKey = savedKey;
+                apiKeyInput.value = savedKey;
+            }
+
+            // Load conversation
+            loadChatFromLocalStorage();
+        }
+
+        // Set mode toggle between simulated and Gemini
+        window.setMode = function(mode) {
+            currentMode = mode;
+            
+            const modeOffline = document.getElementById('modeOffline');
+            const modeOnline = document.getElementById('modeOnline');
+            
+            if (mode === 'online') {
+                modeOnline.classList.add('active');
+                modeOffline.classList.remove('active');
+                apiKeyFormGroup.style.display = 'block';
+                statusText.innerHTML = `
+                    <svg width="8" height="8" viewBox="0 0 8 8" fill="none" style="margin-top: 1px;">
+                        <circle cx="4" cy="4" r="3" fill="#10b981"/>
+                    </svg>
+                    Química DEC (Live API)
+                `;
+                modeInfoText.innerHTML = `
+                    <strong>Modo Gemini API</strong>: Conexión inteligente directa en tu navegador usando la API oficial. Lee y razona sobre los archivos de conocimiento.
+                `;
+            } else {
+                modeOffline.classList.add('active');
+                modeOnline.classList.remove('active');
+                apiKeyFormGroup.style.display = 'none';
+                statusText.innerHTML = `
+                    <svg width="8" height="8" viewBox="0 0 8 8" fill="none" style="margin-top: 1px;">
+                        <circle cx="4" cy="4" r="3" fill="#10b981"/>
+                    </svg>
+                    Química DEC (Offline)
+                `;
+                modeInfoText.innerHTML = `
+                    <strong>Modo Offline</strong>: Funciona sin internet ni claves usando un motor local de coincidencia exacta y búsqueda de precios del catálogo.
+                `;
+            }
+        };
+
+        // Save button for Settings Modal
+        function saveSettings() {
+            const selectedMode = document.querySelector('.mode-pill.active').id === 'modeOnline' ? 'online' : 'offline';
+            const inputKey = apiKeyInput.value.trim();
+
+            if (selectedMode === 'online' && !inputKey) {
+                alert('Por favor, ingresá una clave API válida para el modo inteligente.');
+                return;
+            }
+
+            localStorage.setItem('dani_chat_mode', selectedMode);
+            currentMode = selectedMode;
+
+            if (inputKey) {
+                localStorage.setItem('dani_gemini_api_key', inputKey);
+                geminiApiKey = inputKey;
+            } else {
+                localStorage.removeItem('dani_gemini_api_key');
+                geminiApiKey = '';
+            }
+
+            // Sync visual header status
+            setMode(selectedMode);
+            closeSettings();
+        }
+
+        // Close modal helper
+        function closeSettings() {
+            settingsModal.classList.remove('active');
+        }
+
+        // --- 🔌 EVENT LISTENERS ---
+
+        // Listen for input changes to toggle Send button
+        userInput.addEventListener('input', () => {
+            sendBtn.disabled = userInput.value.trim().length === 0;
+        });
+
+        // Trigger send on enter key
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !sendBtn.disabled) {
+                handleSendMessage();
+            }
+        });
+
+        // Send button click
+        sendBtn.addEventListener('click', () => handleSendMessage());
+
+        // Trash / clear chat history
+        clearChatBtn.addEventListener('click', () => {
+            if (confirm('¿Querés reiniciar la conversación con DANI?')) {
+                resetChat();
+            }
+        });
+
+        // Settings modal show
+        settingsBtn.addEventListener('click', () => {
+            // Load key values to input
+            apiKeyInput.value = geminiApiKey;
+            settingsModal.classList.add('active');
+        });
+
+        // Close settings triggers
+        closeSettingsBtn.addEventListener('click', closeSettings);
+        settingsModal.addEventListener('click', (e) => {
+            if (e.target === settingsModal) closeSettings();
+        });
+
+        // Save settings button
+        saveSettingsBtn.addEventListener('click', saveSettings);
+
+        // Hide/Show API key helper
+        toggleApiKeyVisibilityBtn.addEventListener('click', () => {
+            if (apiKeyInput.type === 'password') {
+                apiKeyInput.type = 'text';
+                toggleApiKeyVisibilityBtn.textContent = 'Ocultar';
+            } else {
+                apiKeyInput.type = 'password';
+                toggleApiKeyVisibilityBtn.textContent = 'Ver';
+            }
+        });
+
+        // Run application initialization
+        window.addEventListener('DOMContentLoaded', initApp);
+    </script>
+</body>
+</html>
