@@ -1810,6 +1810,7 @@ Este documento contiene una muestra representativa de productos del catálogo de
         let geminiApiKey = '';
         let chatHistory = []; // format: { role: 'user'|'assistant', content: string, time: string }
         let parsedCatalog = [];
+        let isAdminMode = false; // Modo admin para consultar estadísticas
 
         // DOM elements
         const chatBody = document.getElementById('chatBody');
@@ -2255,6 +2256,68 @@ REGLAS DE ORO:
             }
         }
 
+        // Consultar estadísticas en Supabase (Solo Admin)
+        async function fetchSupabaseStats(query) {
+            const supabaseUrl = 'https://oznnisdehvykgqfgudte.supabase.co';
+            const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im96bm5pc2RlaHZ5a2dxZmd1ZHRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwNzgzMjQsImV4cCI6MjA5NTY1NDMyNH0.W40g7gl3b2pJ1SXdVEKYKQCxnCwS5Ldr0E_jlBpHNEg';
+            const tableName = 'Conversaciones';
+            
+            const cleanQuery = normalizeText(query);
+            const headers = {
+                'apikey': supabaseKey,
+                'Authorization': `Bearer ${supabaseKey}`,
+                'Accept': 'application/json'
+            };
+
+            try {
+                // 1. Estadísticas del día (hoy)
+                if (cleanQuery.includes('hoy')) {
+                    const today = new Date().toISOString().split('T')[0];
+                    const res = await fetch(`${supabaseUrl}/rest/v1/${tableName}?created_at=gte.${today}T00:00:00Z&select=mensaje_cliente`, { headers });
+                    if (!res.ok) throw new Error('Error fetching stats');
+                    const data = await res.json();
+                    return `📊 **Estadísticas de hoy:**\nSe han registrado **${data.length}** interacciones con clientes en el día de la fecha.`;
+                }
+                
+                // 2. Últimas consultas recientes
+                if (cleanQuery.includes('ultima') || cleanQuery.includes('reciente')) {
+                    const res = await fetch(`${supabaseUrl}/rest/v1/${tableName}?select=mensaje_cliente,created_at&order=created_at.desc&limit=5`, { headers });
+                    if (!res.ok) throw new Error('Error fetching recent stats');
+                    const data = await res.json();
+                    if (data.length === 0) return "No hay consultas registradas aún.";
+                    
+                    let result = `📋 **Últimas 5 consultas:**\n`;
+                    data.forEach((row, i) => {
+                        const date = new Date(row.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                        result += `- [${date}] "${row.mensaje_cliente}"\n`;
+                    });
+                    return result;
+                }
+
+                // 3. Totales
+                if (cleanQuery.includes('cuantas') || cleanQuery.includes('total') || cleanQuery.includes('estadistica') || cleanQuery.includes('metrica')) {
+                    // Para contar usamos el header Prefer: count=exact, limit=1 para no traer toda la data
+                    const countHeaders = { ...headers, 'Prefer': 'count=exact' };
+                    const res = await fetch(`${supabaseUrl}/rest/v1/${tableName}?select=id&limit=1`, { headers: countHeaders });
+                    if (!res.ok) throw new Error('Error fetching total stats');
+                    // El count viene en el header 'content-range'
+                    const range = res.headers.get('content-range');
+                    let total = "varias";
+                    if (range) {
+                        total = range.split('/')[1];
+                    }
+                    return `📈 **Estadísticas Históricas:**\nEl asistente ha procesado un total de **${total}** interacciones históricas.`;
+                }
+
+                // Si no es ninguna pregunta de estadísticas clara, devolver null para que siga el flujo normal
+                return null;
+
+            } catch (err) {
+                console.error('Error al obtener estadísticas:', err);
+                return `❌ Error al conectar con Supabase para obtener estadísticas.`;
+            }
+        }
+
         // --- ðŸŽ® CONTROLLERS AND EVENT HANDLERS ---
 
         // Send a message (User triggered)
@@ -2272,13 +2335,37 @@ REGLAS DE ORO:
             chatHistory.push({ role: 'user', content: query, time: time });
             saveChatToLocalStorage();
 
+            // Modo Administrador Toggle
+            if (query.trim() === 'AdminDec2026!') {
+                isAdminMode = !isAdminMode;
+                const adminResponse = isAdminMode 
+                    ? "🔐 **Modo Administrador Activado**.\nPodés preguntarme cosas como:\n- ¿Cuántas consultas hubo hoy?\n- Mostrame las últimas consultas.\n- ¿Cuál es el total de interacciones?"
+                    : "🔒 **Modo Administrador Desactivado**.";
+                const resTime = getCurrentTimeString();
+                renderMessage('assistant', adminResponse, resTime);
+                chatHistory.push({ role: 'assistant', content: adminResponse, time: resTime });
+                saveChatToLocalStorage();
+                userInput.focus();
+                return;
+            }
+
             // Show typing indicator
             showTypingIndicator();
 
             let responseText = '';
 
-            try {
-                if (currentMode === 'online' && geminiApiKey) {
+            // Si está en modo admin, intentar resolver la consulta con Supabase
+            if (isAdminMode) {
+                const statsResponse = await fetchSupabaseStats(query);
+                if (statsResponse) {
+                    responseText = statsResponse;
+                }
+            }
+
+            // Si no se resolvió por estadísticas de admin, procesar normalmente
+            if (!responseText) {
+                try {
+                    if (currentMode === 'online' && geminiApiKey) {
                     // Call live Gemini API
                     responseText = await fetchGeminiResponse(query, chatHistory.slice(0, -1));
                 } else {
@@ -2294,6 +2381,7 @@ REGLAS DE ORO:
             } finally {
                 hideTypingIndicator();
             }
+            } // Fin de if (!responseText)
 
             // Append assistant response
             const resTime = getCurrentTimeString();
