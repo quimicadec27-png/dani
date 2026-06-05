@@ -2309,6 +2309,88 @@ REGLAS DE ORO:
                     return `📈 **Estadísticas Históricas:**\nEl asistente ha procesado un total de **${total}** interacciones históricas.`;
                 }
 
+                // 4. Producto o curso más consultado de este mes
+                if (cleanQuery.includes('mas consultado') || cleanQuery.includes('más consultado') || 
+                    cleanQuery.includes('mas consultados') || cleanQuery.includes('más consultados') ||
+                    (cleanQuery.includes('producto') && cleanQuery.includes('mes')) ||
+                    (cleanQuery.includes('curso') && cleanQuery.includes('mes'))) {
+                    
+                    const now = new Date();
+                    const year = now.getFullYear();
+                    const month = String(now.getMonth() + 1).padStart(2, '0');
+                    const startOfMonthStr = `${year}-${month}-01T00:00:00`;
+                    
+                    const res = await fetch(`${supabaseUrl}/rest/v1/${tableName}?created_at=gte.${startOfMonthStr}Z&select=mensaje_cliente,negocio`, { headers });
+                    if (!res.ok) throw new Error('Error fetching monthly stats');
+                    const data = await res.json();
+                    
+                    if (data.length === 0) {
+                        return "📊 **Estadísticas Mensuales:**\nAún no hay interacciones registradas en este mes.";
+                    }
+
+                    const isCourse = cleanQuery.includes('curso') || cleanQuery.includes('dr computers') || cleanQuery.includes('dario') || cleanQuery.includes('darío');
+                    
+                    let filtered = [];
+                    let businessLabel = '';
+                    if (isCourse) {
+                        filtered = data.filter(row => row.negocio === 'DR Computers');
+                        businessLabel = 'DR Computers';
+                    } else {
+                        filtered = data.filter(row => row.negocio && row.negocio.toLowerCase().includes('quimica'));
+                        businessLabel = 'Química DEC';
+                    }
+
+                    if (filtered.length === 0) {
+                        return `📊 **Estadísticas Mensuales - ${businessLabel}:**\nNo hay consultas registradas este mes para esta unidad de negocio.`;
+                    }
+
+                    // Count word frequency excluding stop words
+                    const customStopwords = new Set([
+                        'el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas', 'de', 'del', 'al', 'y', 'o', 'e', 'a', 'en', 'con', 'sin', 'por', 'para', 'que', 'qué', 'como', 'cómo',
+                        'me', 'te', 'se', 'lo', 'le', 'nos', 'les', 'mi', 'tu', 'su', 'mis', 'tus', 'sus', 'yo', 'nosotros', 'ellos', 'ellas',
+                        'este', 'esta', 'esto', 'estos', 'estas', 'ese', 'esa', 'eso', 'esos', 'esas', 'aquel', 'aquella', 'aquellos', 'aquellas',
+                        'cual', 'cuál', 'cuáles', 'cuales', 'quien', 'quién', 'quienes', 'quiénes', 'que', 'qué', 'donde', 'dónde', 'cuando', 'cuándo', 'como', 'cómo', 'porque',
+                        'si', 'no', 'siempre', 'nunca', 'tal vez', 'quizas', 'quizá', 'hola', 'buenas', 'buen', 'buenos', 'tardes', 'noches', 'dia', 'día', 'dias', 'días', 'tarde', 'noche',
+                        'queria', 'quería', 'saber', 'consulta', 'consultar', 'pregunta', 'preguntar', 'tenes', 'tenés', 'tienen', 'tiene', 'hay', 'gracias', 'favor', 'por favor',
+                        'precio', 'precios', 'valor', 'costo', 'costos', 'cuanto', 'cuánto', 'sale', 'salen', 'cuesta', 'cuestan', 'comprar', 'compra', 'compras', 'pedido', 'pedidos',
+                        'envio', 'envío', 'envios', 'envíos', 'reparto', 'entrega', 'entregas', 'stock', 'concentrado', 'concentrada', 'concentrados', 'concentradas',
+                        'litro', 'litros', 'bidon', 'bidón', 'bidones', 'unidad', 'unidades', 'unid', 'bote', 'botella', 'botellas', 'caja', 'cajas', 'pack', 'packs',
+                        'curso', 'cursos', 'clase', 'clases', 'temario', 'temarios', 'duracion', 'duración', 'horario', 'horarios', 'fecha', 'fechas', 'inicio', 'inicia',
+                        'certificado', 'certificados', 'certificacion', 'certificación', 'titulo', 'título', 'arancel', 'aranceles', 'cuota', 'cuotas', 'inscripcion', 'inscripción',
+                        'matrícula', 'matricula', 'vacante', 'vacantes', 'cupo', 'cupos', 'alumnos', 'alumno', 'potenciales', 'potencial'
+                    ]);
+
+                    const wordCounts = {};
+                    filtered.forEach(row => {
+                        const cleanMsg = normalizeText(row.mensaje_cliente);
+                        const words = cleanMsg.split(/\s+/).filter(w => w.length > 2 && !customStopwords.has(w));
+                        words.forEach(word => {
+                            wordCounts[word] = (wordCounts[word] || 0) + 1;
+                        });
+                    });
+
+                    let topWord = '';
+                    let topCount = 0;
+                    for (const [word, count] of Object.entries(wordCounts)) {
+                        if (count > topCount) {
+                            topCount = count;
+                            topWord = word;
+                        }
+                    }
+
+                    if (!topWord) {
+                        return `📊 **Estadísticas Mensuales - ${businessLabel}:**\nSe encontraron **${filtered.length}** consultas este mes, pero no se pudo identificar una palabra clave dominante en los mensajes.`;
+                    }
+
+                    const capitalizedWord = topWord.charAt(0).toUpperCase() + topWord.slice(1);
+                    if (isCourse) {
+                        const totalPotentialStudents = filtered.length;
+                        return `🎓 **Estadísticas de Cursos (DR Computers) - Este mes:**\nEl curso más consultado del mes es: **${capitalizedWord}**.\nTotal de alumnos potenciales (consultas de este mes): **${totalPotentialStudents}**.`;
+                    } else {
+                        return `📊 **Estadísticas de Ventas (Química DEC) - Este mes:**\nEl producto más consultado este mes es: **${capitalizedWord}** (mencionado en **${topCount}** consultas).`;
+                    }
+                }
+
                 // Si no es ninguna pregunta de estadísticas clara, devolver null para que siga el flujo normal
                 return null;
 
