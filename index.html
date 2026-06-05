@@ -2051,11 +2051,16 @@ Este documento contiene una muestra representativa de productos del catálogo de
                 return "¡Gracias por tu mensaje! 😊 Solo te puedo ayudar con los productos de limpieza de Química DEC. ¿En qué te puedo asesorar hoy?";
             }
             
-            // 2. Greetings
-            if (cleanQuery === 'hola' || cleanQuery.startsWith('hola ') || cleanQuery.includes('buenos dias') || 
-                cleanQuery.includes('buen dia') || cleanQuery.includes('buen día') || cleanQuery.includes('buenas tardes') || 
-                cleanQuery.includes('buenas noches')) {
-                return "¡Hola! 👋 Soy DANI, tu asesor virtual de Química DEC. ¿Buscás optimizar el ahorro en productos de limpieza para tu hogar o negocio? Contame en qué te puedo ayudar hoy 🧴";
+            // 2. Greetings (only if it's a short greeting message, avoid catching real questions that start with hola)
+            const isGreetingWord = cleanQuery === 'hola' || cleanQuery === 'buenas' || cleanQuery === 'buen dia' || cleanQuery === 'buenas tardes' || cleanQuery === 'buenas noches' || cleanQuery === 'hola dani';
+            const isShortGreeting = cleanQuery.length <= 25 && (cleanQuery.includes('hola') || cleanQuery.includes('buenas') || cleanQuery.includes('buen dia') || cleanQuery.includes('buenas tardes'));
+            
+            if (isGreetingWord || isShortGreeting) {
+                // If it contains other important keywords, don't just greet.
+                const hasKeywords = cleanQuery.includes('sucursal') || cleanQuery.includes('concordia') || cleanQuery.includes('precio') || cleanQuery.includes('envio') || cleanQuery.includes('catalogo');
+                if (!hasKeywords) {
+                    return "¡Hola! 👋 Soy DANI, tu asesor virtual de Química DEC. ¿Buscás optimizar el ahorro en productos de limpieza para tu hogar o negocio? Contame en qué te puedo ayudar hoy 🧴";
+                }
             }
             
             // 3. Minimum order checks
