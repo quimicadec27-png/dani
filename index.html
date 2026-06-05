@@ -2065,9 +2065,16 @@ Este documento contiene una muestra representativa de productos del catálogo de
             }
             
             // 5. Delivery and logistics
-            if (cleanQuery.includes('envio') || cleanQuery.includes('envios') || cleanQuery.includes('entrega') || 
-                cleanQuery.includes('entregar') || cleanQuery.includes('reparto') || cleanQuery.includes('hacen envios')) {
-                return "Hacemos envíos por **Transporte Mostto** en todo Entre Ríos con un costo del **5% del valor de tu compra**. En **Concepción del Uruguay** el reparto es **gratis** los días martes y viernes de 11:00 a 13:00 hs. ¿Armamos tu pedido? 🛒 https://pedix.app/quimica-dec";
+            if (cleanQuery.includes('envio') || cleanQuery.includes('envios') || cleanQuery.includes('entrega') ||
+                cleanQuery.includes('entregar') || cleanQuery.includes('reparto') || cleanQuery.includes('despacho') ||
+                cleanQuery.includes('mandan') || cleanQuery.includes('traen') || cleanQuery.includes('llega') ||
+                cleanQuery.includes('llegan') || cleanQuery.includes('transporte') || cleanQuery.includes('mostto') ||
+                cleanQuery.includes('parana') || cleanQuery.includes('paraná') || cleanQuery.includes('gualeguaychu') ||
+                cleanQuery.includes('gualeguay') || cleanQuery.includes('colon') || cleanQuery.includes('colón') ||
+                cleanQuery.includes('concordia') || cleanQuery.includes('entre rios') || cleanQuery.includes('entre ríos') ||
+                cleanQuery.includes('hacen envio') || cleanQuery.includes('hacen entrega') || cleanQuery.includes('hacen reparto') ||
+                cleanQuery.includes('llegan a') || cleanQuery.includes('mandan a') || cleanQuery.includes('envian') || cleanQuery.includes('envían')) {
+                return "¡Sí! 🚚 Hacemos envíos por **Transporte Mostto** en todo Entre Ríos con un costo del **5% del valor de tu compra**. En **Concepción del Uruguay** el reparto es **gratis** los días **martes y viernes de 11:00 a 13:00 hs**. ¿Armamos tu pedido? 🛒 https://pedix.app/quimica-dec";
             }
             
             // 6. Ecological / Sostenibilidad
