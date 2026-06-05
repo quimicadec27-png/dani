@@ -2200,6 +2200,38 @@ REGLAS DE ORO:
             return textResponse.trim();
         }
 
+        // Guardar conversación en Supabase
+        async function saveConversationToSupabase(mensajeCliente, respuestaAgente) {
+            const supabaseUrl = 'https://oznnisdehvykgqfgudte.supabase.co';
+            const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im96bm5pc2RlaHZ5a2dxZmd1ZHRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwNzgzMjQsImV4cCI6MjA5NTY1NDMyNH0.W40g7gl3b2pJ1SXdVEKYKQCxnCwS5Ldr0E_jlBpHNEg';
+            const tableName = 'Conversaciones';
+
+            try {
+                const response = await fetch(`${supabaseUrl}/rest/v1/${tableName}`, {
+                    method: 'POST',
+                    headers: {
+                        'apikey': supabaseKey,
+                        'Authorization': `Bearer ${supabaseKey}`,
+                        'Content-Type': 'application/json',
+                        'Prefer': 'return=minimal'
+                    },
+                    body: JSON.stringify({
+                        mensaje_cliente: mensajeCliente,
+                        respuesta_agente: respuestaAgente,
+                        negocio: 'Química DEC'
+                    })
+                });
+
+                if (!response.ok) {
+                    console.error('Error al guardar conversación en Supabase:', await response.text());
+                } else {
+                    console.log('Conversación guardada con éxito en Supabase.');
+                }
+            } catch (err) {
+                console.error('Error de red al guardar en Supabase:', err);
+            }
+        }
+
         // --- ðŸŽ® CONTROLLERS AND EVENT HANDLERS ---
 
         // Send a message (User triggered)
@@ -2245,6 +2277,9 @@ REGLAS DE ORO:
             renderMessage('assistant', responseText, resTime);
             chatHistory.push({ role: 'assistant', content: responseText, time: resTime });
             saveChatToLocalStorage();
+
+            // Guardar en Supabase sin demorar la respuesta en la interfaz
+            saveConversationToSupabase(query, responseText);
 
             userInput.focus();
         }
