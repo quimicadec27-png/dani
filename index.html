@@ -2328,15 +2328,15 @@ REGLAS DE ORO:
                         return "📊 **Estadísticas Mensuales:**\nAún no hay interacciones registradas en este mes.";
                     }
 
-                    const isCourse = cleanQuery.includes('curso') || cleanQuery.includes('dr computers') || cleanQuery.includes('dario') || cleanQuery.includes('darío');
+                    const isCourse = cleanQuery.includes('curso') || cleanQuery.includes('dr computers') || cleanQuery.includes('dario');
                     
                     let filtered = [];
                     let businessLabel = '';
                     if (isCourse) {
-                        filtered = data.filter(row => row.negocio === 'DR Computers');
+                        filtered = data.filter(row => row.negocio && normalizeText(row.negocio).includes('dr computers'));
                         businessLabel = 'DR Computers';
                     } else {
-                        filtered = data.filter(row => row.negocio && row.negocio.toLowerCase().includes('quimica'));
+                        filtered = data.filter(row => row.negocio && normalizeText(row.negocio).includes('quimica'));
                         businessLabel = 'Química DEC';
                     }
 
