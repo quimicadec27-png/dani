@@ -1,0 +1,50 @@
+# ============================================================
+# Keep-Alive Workflow
+# Mantiene activo el bot de Render (cada 10 min)
+# y la base de datos de Supabase (2 veces por semana)
+# ============================================================
+
+name: Keep Alive
+
+on:
+  schedule:
+    # Ping a Render cada 10 minutos (24/7)
+    - cron: '*/10 * * * *'
+    # Ping a Supabase los lunes y jueves a las 08:00 UTC
+    - cron: '0 8 * * 1,4'
+
+  # Permite ejecutar el workflow manualmente desde GitHub Actions
+  workflow_dispatch:
+
+jobs:
+  ping-render:
+    name: Ping Render Bot
+    runs-on: ubuntu-latest
+    # Solo se ejecuta en el schedule de cada 10 minutos
+    if: github.event.schedule == '*/10 * * * *' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Mantener bot activo en Render
+        run: |
+          echo "ðŸ“¡ Enviando ping al bot en Render..."
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            --max-time 30 \
+            https://dani-bxav.onrender.com)
+          echo "âœ… Respuesta HTTP de Render: $STATUS"
+
+  ping-supabase:
+    name: Ping Supabase DB
+    runs-on: ubuntu-latest
+    # Solo se ejecuta en el schedule de los lunes y jueves
+    if: github.event.schedule == '0 8 * * 1,4' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Mantener base de datos activa en Supabase
+        run: |
+          echo "ðŸ—„ï¸ Enviando ping a Supabase..."
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            --max-time 30 \
+            "https://oznnisdehvykgqfgudte.supabase.co/rest/v1/conversaciones?select=id&limit=1" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}")
+          echo "âœ… Respuesta HTTP de Supabase: $STATUS"
