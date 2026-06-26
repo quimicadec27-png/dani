@@ -11,7 +11,8 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.39.8",
     "dotenv": "^16.4.5",
-    "grammy": "^1.23.0"
+    "grammy": "^1.23.0",
+    "ws": "^8.16.0"
   },
   "devDependencies": {
     "@types/node": "^20.11.24",

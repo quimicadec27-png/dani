@@ -2,6 +2,10 @@ import { createClient } from "@supabase/supabase-js";
 import * as fs from "fs";
 import * as path from "path";
 import * as dotenv from "dotenv";
+import ws from "ws";
+
+// Polyfill global WebSocket for Node.js < 22 support in Supabase Realtime client
+(global as any).WebSocket = ws;
 
 dotenv.config();
 
