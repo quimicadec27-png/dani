@@ -1,0 +1,20 @@
+{
+  "name": "agente-telegram",
+  "version": "1.0.0",
+  "description": "Telegram Agent Bot using Node.js, TypeScript, and grammY",
+  "main": "src/index.ts",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "grammy": "^1.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.24",
+    "tsx": "^4.7.1",
+    "typescript": "^5.3.3"
+  }
+}
