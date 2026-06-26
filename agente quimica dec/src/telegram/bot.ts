@@ -256,6 +256,10 @@ bot.on("message:text", async (ctx) => {
     const folderPath = orgMatch[1].trim();
     await ctx.replyWithChatAction("typing");
     try {
+      if (!config.supabase.url || !config.supabase.key) {
+        throw new Error("Las variables SUPABASE_URL y/o SUPABASE_KEY no están definidas en la configuración del servidor.");
+      }
+
       await ctx.reply(`📂 Recibido. Enviando comando de organización para la PC local en: **${folderPath}**...`);
       
       const url = `${config.supabase.url}/rest/v1/cola_comandos`;
@@ -275,7 +279,7 @@ bot.on("message:text", async (ctx) => {
       });
 
       if (!res.ok) {
-        throw new Error(`Supabase returned status ${res.status}`);
+        throw new Error(`Supabase devolvió un estado de error ${res.status} (${res.statusText})`);
       }
 
       // Poll Supabase for the status change
@@ -316,9 +320,9 @@ bot.on("message:text", async (ctx) => {
         }
       }, 2000);
 
-    } catch (err) {
+    } catch (err: any) {
       console.error("❌ Error initiating organization command:", err);
-      await ctx.reply("❌ Ocurrió un error al intentar enviar la orden de organización a la base de datos.");
+      await ctx.reply(`❌ Ocurrió un error al intentar enviar la orden de organización: ${err.message}`);
     }
     return;
   }
