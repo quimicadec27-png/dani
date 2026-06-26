@@ -1,0 +1,12 @@
+node_modules
+agente quimica dec/node_modules
+agente quimica dec/dist
+agente quimica dec/.env
+*.db
+*.sqlite
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.git
+*.docx
