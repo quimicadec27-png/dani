@@ -250,6 +250,79 @@ bot.on("message:text", async (ctx) => {
   const lowerText = text.toLowerCase();
   const userId = ctx.from.id;
 
+  // Handle folder organization command (Lesson 20 Bridge Architecture)
+  const orgMatch = text.match(/(?:organiza|ordenar|organizar)\s+(?:mi\s+|la\s+)?(?:carpeta|directorio)\s+(.+)/i);
+  if (orgMatch) {
+    const folderPath = orgMatch[1].trim();
+    await ctx.replyWithChatAction("typing");
+    try {
+      await ctx.reply(`📂 Recibido. Enviando comando de organización para la PC local en: **${folderPath}**...`);
+      
+      const url = `${config.supabase.url}/rest/v1/cola_comandos`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "apikey": config.supabase.key,
+          "Authorization": `Bearer ${config.supabase.key}`,
+          "Content-Type": "application/json",
+          "Prefer": "return=minimal"
+        },
+        body: JSON.stringify({
+          comando: "organizar_directorio",
+          argumentos: { ruta_carpeta: folderPath },
+          estado: "pendiente"
+        })
+      });
+
+      if (!res.ok) {
+        throw new Error(`Supabase returned status ${res.status}`);
+      }
+
+      // Poll Supabase for the status change
+      let attempts = 0;
+      const interval = setInterval(async () => {
+        attempts++;
+        if (attempts > 12) {
+          clearInterval(interval);
+          await ctx.reply("⚠️ El ejecutor local en tu PC no respondió a tiempo. Asegurate de que local_executor.ts esté corriendo.");
+          return;
+        }
+
+        try {
+          const checkRes = await fetch(`${config.supabase.url}/rest/v1/cola_comandos?comando=eq.organizar_directorio&estado=neq.pendiente&select=*&order=id.desc&limit=1`, {
+            headers: {
+              "apikey": config.supabase.key,
+              "Authorization": `Bearer ${config.supabase.key}`
+            }
+          });
+          if (checkRes.ok) {
+            const data = (await checkRes.json()) as any[];
+            if (data.length > 0) {
+              const lastCommand = data[0];
+              // Double check this command targets our requested path
+              if (lastCommand.argumentos?.ruta_carpeta === folderPath) {
+                if (lastCommand.estado === "completado") {
+                  clearInterval(interval);
+                  await ctx.reply(`✅ **¡Éxito en la PC local!**\n${lastCommand.resultado}`);
+                } else if (lastCommand.estado === "fallado" || lastCommand.estado === "error") {
+                  clearInterval(interval);
+                  await ctx.reply(`❌ **Error en la PC local:**\n${lastCommand.resultado}`);
+                }
+              }
+            }
+          }
+        } catch (err) {
+          console.error("Error polling command status:", err);
+        }
+      }, 2000);
+
+    } catch (err) {
+      console.error("❌ Error initiating organization command:", err);
+      await ctx.reply("❌ Ocurrió un error al intentar enviar la orden de organización a la base de datos.");
+    }
+    return;
+  }
+
   // Handle 'leads' or 'consultas' database summary list queries (legacy quick view)
   if (lowerText === "leads" || lowerText === "consultas") {
     await ctx.replyWithChatAction("typing");
