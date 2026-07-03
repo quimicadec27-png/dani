@@ -173,7 +173,7 @@ ${dbContext}
       "Authorization": `Bearer ${config.groq.apiKey}`
     },
     body: JSON.stringify({
-      model: "llama-3.1-8b-instant",
+      model: "llama-3.3-70b-versatile",
       messages: messages,
       temperature: 0.3,
       max_tokens: 800
@@ -310,7 +310,7 @@ bot.on("message:text", async (ctx) => {
     // 1. Fetch live database context if query asks for reports, sales, leads or quality incidents
     const dbContext = await fetchSupabaseContext(text);
 
-    // 2. Call Groq using fast llama-3.1-8b-instant model
+    // 2. Call Groq using llama-3.3-70b-versatile model
     const history = getUserHistory(userId);
     const responseText = await getGroqResponse(text, history, dbContext);
 
