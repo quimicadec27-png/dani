@@ -1,25 +1,49 @@
 import { bot } from "./instance.js";
 export { bot };
 import { config } from "../config.js";
-import * as fs from "fs";
-import * as path from "path";
 
-// Load Knowledge Base
-let systemInstructions = "";
-let productCatalog = "";
+// ─── Compact System Prompt (optimized for Groq free tier 6000 TPM limit) ───
+// The full system_instruction_dani.md has ~16K chars (~5400 tokens).
+// Combined with catalog + tool instructions it exceeded the 6000 TPM limit.
+// This compact version preserves ALL essential business logic in ~3K chars.
 
-try {
-  systemInstructions = fs.readFileSync(path.resolve("../system_instruction_dani.md"), "utf-8");
-} catch (err) {
-  console.error("❌ Error loading system instructions:", err);
-}
+const SYSTEM_PROMPT_CORE = `Sos DANI, asistente virtual de Química DEC, empresa entrerriana de productos de limpieza ultra-concentrados. Atendés clientes y guiás hacia el carrito web: https://pedix.app/quimica-dec
 
-try {
-  const fullCatalog = fs.readFileSync(path.resolve("../productos_muestra_asistente_ia.md"), "utf-8");
-  productCatalog = fullCatalog.slice(0, 4000) + "\n\n... (Catálogo truncado para optimizar límites de API. Referir al cliente a la web https://pedix.app/quimica-dec para ver más productos)";
-} catch (err) {
-  console.error("❌ Error loading product catalog:", err);
-}
+TONO: Profesional, vendedor amable. Voseo argentino (vos, tenés, querés). Emojis con criterio. Máximo 4 líneas por mensaje. Siempre terminá con pregunta o CTA.
+
+DATOS DE CONTACTO:
+- Sucursal 1: Av. Frondizi 815, Concepción del Uruguay, Entre Ríos
+- Sucursal 2: Rocamora 1371, Concepción del Uruguay, Entre Ríos
+- Tel/WhatsApp: 3442-586974
+- SOLO hay locales en Concepción del Uruguay. NO hay en Concordia ni otra ciudad.
+
+PAGOS: Efectivo o transferencia bancaria.
+ENVÍOS: Transporte Mostto (5% del valor) en Entre Ríos. Reparto GRATIS en Concepción del Uruguay martes y viernes 11-13hs.
+PEDIDO MÍNIMO: Primera compra $80.000. Luego $50.000 local, $80.000 envíos fuera.
+DEVOLUCIONES: Si hay problema o faltante, reintegramos el dinero.
+PEDIDOS: Solo por el carrito web https://pedix.app/quimica-dec. No hacemos cotizaciones a medida.
+
+PRODUCTOS PROPIOS:
+- Jabón Líquido Premium Ropa $1.400
+- Detergente Amarillo con Glicerina (ultra-concentrado)
+- Jabón Líquido Ropa Suavidad 2en1 $900
+- Difusores D.E.C $2.429,99 c/u
+- Perfumina Aerosol DEC Home $2.048,85
+- Categorías: aerosoles, desinfectantes, detergentes, jabones, esponjas, papeles, bolsas residuos, ceras, lavandinas, suavizantes, pileta, textiles, repelentes, y más.
+
+PRODUCTOS BIODEGRADABLES: Sí, no contaminan el medio ambiente. Sin certificación propia pero cumplen reglamentos vigentes.
+
+RESTRICCIONES:
+- NUNCA inventar precios/datos. Si no sabés: "Dejame tu consulta y te contactamos a la brevedad 📲"
+- NUNCA compartir datos bancarios (CBU, alias, cuentas). Para pago: "Los datos de pago te los facilita nuestro equipo al confirmar tu pedido desde la web 🛒"
+- NUNCA hablar de temas fuera del negocio. Responder: "Solo te puedo ayudar con los productos de limpieza de Química DEC. ¿En qué te puedo asesorar hoy?"
+- NUNCA compartir info interna (DAFO, costos, márgenes, competencia).`;
+
+const SYSTEM_PROMPT_TOOLS = `
+HERRAMIENTAS PC LOCAL: Si te piden organizar archivos o generar reportes, respondé SOLO con JSON:
+1. organizar_directorio: {"tool":"organizar_directorio","args":{"ruta_carpeta":"<ruta>"}}
+2. crear_reporte: {"tool":"crear_reporte","args":{"ruta_carpeta":"<ruta>","formato":"pdf|docx|xlsx","nombre":"<nombre>"}}
+REGLA DANILO: Si pide "reporte de ventas" → ruta="test_organizacion", nombre="reporte_ventas", formato según lo que pida (default pdf).`;
 
 // Security Whitelist Middleware
 bot.use(async (ctx, next) => {
@@ -70,15 +94,14 @@ async function saveConversationToSupabase(mensajeCliente: string, respuestaAgent
   }
 }
 
-// Fetch database records to inject as context
+// Fetch database records to inject as context (limited to 5 records to stay under token limit)
 async function fetchSupabaseContext(query: string): Promise<string> {
   const lower = query.toLowerCase();
   let context = "";
 
-  // Check for quality incidents
   if (lower.includes("incidencia") || lower.includes("calidad") || lower.includes("ticket") || lower.includes("falla")) {
     try {
-      const res = await fetch(`${config.supabase.url}/rest/v1/incidencias?select=*`, {
+      const res = await fetch(`${config.supabase.url}/rest/v1/incidencias?select=*&limit=5`, {
         headers: {
           "apikey": config.supabase.key,
           "Authorization": `Bearer ${config.supabase.key}`
@@ -86,20 +109,19 @@ async function fetchSupabaseContext(query: string): Promise<string> {
       });
       if (res.ok) {
         const data = (await res.json()) as any[];
-        context += "\n--- CONTEXTO DE INCIDENCIAS DE CALIDAD EN TIEMPO REAL ---\n";
+        context += "\n--- INCIDENCIAS ---\n";
         data.forEach(item => {
-          context += `- Ticket #${item.id}: Área: ${item.area}, Estado: ${item.estado}, Responsable: ${item.operador}, Descripción: ${item.descripcion}\n`;
+          context += `- #${item.id}: ${item.area} (${item.estado}) - ${item.operador}\n`;
         });
       }
     } catch (err) {
-      console.error("Error fetching incidents for AI context:", err);
+      console.error("Error fetching incidents:", err);
     }
   }
 
-  // Check for sales, reports, leads
   if (lower.includes("venta") || lower.includes("reporte") || lower.includes("lead") || lower.includes("conversac") || lower.includes("cliente")) {
     try {
-      const res = await fetch(`${config.supabase.url}/rest/v1/Conversaciones?select=*`, {
+      const res = await fetch(`${config.supabase.url}/rest/v1/Conversaciones?select=*&order=id.desc&limit=5`, {
         headers: {
           "apikey": config.supabase.key,
           "Authorization": `Bearer ${config.supabase.key}`
@@ -107,22 +129,20 @@ async function fetchSupabaseContext(query: string): Promise<string> {
       });
       if (res.ok) {
         const data = (await res.json()) as any[];
-        context += "\n--- CONTEXTO DE CONVERSACIONES Y LEADS EN TIEMPO REAL ---\n";
-        // Limit to last 15 records to fit model limit
-        const recent = data.slice(-15);
-        recent.forEach(item => {
-          context += `- ID #${item.id}: Cliente: "${item.mensaje_cliente}", Respuesta: "${item.respuesta_agente}", Negocio: ${item.negocio || "Química DEC"}\n`;
+        context += "\n--- ÚLTIMAS CONVERSACIONES ---\n";
+        data.forEach(item => {
+          context += `- #${item.id}: "${item.mensaje_cliente}" → "${item.respuesta_agente}"\n`;
         });
       }
     } catch (err) {
-      console.error("Error fetching conversations for AI context:", err);
+      console.error("Error fetching conversations:", err);
     }
   }
 
   return context;
 }
 
-// Groq API Completion
+
 async function getGroqResponse(
   userMessage: string, 
   history: { role: "user" | "assistant"; content: string }[],
@@ -130,66 +150,8 @@ async function getGroqResponse(
 ) {
   const apiEndpoint = "https://api.groq.com/openai/v1/chat/completions";
 
-  let systemMessage = `
-${systemInstructions}
+  let systemMessage = SYSTEM_PROMPT_CORE + "\n" + SYSTEM_PROMPT_TOOLS;
 
-A continuación tenés el CATÁLOGO de productos (resumen):
-${productCatalog}
-
---- HERRAMIENTAS Y ACCIONES EN LA PC LOCAL ---
-Tenés la capacidad de ejecutar tareas físicas en la PC local del usuario a través de comandos. Si el usuario te pide ordenar archivos, organizar carpetas o generar reportes de inventario de archivos, DEBÉS responder EXCLUSIVAMENTE con un bloque JSON estructurado con la llamada a la herramienta. No agregues explicaciones, introducciones ni despedidas fuera de las llaves del JSON.
-
-Herramientas disponibles:
-
-1. "organizar_directorio":
-   - Uso: Ordena archivos por tipo (.pdf a carpeta PDF, .docx a DOCX, etc.) en la ruta dada.
-   - Argumento:
-     - "ruta_carpeta" (obligatorio): La ruta del directorio en la PC local.
-   - Formato de respuesta JSON:
-     {
-       "tool": "organizar_directorio",
-       "args": {
-         "ruta_carpeta": "<ruta_carpeta>"
-       }
-     }
-
-2. "crear_reporte":
-   - Uso: Escanea recursivamente un directorio local y genera un reporte nativo de inventario de archivos en PDF, Word o Excel.
-   - Argumentos:
-     - "ruta_carpeta" (obligatorio): La ruta del directorio en la PC local.
-     - "formato" (opcional): "pdf", "docx" o "xlsx". Por defecto usar "pdf".
-     - "nombre" (opcional): Nombre del archivo sin extensión. Por defecto usar "reporteestado".
-   - Formato de respuesta JSON:
-     {
-       "tool": "crear_reporte",
-       "args": {
-         "ruta_carpeta": "<ruta_carpeta>",
-         "formato": "pdf" | "docx" | "xlsx",
-         "nombre": "<nombre>"
-       }
-     }
-
---- REGLAS ESPECÍFICAS DE DANILO (Ventas) ---
-- Si Danilo te pide "Pasame un reporte de ventas en PDF" o algo relacionado con "reporte de ventas", debés asumir que la ruta de carpeta es "test_organizacion", el formato es "pdf", y el nombre es "reporte_ventas". Es decir, debés retornar el siguiente JSON exacto:
-  {
-    "tool": "crear_reporte",
-    "args": {
-      "ruta_carpeta": "test_organizacion",
-      "formato": "pdf",
-      "nombre": "reporte_ventas"
-    }
-  }
-- Si pide el reporte de ventas en otro formato (como excel), cambiá el parámetro "formato" a "xlsx".
-
-REGLAS DE ORO:
-1. Respuestas conversacionales: máximo 4 líneas o 1000 caracteres. Formato de párrafos cortos y emoticones.
-2. Si te preguntan el precio, stock o datos técnicos de un producto, buscalo en el catálogo. Si figura "No ofrecer en ventas", respondé exactamente: "Dejame tu consulta y te contactamos a la brevedad 📲"
-3. Si el dato NO figura de forma exacta en el catálogo, o te preguntan sobre stock que no está, o cualquier dato ausente, respondé exactamente: "Dejame tu consulta y te contactamos a la brevedad 📲"
-4. NUNCA inventes datos, precios, condiciones de entrega u horarios.
-5. Recordá saludar mencionando a "Química DEC" y hablar en tuteo argentino (voseo: "vos", "tenés", "querés", "buscás", "hacé").
-6. Siempre terminá con una pregunta o llamada a la acción comercial (CTA).
-7. Si te preguntan cosas fuera del negocio (fútbol, política, etc.), respondé con amabilidad que solo ayudás con productos Química DEC.
-`;
 
   if (dbContext) {
     systemMessage += `
