@@ -132,10 +132,11 @@ async function crearReporte(rutaRaw: string, formato: string = "pdf", nombre: st
       doc.moveDown();
 
       // Cabecera Tabla
+      const headerY = doc.y;
       doc.fontSize(10).font("Helvetica-Bold");
-      doc.text("Nombre / Ruta", 30, doc.y, { width: 300, continued: true });
-      doc.text("Extensión", 350, doc.y, { width: 80, continued: true });
-      doc.text("Tamaño (MB)", 450, doc.y, { width: 100 });
+      doc.text("Nombre / Ruta", 30, headerY, { width: 300 });
+      doc.text("Extensión", 350, headerY, { width: 80 });
+      doc.text("Tamaño (MB)", 450, headerY, { width: 100 });
       doc.font("Helvetica");
       doc.moveDown(0.2);
       doc.moveTo(30, doc.y).lineTo(550, doc.y).stroke();
@@ -144,6 +145,15 @@ async function crearReporte(rutaRaw: string, formato: string = "pdf", nombre: st
       archivos.forEach(file => {
         if (doc.y > 700) {
           doc.addPage();
+          const pageHeaderY = doc.y;
+          doc.fontSize(10).font("Helvetica-Bold");
+          doc.text("Nombre / Ruta", 30, pageHeaderY, { width: 300 });
+          doc.text("Extensión", 350, pageHeaderY, { width: 80 });
+          doc.text("Tamaño (MB)", 450, pageHeaderY, { width: 100 });
+          doc.font("Helvetica");
+          doc.moveDown(0.2);
+          doc.moveTo(30, doc.y).lineTo(550, doc.y).stroke();
+          doc.moveDown(0.5);
         }
         const currentY = doc.y;
         doc.text(file.rutaRelativa, 30, currentY, { width: 300 });
