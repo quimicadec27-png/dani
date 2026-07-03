@@ -23,7 +23,18 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 console.log("🔌 Cliente local (ejecutor) de Danilo iniciado y escuchando comandos...");
 
-function organizarDirectorio(ruta: string): string {
+function resolverRuta(ruta: string): string {
+  if (!path.isAbsolute(ruta)) {
+    const parentPath = path.join("..", ruta);
+    if (fs.existsSync(parentPath)) {
+      return parentPath;
+    }
+  }
+  return ruta;
+}
+
+function organizarDirectorio(rutaRaw: string): string {
+  const ruta = resolverRuta(rutaRaw);
   if (!fs.existsSync(ruta)) {
     return `Error: La ruta ${ruta} no existe.`;
   }
@@ -92,7 +103,8 @@ function escanearDirectorioRecursivo(dirBase: string, dirActual: string = dirBas
   return resultados;
 }
 
-async function crearReporte(ruta: string, formato: string = "pdf", nombre: string = "reporteestado"): Promise<string> {
+async function crearReporte(rutaRaw: string, formato: string = "pdf", nombre: string = "reporteestado"): Promise<string> {
+  const ruta = resolverRuta(rutaRaw);
   if (!fs.existsSync(ruta)) {
     return `Error: La ruta ${ruta} no existe.`;
   }
