@@ -37,3 +37,4 @@ if (selfUrl) {
   console.log("💡 Nota: RENDER_EXTERNAL_URL o SELF_URL no están definidos. No se iniciará el ping automático de Keep-Alive.");
 }
 
+// Auto-deploy trigger comment to restart Render build after resolving 409 conflict
