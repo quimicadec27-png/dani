@@ -135,6 +135,60 @@ ${systemInstructions}
 
 A continuación tenés el CATÁLOGO de productos (resumen):
 ${productCatalog}
+
+--- HERRAMIENTAS Y ACCIONES EN LA PC LOCAL ---
+Tenés la capacidad de ejecutar tareas físicas en la PC local del usuario a través de comandos. Si el usuario te pide ordenar archivos, organizar carpetas o generar reportes de inventario de archivos, DEBÉS responder EXCLUSIVAMENTE con un bloque JSON estructurado con la llamada a la herramienta. No agregues explicaciones, introducciones ni despedidas fuera de las llaves del JSON.
+
+Herramientas disponibles:
+
+1. "organizar_directorio":
+   - Uso: Ordena archivos por tipo (.pdf a carpeta PDF, .docx a DOCX, etc.) en la ruta dada.
+   - Argumento:
+     - "ruta_carpeta" (obligatorio): La ruta del directorio en la PC local.
+   - Formato de respuesta JSON:
+     {
+       "tool": "organizar_directorio",
+       "args": {
+         "ruta_carpeta": "<ruta_carpeta>"
+       }
+     }
+
+2. "crear_reporte":
+   - Uso: Escanea recursivamente un directorio local y genera un reporte nativo de inventario de archivos en PDF, Word o Excel.
+   - Argumentos:
+     - "ruta_carpeta" (obligatorio): La ruta del directorio en la PC local.
+     - "formato" (opcional): "pdf", "docx" o "xlsx". Por defecto usar "pdf".
+     - "nombre" (opcional): Nombre del archivo sin extensión. Por defecto usar "reporteestado".
+   - Formato de respuesta JSON:
+     {
+       "tool": "crear_reporte",
+       "args": {
+         "ruta_carpeta": "<ruta_carpeta>",
+         "formato": "pdf" | "docx" | "xlsx",
+         "nombre": "<nombre>"
+       }
+     }
+
+--- REGLAS ESPECÍFICAS DE DANILO (Ventas) ---
+- Si Danilo te pide "Pasame un reporte de ventas en PDF" o algo relacionado con "reporte de ventas", debés asumir que la ruta de carpeta es "test_organizacion", el formato es "pdf", y el nombre es "reporte_ventas". Es decir, debés retornar el siguiente JSON exacto:
+  {
+    "tool": "crear_reporte",
+    "args": {
+      "ruta_carpeta": "test_organizacion",
+      "formato": "pdf",
+      "nombre": "reporte_ventas"
+    }
+  }
+- Si pide el reporte de ventas en otro formato (como excel), cambiá el parámetro "formato" a "xlsx".
+
+REGLAS DE ORO:
+1. Respuestas conversacionales: máximo 4 líneas o 1000 caracteres. Formato de párrafos cortos y emoticones.
+2. Si te preguntan el precio, stock o datos técnicos de un producto, buscalo en el catálogo. Si figura "No ofrecer en ventas", respondé exactamente: "Dejame tu consulta y te contactamos a la brevedad 📲"
+3. Si el dato NO figura de forma exacta en el catálogo, o te preguntan sobre stock que no está, o cualquier dato ausente, respondé exactamente: "Dejame tu consulta y te contactamos a la brevedad 📲"
+4. NUNCA inventes datos, precios, condiciones de entrega u horarios.
+5. Recordá saludar mencionando a "Química DEC" y hablar en tuteo argentino (voseo: "vos", "tenés", "querés", "buscás", "hacé").
+6. Siempre terminá con una pregunta o llamada a la acción comercial (CTA).
+7. Si te preguntan cosas fuera del negocio (fútbol, política, etc.), respondé con amabilidad que solo ayudás con productos Química DEC.
 `;
 
   if (dbContext) {
@@ -143,17 +197,6 @@ Utilizá los siguientes datos de la base de datos en tiempo real para responder 
 ${dbContext}
 `;
   }
-
-  systemMessage += `
-REGLAS DE ORO:
-1. Respuestas de máximo 4 líneas o 1000 caracteres. Formato de párrafos cortos y emoticones.
-2. Si te preguntan el precio, stock o datos técnicos de un producto, buscalo en el catálogo. Si figura "No ofrecer en ventas", respondé exactamente: "Dejame tu consulta y te contactamos a la brevedad 📲"
-3. Si el dato NO figura de forma exacta en el catálogo, o te preguntan sobre stock que no está, o cualquier dato ausente, respondé exactamente: "Dejame tu consulta y te contactamos a la brevedad 📲"
-4. NUNCA inventes datos, precios, condiciones de entrega u horarios.
-5. Recordá saludar mencionando a "Química DEC" y hablar en tuteo argentino (voseo: "vos", "tenés", "querés", "buscás", "hacé").
-6. Siempre terminá con una pregunta o llamada a la acción comercial (CTA).
-7. Si te preguntan cosas fuera del negocio (fútbol, política, etc.), respondé con amabilidad que solo ayudás con productos Química DEC.
-`;
 
   const messages = [
     { role: "system", content: systemMessage },
@@ -244,88 +287,26 @@ bot.hears(/^\/ticket(\d+)$/, async (ctx) => {
   }
 });
 
+function extraerJSON(texto: string): any {
+  const start = texto.indexOf("{");
+  const end = texto.lastIndexOf("}");
+  if (start !== -1 && end !== -1 && end >= start) {
+    const rawJson = texto.substring(start, end + 1);
+    try {
+      return JSON.parse(rawJson);
+    } catch (err) {
+      console.error("Error parsing extracted JSON:", err);
+      return null;
+    }
+  }
+  return null;
+}
+
 // Text Messages Handler
 bot.on("message:text", async (ctx) => {
   const text = ctx.message.text.trim();
   const lowerText = text.toLowerCase();
   const userId = ctx.from.id;
-
-  // Handle folder organization command (Lesson 20 Bridge Architecture)
-  const orgMatch = text.match(/(?:organiza|ordenar|organizar)\s+(?:mi\s+|la\s+)?(?:carpeta|directorio)\s+(.+)/i);
-  if (orgMatch) {
-    const folderPath = orgMatch[1].trim();
-    await ctx.replyWithChatAction("typing");
-    try {
-      if (!config.supabase.url || !config.supabase.key) {
-        throw new Error("Las variables SUPABASE_URL y/o SUPABASE_KEY no están definidas en la configuración del servidor.");
-      }
-
-      await ctx.reply(`📂 Recibido. Enviando comando de organización para la PC local en: **${folderPath}**...`);
-      
-      const url = `${config.supabase.url}/rest/v1/cola_comandos`;
-      const res = await fetch(url, {
-        method: "POST",
-        headers: {
-          "apikey": config.supabase.key,
-          "Authorization": `Bearer ${config.supabase.key}`,
-          "Content-Type": "application/json",
-          "Prefer": "return=minimal"
-        },
-        body: JSON.stringify({
-          comando: "organizar_directorio",
-          argumentos: { ruta_carpeta: folderPath },
-          estado: "pendiente"
-        })
-      });
-
-      if (!res.ok) {
-        throw new Error(`Supabase devolvió un estado de error ${res.status} (${res.statusText})`);
-      }
-
-      // Poll Supabase for the status change
-      let attempts = 0;
-      const interval = setInterval(async () => {
-        attempts++;
-        if (attempts > 12) {
-          clearInterval(interval);
-          await ctx.reply("⚠️ El ejecutor local en tu PC no respondió a tiempo. Asegurate de que local_executor.ts esté corriendo.");
-          return;
-        }
-
-        try {
-          const checkRes = await fetch(`${config.supabase.url}/rest/v1/cola_comandos?comando=eq.organizar_directorio&estado=neq.pendiente&select=*&order=id.desc&limit=1`, {
-            headers: {
-              "apikey": config.supabase.key,
-              "Authorization": `Bearer ${config.supabase.key}`
-            }
-          });
-          if (checkRes.ok) {
-            const data = (await checkRes.json()) as any[];
-            if (data.length > 0) {
-              const lastCommand = data[0];
-              // Double check this command targets our requested path
-              if (lastCommand.argumentos?.ruta_carpeta === folderPath) {
-                if (lastCommand.estado === "completado") {
-                  clearInterval(interval);
-                  await ctx.reply(`✅ **¡Éxito en la PC local!**\n${lastCommand.resultado}`);
-                } else if (lastCommand.estado === "fallado" || lastCommand.estado === "error") {
-                  clearInterval(interval);
-                  await ctx.reply(`❌ **Error en la PC local:**\n${lastCommand.resultado}`);
-                }
-              }
-            }
-          }
-        } catch (err) {
-          console.error("Error polling command status:", err);
-        }
-      }, 2000);
-
-    } catch (err: any) {
-      console.error("❌ Error initiating organization command:", err);
-      await ctx.reply(`❌ Ocurrió un error al intentar enviar la orden de organización: ${err.message}`);
-    }
-    return;
-  }
 
   // Handle 'leads' or 'consultas' database summary list queries (legacy quick view)
   if (lowerText === "leads" || lowerText === "consultas") {
@@ -371,6 +352,93 @@ bot.on("message:text", async (ctx) => {
     const history = getUserHistory(userId);
     const responseText = await getGroqResponse(text, history, dbContext);
 
+    // 3. Robust JSON Extractor Check
+    const toolCall = extraerJSON(responseText);
+
+    if (toolCall && toolCall.tool) {
+      const { tool, args } = toolCall;
+      console.log(`🤖 La IA decidió ejecutar la herramienta: ${tool} con argumentos:`, args);
+
+      if (tool === "organizar_directorio" || tool === "crear_reporte") {
+        const folderPath = args?.ruta_carpeta;
+        if (!folderPath) {
+          await ctx.reply("❌ No pude determinar la ruta de la carpeta. ¿Podrías indicármela?");
+          return;
+        }
+
+        if (!config.supabase.url || !config.supabase.key) {
+          throw new Error("Las variables SUPABASE_URL y/o SUPABASE_KEY no están definidas en la configuración.");
+        }
+
+        const formattedAction = tool === "organizar_directorio" 
+          ? `organizar archivos en: **${folderPath}**` 
+          : `generar reporte ${args.formato?.toUpperCase() || "PDF"} ("${args.nombre || "reporteestado"}") para la carpeta: **${folderPath}**`;
+
+        await ctx.reply(`📂 Recibido. Enviando comando para ${formattedAction} en tu PC local...`);
+
+        // Insert command in Supabase
+        const url = `${config.supabase.url}/rest/v1/cola_comandos`;
+        const res = await fetch(url, {
+          method: "POST",
+          headers: {
+            "apikey": config.supabase.key,
+            "Authorization": `Bearer ${config.supabase.key}`,
+            "Content-Type": "application/json",
+            "Prefer": "return=minimal"
+          },
+          body: JSON.stringify({
+            comando: tool,
+            argumentos: args,
+            estado: "pendiente"
+          })
+        });
+
+        if (!res.ok) {
+          throw new Error(`Supabase devolvió un estado de error ${res.status}`);
+        }
+
+        // Poll Supabase for the status change
+        let attempts = 0;
+        const interval = setInterval(async () => {
+          attempts++;
+          if (attempts > 15) {
+            clearInterval(interval);
+            await ctx.reply("⚠️ El ejecutor local en tu PC no respondió a tiempo. Asegurate de que local_executor.ts esté corriendo.");
+            return;
+          }
+
+          try {
+            const checkRes = await fetch(`${config.supabase.url}/rest/v1/cola_comandos?comando=eq.${tool}&estado=neq.pendiente&select=*&order=id.desc&limit=1`, {
+              headers: {
+                "apikey": config.supabase.key,
+                "Authorization": `Bearer ${config.supabase.key}`
+              }
+            });
+            if (checkRes.ok) {
+              const data = (await checkRes.json()) as any[];
+              if (data.length > 0) {
+                const lastCommand = data[0];
+                if (lastCommand.argumentos?.ruta_carpeta === folderPath) {
+                  if (lastCommand.estado === "completado") {
+                    clearInterval(interval);
+                    await ctx.reply(`✅ **¡Éxito en la PC local!**\n${lastCommand.resultado}`);
+                  } else if (lastCommand.estado === "fallado" || lastCommand.estado === "error") {
+                    clearInterval(interval);
+                    await ctx.reply(`❌ **Error en la PC local:**\n${lastCommand.resultado}`);
+                  }
+                }
+              }
+            }
+          } catch (err) {
+            console.error("Error polling command status:", err);
+          }
+        }, 2000);
+
+        return;
+      }
+    }
+
+    // It was a normal conversation or no tool call was detected
     updateUserHistory(userId, "user", text);
     updateUserHistory(userId, "assistant", responseText);
 

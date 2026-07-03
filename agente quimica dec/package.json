@@ -10,9 +10,13 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.8",
+    "@types/pdfkit": "^0.17.6",
+    "docx": "^9.7.1",
     "dotenv": "^16.4.5",
     "grammy": "^1.23.0",
-    "ws": "^8.16.0"
+    "pdfkit": "^0.19.1",
+    "ws": "^8.16.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/node": "^20.11.24",

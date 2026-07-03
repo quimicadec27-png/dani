@@ -17,3 +17,23 @@ http.createServer((req, res) => {
   console.log(`📡 Servidor HTTP activo en el puerto ${PORT} (para verificación de Render)`);
 });
 
+// Keep-alive ping mechanism for Render free tier (runs every 10 minutes)
+const selfUrl = process.env.RENDER_EXTERNAL_URL || process.env.SELF_URL;
+if (selfUrl) {
+  console.log(`⏱️ Mecanismo Keep-Alive activo. Ping automático programado cada 10 minutos a: ${selfUrl}`);
+  setInterval(async () => {
+    try {
+      const res = await fetch(selfUrl);
+      if (res.ok) {
+        console.log(`🎯 Ping Keep-Alive exitoso a ${selfUrl}: ${res.status}`);
+      } else {
+        console.warn(`⚠️ Advertencia Keep-Alive: Servidor retornó estado ${res.status}`);
+      }
+    } catch (err: any) {
+      console.error(`❌ Error en ping Keep-Alive a ${selfUrl}:`, err.message);
+    }
+  }, 10 * 60 * 1000); // 10 minutes in milliseconds
+} else {
+  console.log("💡 Nota: RENDER_EXTERNAL_URL o SELF_URL no están definidos. No se iniciará el ping automático de Keep-Alive.");
+}
+

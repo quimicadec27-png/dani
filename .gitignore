@@ -1,2 +1,31 @@
-# Word temporary files
+# System / IDE
+.DS_Store
+Thumbs.db
 ~$*
+
+# Dependencies
+node_modules/
+jspm_packages/
+web_modules/
+
+# Build and Temp
+dist/
+build/
+out/
+*.tsbuildinfo
+*.log
+
+# Environment secrets
+.env
+.env.local
+.env.production
+.env.development
+
+# Temp extracted files
+M4_L19.txt
+M4_L20.txt
+M4_L20_P2.txt
+extract.ps1
+test_report.ts
+reporte_ventas.*
+reporteestado.*
