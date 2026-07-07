@@ -1,6 +1,7 @@
 import { bot } from "./instance.js";
 export { bot };
 import { config } from "../config.js";
+import { sql } from "../db.js";
 
 // ─── Compact System Prompt (optimized for Groq free tier 6000 TPM limit) ───
 // The full system_instruction_dani.md has ~16K chars (~5400 tokens).
@@ -69,74 +70,73 @@ bot.command("start", async (ctx) => {
   );
 });
 
-// Save conversation in Supabase
+// Save conversation — SQL directo si disponible, fallback HTTP
 async function saveConversationToSupabase(mensajeCliente: string, respuestaAgente: string) {
-  if (!config.supabase.url || !config.supabase.key) return;
-  const url = `${config.supabase.url}/rest/v1/Conversaciones`;
-
   try {
-    await fetch(url, {
-      method: "POST",
-      headers: {
-        "apikey": config.supabase.key,
-        "Authorization": `Bearer ${config.supabase.key}`,
-        "Content-Type": "application/json",
-        "Prefer": "return=minimal"
-      },
-      body: JSON.stringify({
-        mensaje_cliente: mensajeCliente,
-        respuesta_agente: respuestaAgente,
-        negocio: "Química DEC"
-      })
-    });
-  } catch (err) {
-    console.error("❌ Error saving to Supabase:", err);
+    if (sql) {
+      await sql`
+        INSERT INTO "Conversaciones" (mensaje_cliente, respuesta_agente, negocio)
+        VALUES (${mensajeCliente}, ${respuestaAgente}, ${'Química DEC'})
+      `;
+    } else if (config.supabase.url && config.supabase.key) {
+      // Fallback HTTP (desarrollo local sin conexión TCP directa)
+      await fetch(`${config.supabase.url}/rest/v1/Conversaciones`, {
+        method: "POST",
+        headers: {
+          "apikey": config.supabase.key,
+          "Authorization": `Bearer ${config.supabase.key}`,
+          "Content-Type": "application/json",
+          "Prefer": "return=minimal"
+        },
+        body: JSON.stringify({ mensaje_cliente: mensajeCliente, respuesta_agente: respuestaAgente, negocio: "Química DEC" })
+      });
+    }
+  } catch (err: any) {
+    console.error("❌ Error guardando conversación:", err.message || err);
   }
 }
 
-// Fetch database records to inject as context (limited to 5 records to stay under token limit)
+// Fetch database records — SQL directo si disponible, fallback HTTP
 async function fetchSupabaseContext(query: string): Promise<string> {
   const lower = query.toLowerCase();
   let context = "";
 
   if (lower.includes("incidencia") || lower.includes("calidad") || lower.includes("ticket") || lower.includes("falla")) {
     try {
-      const res = await fetch(`${config.supabase.url}/rest/v1/incidencias?select=*&limit=5`, {
-        headers: {
-          "apikey": config.supabase.key,
-          "Authorization": `Bearer ${config.supabase.key}`
-        }
-      });
-      if (res.ok) {
-        const data = (await res.json()) as any[];
+      if (sql) {
+        const data = await sql`SELECT id, area, estado, operador FROM incidencias ORDER BY id DESC LIMIT 5`;
         context += "\n--- INCIDENCIAS ---\n";
-        data.forEach(item => {
-          context += `- #${item.id}: ${item.area} (${item.estado}) - ${item.operador}\n`;
+        data.forEach((item: any) => { context += `- #${item.id}: ${item.area} (${item.estado}) - ${item.operador}\n`; });
+      } else if (config.supabase.url && config.supabase.key) {
+        const res = await fetch(`${config.supabase.url}/rest/v1/incidencias?select=*&limit=5`, {
+          headers: { "apikey": config.supabase.key, "Authorization": `Bearer ${config.supabase.key}` }
         });
+        if (res.ok) {
+          const data = (await res.json()) as any[];
+          context += "\n--- INCIDENCIAS ---\n";
+          data.forEach(item => { context += `- #${item.id}: ${item.area} (${item.estado}) - ${item.operador}\n`; });
+        }
       }
-    } catch (err) {
-      console.error("Error fetching incidents:", err);
-    }
+    } catch (err: any) { console.error("Error fetching incidents:", err.message); }
   }
 
   if (lower.includes("venta") || lower.includes("reporte") || lower.includes("lead") || lower.includes("conversac") || lower.includes("cliente")) {
     try {
-      const res = await fetch(`${config.supabase.url}/rest/v1/Conversaciones?select=*&order=id.desc&limit=5`, {
-        headers: {
-          "apikey": config.supabase.key,
-          "Authorization": `Bearer ${config.supabase.key}`
-        }
-      });
-      if (res.ok) {
-        const data = (await res.json()) as any[];
+      if (sql) {
+        const data = await sql`SELECT id, mensaje_cliente, respuesta_agente FROM "Conversaciones" ORDER BY id DESC LIMIT 5`;
         context += "\n--- ÚLTIMAS CONVERSACIONES ---\n";
-        data.forEach(item => {
-          context += `- #${item.id}: "${item.mensaje_cliente}" → "${item.respuesta_agente}"\n`;
+        data.forEach((item: any) => { context += `- #${item.id}: "${item.mensaje_cliente}" → "${item.respuesta_agente}"\n`; });
+      } else if (config.supabase.url && config.supabase.key) {
+        const res = await fetch(`${config.supabase.url}/rest/v1/Conversaciones?select=*&order=id.desc&limit=5`, {
+          headers: { "apikey": config.supabase.key, "Authorization": `Bearer ${config.supabase.key}` }
         });
+        if (res.ok) {
+          const data = (await res.json()) as any[];
+          context += "\n--- ÚLTIMAS CONVERSACIONES ---\n";
+          data.forEach(item => { context += `- #${item.id}: "${item.mensaje_cliente}" → "${item.respuesta_agente}"\n`; });
+        }
       }
-    } catch (err) {
-      console.error("Error fetching conversations:", err);
-    }
+    } catch (err: any) { console.error("Error fetching conversations:", err.message); }
   }
 
   return context;
@@ -205,35 +205,35 @@ function updateUserHistory(userId: number, role: "user" | "assistant", content: 
   if (history.length > 10) history.shift();
 }
 
-// Ticket Detail command regex handler (placed before general text handler)
+// Ticket Detail command regex handler
 bot.hears(/^\/ticket(\d+)$/, async (ctx) => {
-  const ticketId = ctx.match[1];
+  const ticketId = parseInt(ctx.match[1], 10);
   await ctx.replyWithChatAction("typing");
 
   try {
-    const url = `${config.supabase.url}/rest/v1/incidencias?id=eq.${ticketId}`;
-    const res = await fetch(url, {
-      headers: {
-        "apikey": config.supabase.key,
-        "Authorization": `Bearer ${config.supabase.key}`
-      }
-    });
+    let ticket: any = null;
 
-    if (!res.ok) {
-      throw new Error(`Supabase returned status ${res.status}`);
+    if (sql) {
+      const data = await sql`
+        SELECT id, area, estado, operador, descripcion, created_at
+        FROM incidencias WHERE id = ${ticketId} LIMIT 1
+      `;
+      ticket = data[0] ?? null;
+    } else if (config.supabase.url && config.supabase.key) {
+      const res = await fetch(`${config.supabase.url}/rest/v1/incidencias?id=eq.${ticketId}`, {
+        headers: { "apikey": config.supabase.key, "Authorization": `Bearer ${config.supabase.key}` }
+      });
+      if (res.ok) { const d = (await res.json()) as any[]; ticket = d[0] ?? null; }
     }
 
-    const data = (await res.json()) as any[];
-    if (data.length === 0) {
+    if (!ticket) {
       await ctx.reply(`❌ No se encontró la incidencia con el ID ${ticketId}.`);
       return;
     }
 
-    const ticket = data[0];
     const dateObj = new Date(ticket.created_at);
     const localDate = dateObj.toLocaleString("es-AR", { timeZone: "America/Argentina/Buenos_Aires" });
-
-    const responseText = 
+    const responseText =
       `🎫 **Ficha de Incidencia #${ticket.id}**\n\n` +
       `📅 **Fecha:** ${localDate}\n` +
       `📁 **Proyecto:** ${ticket.area}\n` +
@@ -243,8 +243,8 @@ bot.hears(/^\/ticket(\d+)$/, async (ctx) => {
       `📝 **Descripción:** ${ticket.descripcion}`;
 
     await ctx.reply(responseText, { parse_mode: "Markdown" });
-  } catch (err) {
-    console.error("❌ Error fetching ticket details:", err);
+  } catch (err: any) {
+    console.error("❌ Error fetching ticket details:", err.message || err);
     await ctx.reply("❌ Ocurrió un error al intentar consultar los detalles de la incidencia.");
   }
 });
@@ -274,31 +274,24 @@ bot.on("message:text", async (ctx) => {
   if (lowerText === "leads" || lowerText === "consultas") {
     await ctx.replyWithChatAction("typing");
     try {
-      const url = `${config.supabase.url}/rest/v1/incidencias?select=*`;
-      const res = await fetch(url, {
-        headers: {
-          "apikey": config.supabase.key,
-          "Authorization": `Bearer ${config.supabase.key}`
-        }
-      });
-
-      if (!res.ok) {
-        throw new Error(`Supabase returned status ${res.status}`);
+      let data: any[] = [];
+      if (sql) {
+        data = await sql`SELECT id, area, estado FROM incidencias ORDER BY id ASC`;
+      } else if (config.supabase.url && config.supabase.key) {
+        const res = await fetch(`${config.supabase.url}/rest/v1/incidencias?select=*`, {
+          headers: { "apikey": config.supabase.key, "Authorization": `Bearer ${config.supabase.key}` }
+        });
+        if (res.ok) data = (await res.json()) as any[];
       }
-
-      const data = (await res.json()) as any[];
       if (data.length === 0) {
         await ctx.reply("📋 No hay incidencias registradas en la base de datos.");
         return;
       }
-
       let message = "📋 **Lista de Incidencias:**\n";
-      data.forEach(item => {
-        message += `• ID ${item.id} - ${item.area} (${item.estado}) - /ticket${item.id}\n`;
-      });
+      data.forEach(item => { message += `• ID ${item.id} - ${item.area} (${item.estado}) - /ticket${item.id}\n`; });
       await ctx.reply(message, { parse_mode: "Markdown" });
-    } catch (err) {
-      console.error("❌ Error fetching Supabase incidences:", err);
+    } catch (err: any) {
+      console.error("❌ Error fetching incidencias:", err.message || err);
       await ctx.reply("❌ Ocurrió un error al intentar consultar la lista de incidencias.");
     }
     return;
@@ -328,38 +321,36 @@ bot.on("message:text", async (ctx) => {
           return;
         }
 
-        if (!config.supabase.url || !config.supabase.key) {
-          throw new Error("Las variables SUPABASE_URL y/o SUPABASE_KEY no están definidas en la configuración.");
-        }
-
         const formattedAction = tool === "organizar_directorio" 
           ? `organizar archivos en: **${folderPath}**` 
           : `generar reporte ${args.formato?.toUpperCase() || "PDF"} ("${args.nombre || "reporteestado"}") para la carpeta: **${folderPath}**`;
 
         await ctx.reply(`📂 Recibido. Enviando comando para ${formattedAction} en tu PC local...`);
 
-        // Insert command in Supabase
-        const url = `${config.supabase.url}/rest/v1/cola_comandos`;
-        const res = await fetch(url, {
-          method: "POST",
-          headers: {
-            "apikey": config.supabase.key,
-            "Authorization": `Bearer ${config.supabase.key}`,
-            "Content-Type": "application/json",
-            "Prefer": "return=minimal"
-          },
-          body: JSON.stringify({
-            comando: tool,
-            argumentos: args,
-            estado: "pendiente"
-          })
-        });
-
-        if (!res.ok) {
-          throw new Error(`Supabase devolvió un estado de error ${res.status}`);
+        // Insert command via direct PostgreSQL (con fallback HTTP)
+        let commandId: number | null = null;
+        if (sql) {
+          const inserted = await sql`
+            INSERT INTO cola_comandos (comando, argumentos, estado)
+            VALUES (${tool}, ${JSON.stringify(args)}, ${'pendiente'})
+            RETURNING id
+          `;
+          commandId = inserted[0]?.id;
+        } else if (config.supabase.url && config.supabase.key) {
+          const res = await fetch(`${config.supabase.url}/rest/v1/cola_comandos`, {
+            method: "POST",
+            headers: {
+              "apikey": config.supabase.key,
+              "Authorization": `Bearer ${config.supabase.key}`,
+              "Content-Type": "application/json",
+              "Prefer": "return=representation"
+            },
+            body: JSON.stringify({ comando: tool, argumentos: args, estado: "pendiente" })
+          });
+          if (res.ok) { const d = (await res.json()) as any[]; commandId = d[0]?.id; }
         }
 
-        // Poll Supabase for the status change
+        // Poll for status change
         let attempts = 0;
         const interval = setInterval(async () => {
           attempts++;
@@ -370,30 +361,32 @@ bot.on("message:text", async (ctx) => {
           }
 
           try {
-            const checkRes = await fetch(`${config.supabase.url}/rest/v1/cola_comandos?comando=eq.${tool}&estado=neq.pendiente&select=*&order=id.desc&limit=1`, {
-              headers: {
-                "apikey": config.supabase.key,
-                "Authorization": `Bearer ${config.supabase.key}`
-              }
-            });
-            if (checkRes.ok) {
-              const data = (await checkRes.json()) as any[];
-              if (data.length > 0) {
-                const lastCommand = data[0];
-                if (lastCommand.argumentos?.ruta_carpeta === folderPath) {
-                  if (lastCommand.estado === "completado") {
-                    clearInterval(interval);
-                    await ctx.reply(`✅ **¡Éxito en la PC local!**\n${lastCommand.resultado}`);
-                  } else if (lastCommand.estado === "fallado" || lastCommand.estado === "error") {
-                    clearInterval(interval);
-                    await ctx.reply(`❌ **Error en la PC local:**\n${lastCommand.resultado}`);
-                  }
-                }
+            let lastCommand: any = null;
+            if (sql && commandId) {
+              const data = await sql`
+                SELECT id, estado, resultado FROM cola_comandos
+                WHERE id = ${commandId} AND estado != ${'pendiente'} LIMIT 1
+              `;
+              lastCommand = data[0] ?? null;
+            } else if (config.supabase.url && config.supabase.key) {
+              const checkRes = await fetch(`${config.supabase.url}/rest/v1/cola_comandos?comando=eq.${tool}&estado=neq.pendiente&select=*&order=id.desc&limit=1`, {
+                headers: { "apikey": config.supabase.key, "Authorization": `Bearer ${config.supabase.key}` }
+              });
+              if (checkRes.ok) {
+                const d = (await checkRes.json()) as any[];
+                if (d[0]?.argumentos?.ruta_carpeta === folderPath) lastCommand = d[0];
               }
             }
-          } catch (err) {
-            console.error("Error polling command status:", err);
-          }
+            if (lastCommand) {
+              if (lastCommand.estado === "completado") {
+                clearInterval(interval);
+                await ctx.reply(`✅ **¡Éxito en la PC local!**\n${lastCommand.resultado}`);
+              } else if (lastCommand.estado === "fallado" || lastCommand.estado === "error") {
+                clearInterval(interval);
+                await ctx.reply(`❌ **Error en la PC local:**\n${lastCommand.resultado}`);
+              }
+            }
+          } catch (err: any) { console.error("Error polling command status:", err.message); }
         }, 2000);
 
         return;

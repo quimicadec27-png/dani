@@ -29,3 +29,9 @@ extract.ps1
 test_report.ts
 reporte_ventas.*
 reporteestado.*
+Supabase_como_Base_de_Datos.txt
+claves_git_vercel_supabase.txt
+*.docx
+test_organizacion/
+
+
