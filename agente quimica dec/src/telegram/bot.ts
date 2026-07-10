@@ -8,7 +8,7 @@ import { sql } from "../db.js";
 // Combined with catalog + tool instructions it exceeded the 6000 TPM limit.
 // This compact version preserves ALL essential business logic in ~3K chars.
 
-const SYSTEM_PROMPT_CORE = `Sos DANI, asistente virtual de Química DEC, empresa entrerriana de productos de limpieza ultra-concentrados. Atendés clientes y guiás hacia el carrito web: https://pedix.app/quimica-dec
+const SYSTEM_PROMPT_CORE = `Sos DANI, asistente virtual de Química DEC, empresa entrerriana de productos de limpieza ultra-concentrados. Atendés clientes y guiás hacia la tienda web oficial: https://quimicadec.com
 
 TONO: Profesional, vendedor amable. Voseo argentino (vos, tenés, querés). Emojis con criterio. Máximo 4 líneas por mensaje. Siempre terminá con pregunta o CTA.
 
@@ -22,7 +22,7 @@ PAGOS: Efectivo o transferencia bancaria.
 ENVÍOS: Transporte Mostto (5% del valor) en Entre Ríos. Reparto GRATIS en Concepción del Uruguay martes y viernes 11-13hs.
 PEDIDO MÍNIMO: Primera compra $80.000. Luego $50.000 local, $80.000 envíos fuera.
 DEVOLUCIONES: Si hay problema o faltante, reintegramos el dinero.
-PEDIDOS: Solo por el carrito web https://pedix.app/quimica-dec. No hacemos cotizaciones a medida.
+PEDIDOS: Solo por la tienda web https://quimicadec.com. No hacemos cotizaciones a medida.
 
 PRODUCTOS PROPIOS:
 - Jabón Líquido Premium Ropa $1.400
@@ -41,10 +41,14 @@ RESTRICCIONES:
 - NUNCA compartir info interna (DAFO, costos, márgenes, competencia).`;
 
 const SYSTEM_PROMPT_TOOLS = `
-HERRAMIENTAS PC LOCAL: Si te piden organizar archivos o generar reportes, respondé SOLO con JSON:
+HERRAMIENTAS PC LOCAL: Tenés acceso a herramientas que corren en una PC local externa. Si te piden organizar archivos, generar reportes o actualizar precios de WooCommerce (de la web quimicadec.com), respondé ÚNICAMENTE con el bloque JSON de la herramienta correspondiente:
 1. organizar_directorio: {"tool":"organizar_directorio","args":{"ruta_carpeta":"<ruta>"}}
 2. crear_reporte: {"tool":"crear_reporte","args":{"ruta_carpeta":"<ruta>","formato":"pdf|docx|xlsx","nombre":"<nombre>"}}
-REGLA DANILO: Si pide "reporte de ventas" → ruta="test_organizacion", nombre="reporte_ventas", formato según lo que pida (default pdf).`;
+3. dec_actualizar_precios_woocommerce: {"tool":"dec_actualizar_precios_woocommerce","args":{"ruta_csv":"<ruta_al_archivo_csv>"}}
+
+REGLAS CRÍTICAS DE EJECUCIÓN:
+- Si Danilo o Tomás te piden actualizar los precios de Química DEC usando un archivo CSV, respondé EXACTAMENTE con el JSON de la herramienta "dec_actualizar_precios_woocommerce". Sí tenés acceso a estos archivos y sí podés actualizar los precios a través de esta herramienta local. No digas que no podés.
+- REGLA DANILO: Si pide "reporte de ventas" → ruta="test_organizacion", nombre="reporte_ventas", formato según lo que pida (default pdf).`;
 
 // Security Whitelist Middleware
 bot.use(async (ctx, next) => {
@@ -311,19 +315,32 @@ bot.on("message:text", async (ctx) => {
     const toolCall = extraerJSON(responseText);
 
     if (toolCall && toolCall.tool) {
-      const { tool, args } = toolCall;
+      const { tool } = toolCall;
+      let args = toolCall.args;
       console.log(`🤖 La IA decidió ejecutar la herramienta: ${tool} con argumentos:`, args);
 
-      if (tool === "organizar_directorio" || tool === "crear_reporte") {
-        const folderPath = args?.ruta_carpeta;
-        if (!folderPath) {
+      if (tool === "organizar_directorio" || tool === "crear_reporte" || tool === "dec_actualizar_precios_woocommerce") {
+        let folderPath = args?.ruta_carpeta;
+        let csvPath = args?.ruta_csv;
+
+        if (tool !== "dec_actualizar_precios_woocommerce" && !folderPath) {
           await ctx.reply("❌ No pude determinar la ruta de la carpeta. ¿Podrías indicármela?");
           return;
+        }
+        if (tool === "dec_actualizar_precios_woocommerce" && !csvPath) {
+          csvPath = "woocommerce_final_completo_csv-1783705700655.csv";
+          if (!args) {
+            args = {};
+            toolCall.args = args;
+          }
+          args.ruta_csv = csvPath;
         }
 
         const formattedAction = tool === "organizar_directorio" 
           ? `organizar archivos en: **${folderPath}**` 
-          : `generar reporte ${args.formato?.toUpperCase() || "PDF"} ("${args.nombre || "reporteestado"}") para la carpeta: **${folderPath}**`;
+          : tool === "crear_reporte"
+          ? `generar reporte ${args.formato?.toUpperCase() || "PDF"} ("${args.nombre || "reporteestado"}") para la carpeta: **${folderPath}**`
+          : `sincronizar precios de WooCommerce con el archivo: **${csvPath}**`;
 
         await ctx.reply(`📂 Recibido. Enviando comando para ${formattedAction} en tu PC local...`);
 
@@ -332,7 +349,7 @@ bot.on("message:text", async (ctx) => {
         if (sql) {
           const inserted = await sql`
             INSERT INTO cola_comandos (comando, argumentos, estado)
-            VALUES (${tool}, ${JSON.stringify(args)}, ${'pendiente'})
+            VALUES (${tool}, ${JSON.stringify(args || {})}, ${'pendiente'})
             RETURNING id
           `;
           commandId = inserted[0]?.id;
@@ -345,7 +362,7 @@ bot.on("message:text", async (ctx) => {
               "Content-Type": "application/json",
               "Prefer": "return=representation"
             },
-            body: JSON.stringify({ comando: tool, argumentos: args, estado: "pendiente" })
+            body: JSON.stringify({ comando: tool, argumentos: args || {}, estado: "pendiente" })
           });
           if (res.ok) { const d = (await res.json()) as any[]; commandId = d[0]?.id; }
         }
@@ -354,7 +371,7 @@ bot.on("message:text", async (ctx) => {
         let attempts = 0;
         const interval = setInterval(async () => {
           attempts++;
-          if (attempts > 15) {
+          if (attempts > 30) {
             clearInterval(interval);
             await ctx.reply("⚠️ El ejecutor local en tu PC no respondió a tiempo. Asegurate de que local_executor.ts esté corriendo.");
             return;
@@ -374,7 +391,14 @@ bot.on("message:text", async (ctx) => {
               });
               if (checkRes.ok) {
                 const d = (await checkRes.json()) as any[];
-                if (d[0]?.argumentos?.ruta_carpeta === folderPath) lastCommand = d[0];
+                const last = d[0];
+                if (last) {
+                  if (tool === "dec_actualizar_precios_woocommerce" && last.argumentos?.ruta_csv === csvPath) {
+                    lastCommand = last;
+                  } else if (last.argumentos?.ruta_carpeta === folderPath) {
+                    lastCommand = last;
+                  }
+                }
               }
             }
             if (lastCommand) {

@@ -6,6 +6,7 @@ import ws from "ws";
 import { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun } from "docx";
 import * as XLSX from "xlsx";
 import PDFDocument from "pdfkit";
+import { actualizarPreciosDesdeCSV, procesarColaSincronizacion } from "./woocommerce_helper.js";
 
 // Polyfill global WebSocket for Node.js < 22 support in Supabase Realtime client
 (global as any).WebSocket = ws;
@@ -244,7 +245,7 @@ async function crearReporte(rutaRaw: string, formato: string = "pdf", nombre: st
 // Process a single command safely with atomic state transition
 async function procesarComando(id: number, comando: string, argumentos: any, estadoActual: string) {
   if (estadoActual !== "pendiente") return;
-  if (comando !== "organizar_directorio" && comando !== "crear_reporte") return;
+  if (comando !== "organizar_directorio" && comando !== "crear_reporte" && comando !== "dec_actualizar_precios_woocommerce") return;
 
   const targetPath = argumentos?.ruta_carpeta;
   
@@ -277,6 +278,13 @@ async function procesarComando(id: number, comando: string, argumentos: any, est
       const formato = argumentos?.formato || "pdf";
       const nombre = argumentos?.nombre || "reporteestado";
       resultado = await crearReporte(targetPath, formato, nombre);
+    } else if (comando === "dec_actualizar_precios_woocommerce") {
+      const csvPath = argumentos?.ruta_csv || "woocommerce_final_completo_csv-1783705700655.csv";
+      const actualizacionCsvResult = await actualizarPreciosDesdeCSV(csvPath);
+      console.log(`[CSV Sync Result] ${actualizacionCsvResult}`);
+      const syncColaResult = await procesarColaSincronizacion();
+      console.log(`[Sync Queue Result] ${syncColaResult}`);
+      resultado = `Éxito: ${actualizacionCsvResult} | Detalle Cola: ${syncColaResult}`;
     }
   } catch (err: any) {
     resultado = `Error general de ejecución: ${err.message}`;
@@ -316,7 +324,7 @@ setInterval(async () => {
       .from("cola_comandos")
       .select("*")
       .eq("estado", "pendiente")
-      .in("comando", ["organizar_directorio", "crear_reporte"]);
+      .in("comando", ["organizar_directorio", "crear_reporte", "dec_actualizar_precios_woocommerce"]);
 
     if (error) {
       console.error("❌ Error en sondeo (polling) de comandos:", error.message);
@@ -332,3 +340,17 @@ setInterval(async () => {
     console.error("❌ Error inesperado en sondeo (polling):", err.message);
   }
 }, 5000);
+
+// Sincronizador en segundo plano de WooCommerce dec_sync_queue (cada 15 segundos)
+console.log("⏱️ Sincronizador de cola WooCommerce activo cada 15 segundos.");
+setInterval(async () => {
+  try {
+    const res = await procesarColaSincronizacion();
+    if (res !== "No hay tareas pendientes en la cola.") {
+      console.log(`[Background Sync] ${res}`);
+    }
+  } catch (err: any) {
+    console.error("❌ Error en sincronización en segundo plano de WooCommerce:", err.message);
+  }
+}, 15000);
+
