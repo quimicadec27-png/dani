@@ -189,7 +189,10 @@ async function fetchSupabaseContext(query: string): Promise<string> {
               AND status = 'publish'
             LIMIT 8
           `;
-        } else {
+        }
+        
+        // Fallback: Si no hay resultados y teníamos múltiples palabras clave, buscar solo por la primera
+        if (data.length === 0) {
           const pat = `%${keywords[0]}%`;
           data = await sql!`
             SELECT name, price, stock, sku 
@@ -206,11 +209,22 @@ async function fetchSupabaseContext(query: string): Promise<string> {
         } else {
           url += `&or=(name.ilike.*${keywords[0]}*,sku.ilike.*${keywords[0]}*)`;
         }
-        const res = await fetch(url, {
+        let res = await fetch(url, {
           headers: { "apikey": config.supabase.key, "Authorization": `Bearer ${config.supabase.key}` }
         });
         if (res.ok) {
           data = (await res.json()) as any[];
+        }
+
+        // Fallback HTTP
+        if ((!data || data.length === 0) && keywords.length >= 2) {
+          const fallbackUrl = `${config.supabase.url}/rest/v1/dec_products?status=eq.publish&select=name,price,stock,sku&limit=8&or=(name.ilike.*${keywords[0]}*,sku.ilike.*${keywords[0]}*)`;
+          res = await fetch(fallbackUrl, {
+            headers: { "apikey": config.supabase.key, "Authorization": `Bearer ${config.supabase.key}` }
+          });
+          if (res.ok) {
+            data = (await res.json()) as any[];
+          }
         }
       }
 
