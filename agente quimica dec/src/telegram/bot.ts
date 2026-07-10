@@ -153,12 +153,22 @@ async function fetchSupabaseContext(query: string): Promise<string> {
     "tenes", "tiene", "tienen", "mostrar", "buscar", "dec_products", 
     "quimica", "limpieza", "dec", "venta", "reporte", "lead", 
     "conversac", "conversación", "cliente", "clientes", "hola", "dani",
-    "aerosol", "detergente", "jabon", "perfumina", "bolsa", "categoria", 
-    "de", "la", "el", "en", "un", "y", "o", "nos", "les", "tus", "sus", "mis"
+    "de", "la", "el", "en", "un", "y", "o", "nos", "les", "tus", "sus", "mis",
+    "pero", "si", "no", "siempre", "nunca", "tal", "vez", "mas", "más", "menos",
+    "quiero", "pido", "pedir", "comprar", "quisiera", "dame", "traeme", "ver",
+    "hace", "hacer", "podes", "podés", "puedo", "puede", "pueden", "saber",
+    "me", "te", "se", "lo", "la", "le", "nos", "os", "los", "las", "les",
+    "es", "son", "fue", "eran", "ser", "estar", "esta", "está", "están", "estando"
   ]);
 
-  const cleanText = lower.replace(/[?,.¿!¡]/g, "");
-  const words = cleanText.split(/\s+/).filter(w => w.length > 2);
+  // Estandarizar abreviaturas comunes de litros a la palabra completa "litros"
+  const cleanText = lower
+    .replace(/[?,.¿!¡]/g, " ")
+    .replace(/\blts\b/g, "litros")
+    .replace(/\blt\b/g, "litros")
+    .replace(/\bl\b/g, "litros");
+
+  const words = cleanText.split(/\s+/).filter(w => w.length >= 2);
   const keywords = words.filter(word => !STOP_WORDS.has(word));
 
   if (keywords.length > 0 && (
@@ -255,7 +265,15 @@ async function getGroqResponse(
 
   if (dbContext) {
     systemMessage += `
-Utilizá los siguientes datos de la base de datos en tiempo real para responder a la pregunta del usuario. Respondé de manera amigable, conversacional y analizando esta información:
+Utilizá los siguientes datos de la base de datos en tiempo real para responder a la pregunta del usuario.
+
+REGLAS DE PRECIO Y STOCK CRÍTICAS (SEGUIR AL PIE DE LA LETRA):
+1. REGLA DE PRECIOS POR LITRO: Si el nombre del producto indica un volumen en litros (ej: "20 LITROS", "40 LITROS", "60 LITROS", "120 LITROS", "200 LITROS"), el precio que figura en la base de datos es el PRECIO POR LITRO. Debés multiplicar ese precio unitario por la cantidad de litros para informarle el PRECIO TOTAL al cliente.
+   - Ejemplo: Si "SUAVIZANTE TRIPLE PERFUME - 20 LITROS" tiene un precio de $897.18, calculá: 897.18 * 20 = $17.943,60. En tu respuesta decí claramente que el precio por litro es de $897,18 y que el envase total de 20 litros sale $17.943,60. ¡Hacé siempre esta multiplicación para todos los envases de litros!
+2. REGLA ESTRICTA DE CATÁLOGO: Ofrecé únicamente y confirma la existencia de las presentaciones y productos que figuran explícitamente en la base de datos de abajo. Si el usuario pide un tamaño o producto que no está listado en la base de datos de abajo (por ejemplo, suavizante de "5 litros" o de "25 litros"), decí amablemente que no contás con esa presentación específica y ofrece los tamaños que SÍ figuran disponibles en la lista. No inventes precios ni confirmes cosas que no están abajo.
+3. El stock que figura como 999 representa disponibilidad ilimitada (producto en stock permanente).
+
+Datos en tiempo real de la base de datos:
 ${dbContext}
 `;
   }
