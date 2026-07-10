@@ -143,12 +143,23 @@ async function fetchSupabaseContext(query: string): Promise<string> {
     } catch (err: any) { console.error("Error fetching conversations:", err.message); }
   }
 
-  // Búsqueda de Productos, Precios y Stock en tiempo real
+  // Búsqueda de Productos, Precios y Stock en tiempo real con filtro de Stop Words robusto
+  const STOP_WORDS = new Set([
+    "que", "qué", "como", "cómo", "cual", "cuál", "quien", "quién", 
+    "donde", "dónde", "cuando", "cuándo", "cuanto", "cuánto", 
+    "para", "con", "del", "los", "las", "una", "uno", "unos", "unas", 
+    "este", "esta", "estos", "estas", "aquel", "aquella", "aquellos", "aquellas", 
+    "precio", "precios", "stock", "cuesta", "cuestan", "sale", "salen", 
+    "tenes", "tiene", "tienen", "mostrar", "buscar", "dec_products", 
+    "quimica", "limpieza", "dec", "venta", "reporte", "lead", 
+    "conversac", "conversación", "cliente", "clientes", "hola", "dani",
+    "aerosol", "detergente", "jabon", "perfumina", "bolsa", "categoria", 
+    "de", "la", "el", "en", "un", "y", "o", "nos", "les", "tus", "sus", "mis"
+  ]);
+
   const cleanText = lower.replace(/[?,.¿!¡]/g, "");
   const words = cleanText.split(/\s+/).filter(w => w.length > 2);
-  const keywords = words.filter(word => 
-    !["precio", "stock", "cuanto", "cuesta", "tenes", "tiene", "tienen", "mostrar", "buscar", "dec_products", "quimica", "aerosol", "detergente", "jabon", "perfumina", "bolsa", "categoria", "limpieza", "dec", "venta", "reporte", "lead", "conversac", "cliente", "hola", "dani"].includes(word)
-  );
+  const keywords = words.filter(word => !STOP_WORDS.has(word));
 
   if (keywords.length > 0 && (
     lower.includes("precio") || 
@@ -165,17 +176,37 @@ async function fetchSupabaseContext(query: string): Promise<string> {
     lower.includes("bolsa")
   )) {
     try {
-      const searchPattern = `%${keywords[0]}%`;
       let data: any[] = [];
       if (sql) {
-        data = await sql`
-          SELECT name, price, stock, sku 
-          FROM dec_products 
-          WHERE (name ILIKE ${searchPattern} OR sku ILIKE ${searchPattern}) AND status = 'publish'
-          LIMIT 8
-        `;
+        if (keywords.length >= 2) {
+          const pat1 = `%${keywords[0]}%`;
+          const pat2 = `%${keywords[1]}%`;
+          data = await sql!`
+            SELECT name, price, stock, sku 
+            FROM dec_products 
+            WHERE (name ILIKE ${pat1} OR sku ILIKE ${pat1})
+              AND (name ILIKE ${pat2} OR sku ILIKE ${pat2})
+              AND status = 'publish'
+            LIMIT 8
+          `;
+        } else {
+          const pat = `%${keywords[0]}%`;
+          data = await sql!`
+            SELECT name, price, stock, sku 
+            FROM dec_products 
+            WHERE (name ILIKE ${pat} OR sku ILIKE ${pat})
+              AND status = 'publish'
+            LIMIT 8
+          `;
+        }
       } else if (config.supabase.url && config.supabase.key) {
-        const res = await fetch(`${config.supabase.url}/rest/v1/dec_products?or=(name.ilike.${searchPattern},sku.ilike.${searchPattern})&status=eq.publish&select=name,price,stock,sku&limit=8`, {
+        let url = `${config.supabase.url}/rest/v1/dec_products?status=eq.publish&select=name,price,stock,sku&limit=8`;
+        if (keywords.length >= 2) {
+          url += `&and=(or(name.ilike.*${keywords[0]}*,sku.ilike.*${keywords[0]}*),or(name.ilike.*${keywords[1]}*,sku.ilike.*${keywords[1]}*))`;
+        } else {
+          url += `&or=(name.ilike.*${keywords[0]}*,sku.ilike.*${keywords[0]}*)`;
+        }
+        const res = await fetch(url, {
           headers: { "apikey": config.supabase.key, "Authorization": `Bearer ${config.supabase.key}` }
         });
         if (res.ok) {
