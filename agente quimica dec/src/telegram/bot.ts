@@ -265,13 +265,15 @@ async function getGroqResponse(
 
   if (dbContext) {
     systemMessage += `
-Utilizá los siguientes datos de la base de datos en tiempo real para responder a la pregunta del usuario.
+Utilizá los siguientes datos en tiempo real de la base de datos para responder a la pregunta del usuario.
 
-REGLAS DE PRECIO Y STOCK CRÍTICAS (SEGUIR AL PIE DE LA LETRA):
-1. REGLA DE PRECIOS POR LITRO: Si el nombre del producto indica un volumen en litros (ej: "20 LITROS", "40 LITROS", "60 LITROS", "120 LITROS", "200 LITROS"), el precio que figura en la base de datos es el PRECIO POR LITRO. Debés multiplicar ese precio unitario por la cantidad de litros para informarle el PRECIO TOTAL al cliente.
-   - Ejemplo: Si "SUAVIZANTE TRIPLE PERFUME - 20 LITROS" tiene un precio de $897.18, calculá: 897.18 * 20 = $17.943,60. En tu respuesta decí claramente que el precio por litro es de $897,18 y que el envase total de 20 litros sale $17.943,60. ¡Hacé siempre esta multiplicación para todos los envases de litros!
-2. REGLA ESTRICTA DE CATÁLOGO: Ofrecé únicamente y confirma la existencia de las presentaciones y productos que figuran explícitamente en la base de datos de abajo. Si el usuario pide un tamaño o producto que no está listado en la base de datos de abajo (por ejemplo, suavizante de "5 litros" o de "25 litros"), decí amablemente que no contás con esa presentación específica y ofrece los tamaños que SÍ figuran disponibles en la lista. No inventes precios ni confirmes cosas que no están abajo.
-3. El stock que figura como 999 representa disponibilidad ilimitada (producto en stock permanente).
+🚨 REGLAS CRÍTICAS DE RESPUESTA (OBLIGATORIO CUMPLIR):
+1. MULTIPLICACIÓN POR LITROS (TOTAL): Si el producto indica una cantidad de litros en su nombre (ej: "20 LITROS", "40 LITROS", "60 LITROS", "120 LITROS", "200 LITROS"), el precio que figura en la base de datos es UNITARIO (POR LITRO). ¡DEBÉS HACER LA MULTIPLICACIÓN MATEMÁTICA Y DECIR EL PRECIO TOTAL EN TU RESPUESTA!
+   - Ejemplo: Para "SUAVIZANTE TRIPLE PERFUME - 20 LITROS" con precio $897.18, calculá: 897.18 * 20 = $17.943,60. Decí claramente al cliente: "El precio por litro es de $897,18, por lo que el envase de 20 litros sale $17.943,60". ¡Hacé siempre esta multiplicación para todos los envases de litros!
+2. VARIOS TIPOS / MARCAS COINCIDENTES: Si la lista de abajo tiene más de un tipo de producto que coincide con lo que pide el usuario (ej: si piden "suavizante de 20 litros" y figura tanto "SUAVIZANTE TRIPLE PERFUME - 20 LITROS" como "SUAVIZANTE ECO PLUS  20 LITROS"):
+   - ¡NO elijas uno solo en tu respuesta!
+   - Mencioná TODOS los tipos que coinciden, decí sus respectivos precios por litro y precios totales calculados, y preguntale amablemente al cliente cuál de ellos prefiere.
+3. CATÁLOGO ESTRICTO: No ofrezcas ni inventes tamaños o productos que no estén listados abajo (por ejemplo, suavizante de 5 o 25 litros si no figura en los datos de abajo). Si no figura la presentación, aclaralo de forma amable y sugerí los tamaños disponibles que sí ves abajo.
 
 Datos en tiempo real de la base de datos:
 ${dbContext}
