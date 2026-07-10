@@ -143,6 +143,57 @@ async function fetchSupabaseContext(query: string): Promise<string> {
     } catch (err: any) { console.error("Error fetching conversations:", err.message); }
   }
 
+  // Búsqueda de Productos, Precios y Stock en tiempo real
+  const cleanText = lower.replace(/[?,.¿!¡]/g, "");
+  const words = cleanText.split(/\s+/).filter(w => w.length > 2);
+  const keywords = words.filter(word => 
+    !["precio", "stock", "cuanto", "cuesta", "tenes", "tiene", "tienen", "mostrar", "buscar", "dec_products", "quimica", "aerosol", "detergente", "jabon", "perfumina", "bolsa", "categoria", "limpieza", "dec", "venta", "reporte", "lead", "conversac", "cliente", "hola", "dani"].includes(word)
+  );
+
+  if (keywords.length > 0 && (
+    lower.includes("precio") || 
+    lower.includes("stock") || 
+    lower.includes("cuesta") || 
+    lower.includes("sale") || 
+    lower.includes("tenes") || 
+    lower.includes("valor") || 
+    lower.includes("producto") || 
+    lower.includes("aerosol") || 
+    lower.includes("detergente") || 
+    lower.includes("jabon") || 
+    lower.includes("perfumina") ||
+    lower.includes("bolsa")
+  )) {
+    try {
+      const searchPattern = `%${keywords[0]}%`;
+      let data: any[] = [];
+      if (sql) {
+        data = await sql`
+          SELECT name, price, stock, sku 
+          FROM dec_products 
+          WHERE (name ILIKE ${searchPattern} OR sku ILIKE ${searchPattern}) AND status = 'publish'
+          LIMIT 8
+        `;
+      } else if (config.supabase.url && config.supabase.key) {
+        const res = await fetch(`${config.supabase.url}/rest/v1/dec_products?or=(name.ilike.${searchPattern},sku.ilike.${searchPattern})&status=eq.publish&select=name,price,stock,sku&limit=8`, {
+          headers: { "apikey": config.supabase.key, "Authorization": `Bearer ${config.supabase.key}` }
+        });
+        if (res.ok) {
+          data = (await res.json()) as any[];
+        }
+      }
+
+      if (data && data.length > 0) {
+        context += "\n--- PRODUCTOS DISPONIBLES EN STOCK / PRECIOS ---\n";
+        data.forEach((item: any) => {
+          context += `- ${item.name} (SKU: ${item.sku}) | Precio: $${item.price} | Stock: ${item.stock} unidades\n`;
+        });
+      }
+    } catch (err: any) {
+      console.error("Error fetching product context:", err.message);
+    }
+  }
+
   return context;
 }
 
