@@ -6,6 +6,27 @@ bot.catch((err) => {
   console.error("❌ Error capturado por bot.catch():", err.message || err);
 });
 
+// ─── Render Zero-Downtime Deploy 409 Conflict Handlers ────────
+process.on("uncaughtException", (err) => {
+  const errMsg = err.message || String(err);
+  if (errMsg.includes("409") || errMsg.includes("Conflict") || errMsg.includes("getUpdates")) {
+    console.warn("⚠️ [CONFLICT-409] Conflicto temporal de getUpdates detectado. Ignorando para permitir despliegue de Render...");
+  } else {
+    console.error("❌ Uncaught Exception:", err);
+    process.exit(1);
+  }
+});
+
+process.on("unhandledRejection", (reason: any) => {
+  const errMsg = reason?.message || String(reason);
+  if (errMsg.includes("409") || errMsg.includes("Conflict") || errMsg.includes("getUpdates")) {
+    console.warn("⚠️ [CONFLICT-409] Conflicto temporal de getUpdates (Rejection) detectado. Ignorando para permitir despliegue de Render...");
+  } else {
+    console.error("❌ Unhandled Rejection:", reason);
+    process.exit(1);
+  }
+});
+
 // ─── Delete any pending webhook before starting long polling ──
 // This prevents the 409 "Conflict: terminated by other getUpdates"
 // that happens when Render restarts or deploys a new instance.
