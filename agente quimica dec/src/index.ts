@@ -41,12 +41,28 @@ async function startBot() {
 
   console.log("🔌 Estableciendo conexión con los servidores de Telegram...");
   
-  bot.start({
-    drop_pending_updates: true,
-    onStart: () => {
-      console.log("🚀 ¡Conexión exitosa! El bot de Telegram está activo y escuchando...");
+  let active = false;
+  while (!active) {
+    try {
+      await bot.start({
+        drop_pending_updates: true,
+        onStart: () => {
+          console.log("🚀 ¡Conexión exitosa! El bot de Telegram está activo y escuchando...");
+        }
+      });
+      active = true;
+    } catch (err: any) {
+      const errMsg = err.message || String(err);
+      console.error("❌ Error en bot.start():", errMsg);
+      if (errMsg.includes("409") || errMsg.includes("Conflict") || errMsg.includes("getUpdates")) {
+        console.log("⏳ Conflicto 409 detectado. Reintentando en 5 segundos...");
+        await new Promise(resolve => setTimeout(resolve, 5000));
+      } else {
+        console.log("⏳ Reintentando inicio del bot en 10 segundos...");
+        await new Promise(resolve => setTimeout(resolve, 10000));
+      }
     }
-  });
+  }
 }
 
 startBot();
