@@ -72,7 +72,10 @@ async function saveConversationToSupabase(mensajeCliente: string, respuestaAgent
 }
 
 // Fetch database records — SQL directo si disponible, fallback HTTP
-async function fetchSupabaseContext(query: string): Promise<string> {
+async function fetchSupabaseContext(
+  query: string, 
+  history: { role: "user" | "assistant"; content: string }[] = []
+): Promise<string> {
   const lower = query.toLowerCase();
   let context = "";
 
@@ -132,15 +135,34 @@ async function fetchSupabaseContext(query: string): Promise<string> {
     "es", "son", "fue", "eran", "ser", "estar", "esta", "está", "están", "estando"
   ]);
 
-  // Estandarizar abreviaturas comunes de litros a la palabra completa "litros"
+  // Estandarizar y limpiar
   const cleanText = lower
-    .replace(/[?,.¿!¡]/g, " ")
-    .replace(/\blts\b/g, "litros")
-    .replace(/\blt\b/g, "litros")
-    .replace(/\bl\b/g, "litros");
+    .replace(/[?,.¿!¡"'`«»“”]/g, " ")
+    .replace(/\blts\b/g, "lt")
+    .replace(/\blitros\b/g, "lt")
+    .replace(/\bl\b/g, "lt");
 
   const words = cleanText.split(/\s+/).filter(w => w.length >= 2);
-  const keywords = words.filter(word => !STOP_WORDS.has(word));
+  let keywords = words.filter(word => !STOP_WORDS.has(word));
+
+  // Si no hay palabras clave en el mensaje actual (ej: "precio"), intentar extraerlas del último mensaje del usuario en el historial
+  if (keywords.length === 0 && history && history.length > 0) {
+    for (let i = history.length - 1; i >= 0; i--) {
+      if (history[i].role === "user") {
+        const lastMsgClean = history[i].content.toLowerCase()
+          .replace(/[?,.¿!¡"'`«»“”]/g, " ")
+          .replace(/\blts\b/g, "lt")
+          .replace(/\blitros\b/g, "lt")
+          .replace(/\bl\b/g, "lt");
+        const lastWords = lastMsgClean.split(/\s+/).filter(w => w.length >= 2);
+        keywords = lastWords.filter(word => !STOP_WORDS.has(word));
+        if (keywords.length > 0) {
+          console.log(`ℹ️ [Context Fallback] Usando palabras clave del historial: ${keywords.join(", ")}`);
+          break;
+        }
+      }
+    }
+  }
 
   if (keywords.length > 0) {
     try {
@@ -377,11 +399,11 @@ bot.on("message:text", async (ctx) => {
   // General AI assistant processing with Groq (with dynamic database context lookup)
   await ctx.replyWithChatAction("typing");
   try {
-    // 1. Fetch live database context if query asks for reports, sales, leads or quality incidents
-    const dbContext = await fetchSupabaseContext(text);
+    // 1. Fetch history first to pass to database context retriever
+    const history = getUserHistory(userId);
+    const dbContext = await fetchSupabaseContext(text, history);
 
     // 2. Call Groq using llama-3.3-70b-versatile model
-    const history = getUserHistory(userId);
     const responseText = await getGroqResponse(text, history, dbContext);
 
     // 3. Robust JSON Extractor Check
