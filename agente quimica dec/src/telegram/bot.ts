@@ -155,7 +155,7 @@ async function fetchSupabaseContext(query: string): Promise<string> {
             WHERE (name ILIKE ${pat1} OR sku ILIKE ${pat1})
               AND (name ILIKE ${pat2} OR sku ILIKE ${pat2})
               AND status = 'publish'
-            LIMIT 8
+            LIMIT 30
           `;
         }
         
@@ -167,11 +167,11 @@ async function fetchSupabaseContext(query: string): Promise<string> {
             FROM dec_products 
             WHERE (name ILIKE ${pat} OR sku ILIKE ${pat})
               AND status = 'publish'
-            LIMIT 8
+            LIMIT 30
           `;
         }
       } else if (config.supabase.url && config.supabase.key) {
-        let url = `${config.supabase.url}/rest/v1/dec_products?status=eq.publish&select=name,price,stock,sku&limit=8`;
+        let url = `${config.supabase.url}/rest/v1/dec_products?status=eq.publish&select=name,price,stock,sku&limit=30`;
         if (keywords.length >= 2) {
           url += `&and=(or(name.ilike.*${keywords[0]}*,sku.ilike.*${keywords[0]}*),or(name.ilike.*${keywords[1]}*,sku.ilike.*${keywords[1]}*))`;
         } else {
@@ -186,7 +186,7 @@ async function fetchSupabaseContext(query: string): Promise<string> {
 
         // Fallback HTTP
         if ((!data || data.length === 0) && keywords.length >= 2) {
-          const fallbackUrl = `${config.supabase.url}/rest/v1/dec_products?status=eq.publish&select=name,price,stock,sku&limit=8&or=(name.ilike.*${keywords[0]}*,sku.ilike.*${keywords[0]}*)`;
+          const fallbackUrl = `${config.supabase.url}/rest/v1/dec_products?status=eq.publish&select=name,price,stock,sku&limit=30&or=(name.ilike.*${keywords[0]}*,sku.ilike.*${keywords[0]}*)`;
           res = await fetch(fallbackUrl, {
             headers: { "apikey": config.supabase.key, "Authorization": `Bearer ${config.supabase.key}` }
           });
