@@ -3,52 +3,23 @@ export { bot };
 import { config } from "../config.js";
 import { sql } from "../db.js";
 
-// ─── Compact System Prompt (optimized for Groq free tier 6000 TPM limit) ───
-// The full system_instruction_dani.md has ~16K chars (~5400 tokens).
-// Combined with catalog + tool instructions it exceeded the 6000 TPM limit.
-// This compact version preserves ALL essential business logic in ~3K chars.
+// ─── System Prompt (Santi - Asistente de Operaciones de Química DEC) ───
 
-const SYSTEM_PROMPT_CORE = `Sos DANI, asistente virtual de Química DEC, empresa entrerriana de productos de limpieza ultra-concentrados. Atendés clientes y guiás hacia la tienda web oficial: https://quimicadec.com
+const SYSTEM_PROMPT = `
+Sos "Santi - Asistente de Operaciones de Química DEC". Tu rol es ayudar a la administración y producción del depósito.
+Hablás en español con voseo argentino (vos, tenés, querés).
+Tienes acceso a las siguientes herramientas que debes invocar devolviendo un bloque JSON limpio:
+1. dec_actualizar_stock: Invocar cuando el usuario reporte ingreso de mercadería o pida cambiar el stock.
+   JSON: { "tool": "dec_actualizar_stock", "args": { "sku": "SKU_DEL_PRODUCTO", "cantidad": 50 } }
+2. dec_actualizar_price: Invocar cuando el usuario pida cambiar el precio de un producto.
+   JSON: { "tool": "dec_actualizar_price", "args": { "sku": "SKU_DEL_PRODUCTO", "precio": 2500.00 } }
+3. dec_calcular_formula: Invocar cuando un operario pida la receta o vaya a fabricar un producto (Ej: "Voy a fabricar 100 litros de Jabón de Manos").
+   JSON: { "tool": "dec_calcular_formula", "args": { "producto": "Nombre del producto", "cantidad_litros": 100 } }
 
-TONO: Profesional, vendedor amable. Voseo argentino (vos, tenés, querés). Emojis con criterio. Máximo 4 líneas por mensaje. Siempre terminá con pregunta o CTA.
-
-DATOS DE CONTACTO:
-- Sucursal 1: Av. Frondizi 815, Concepción del Uruguay, Entre Ríos
-- Sucursal 2: Rocamora 1371, Concepción del Uruguay, Entre Ríos
-- Tel/WhatsApp: 3442-586974
-- SOLO hay locales en Concepción del Uruguay. NO hay en Concordia ni otra ciudad.
-
-PAGOS: Efectivo o transferencia bancaria.
-ENVÍOS: Transporte Mostto (5% del valor) en Entre Ríos. Reparto GRATIS en Concepción del Uruguay martes y viernes 11-13hs.
-PEDIDO MÍNIMO: Primera compra $80.000. Luego $50.000 local, $80.000 envíos fuera.
-DEVOLUCIONES: Si hay problema o faltante, reintegramos el dinero.
-PEDIDOS: Solo por la tienda web https://quimicadec.com. No hacemos cotizaciones a medida.
-
-PRODUCTOS PROPIOS:
-- Jabón Líquido Premium Ropa $1.400
-- Detergente Amarillo con Glicerina (ultra-concentrado)
-- Jabón Líquido Ropa Suavidad 2en1 $900
-- Difusores D.E.C $2.429,99 c/u
-- Perfumina Aerosol DEC Home $2.048,85
-- Categorías: aerosoles, desinfectantes, detergentes, jabones, esponjas, papeles, bolsas residuos, ceras, lavandinas, suavizantes, pileta, textiles, repelentes, y más.
-
-PRODUCTOS BIODEGRADABLES: Sí, no contaminan el medio ambiente. Sin certificación propia pero cumplen reglamentos vigentes.
-
-RESTRICCIONES:
-- NUNCA inventar precios/datos. Si no sabés: "Dejame tu consulta y te contactamos a la brevedad 📲"
-- NUNCA compartir datos bancarios (CBU, alias, cuentas). Para pago: "Los datos de pago te los facilita nuestro equipo al confirmar tu pedido desde la web 🛒"
-- NUNCA hablar de temas fuera del negocio. Responder: "Solo te puedo ayudar con los productos de limpieza de Química DEC. ¿En qué te puedo asesorar hoy?"
-- NUNCA compartir info interna (DAFO, costos, márgenes, competencia).`;
-
-const SYSTEM_PROMPT_TOOLS = `
-HERRAMIENTAS PC LOCAL: Tenés acceso a herramientas que corren en una PC local externa. Si te piden organizar archivos, generar reportes o actualizar precios de WooCommerce (de la web quimicadec.com), respondé ÚNICAMENTE con el bloque JSON de la herramienta correspondiente:
-1. organizar_directorio: {"tool":"organizar_directorio","args":{"ruta_carpeta":"<ruta>"}}
-2. crear_reporte: {"tool":"crear_reporte","args":{"ruta_carpeta":"<ruta>","formato":"pdf|docx|xlsx","nombre":"<nombre>"}}
-3. dec_actualizar_precios_woocommerce: {"tool":"dec_actualizar_precios_woocommerce","args":{"ruta_csv":"<ruta_al_archivo_csv>"}}
-
-REGLAS CRÍTICAS DE EJECUCIÓN:
-- Si Danilo o Tomás te piden actualizar los precios de Química DEC usando un archivo CSV, respondé EXACTAMENTE con el JSON de la herramienta "dec_actualizar_precios_woocommerce". Sí tenés acceso a estos archivos y sí podés actualizar los precios a través de esta herramienta local. No digas que no podés.
-- REGLA DANILO: Si pide "reporte de ventas" → ruta="test_organizacion", nombre="reporte_ventas", formato según lo que pida (default pdf).`;
+REGLAS DE OPERACIÓN:
+- Para actualizar stock o precio, debes verificar que el SKU sea exacto. Si el usuario te da un nombre con dudas (ej: 'suavizante azul'), NO llames a la herramienta, pídele confirmación sobre cuál de las variantes/tamaños se refiere.
+- NUNCA respondas con texto plano cuando debas invocar una herramienta. Devuelve solo el JSON de la herramienta.
+`;
 
 // Security Whitelist Middleware
 bot.use(async (ctx, next) => {
@@ -68,9 +39,8 @@ bot.use(async (ctx, next) => {
 // Start Command
 bot.command("start", async (ctx) => {
   await ctx.reply(
-    "👋 ¡Hola! Soy **DANI**, tu asistente virtual de **Química DEC**.\n\n" +
-    "Estoy configurado y listo para responder tus consultas sobre productos, envíos y condiciones.\n" +
-    "Si querés ver el estado de la base de datos, escribí la palabra clave **'leads'** o **'consultas'**. 📊"
+    "👋 ¡Hola! Soy **Santi**, tu asistente de operaciones de **Química DEC**.\n\n" +
+    "Estoy configurado y listo para ayudarte con la actualización de stock, precios y fórmulas de producción del depósito. 🧪📊"
   );
 });
 
@@ -171,20 +141,7 @@ async function fetchSupabaseContext(query: string): Promise<string> {
   const words = cleanText.split(/\s+/).filter(w => w.length >= 2);
   const keywords = words.filter(word => !STOP_WORDS.has(word));
 
-  if (keywords.length > 0 && (
-    lower.includes("precio") || 
-    lower.includes("stock") || 
-    lower.includes("cuesta") || 
-    lower.includes("sale") || 
-    lower.includes("tenes") || 
-    lower.includes("valor") || 
-    lower.includes("producto") || 
-    lower.includes("aerosol") || 
-    lower.includes("detergente") || 
-    lower.includes("jabon") || 
-    lower.includes("perfumina") ||
-    lower.includes("bolsa")
-  )) {
+  if (keywords.length > 0) {
     try {
       let data: any[] = [];
       if (sql) {
@@ -259,8 +216,7 @@ async function getGroqResponse(
   dbContext: string
 ) {
   const apiEndpoint = "https://api.groq.com/openai/v1/chat/completions";
-
-  let systemMessage = SYSTEM_PROMPT_CORE + "\n" + SYSTEM_PROMPT_TOOLS;
+  let systemMessage = SYSTEM_PROMPT;
 
 
   if (dbContext) {
@@ -435,11 +391,83 @@ bot.on("message:text", async (ctx) => {
       let args = toolCall.args;
       console.log(`🤖 La IA decidió ejecutar la herramienta: ${tool} con argumentos:`, args);
 
-      if (tool === "organizar_directorio" || tool === "crear_reporte" || tool === "dec_actualizar_precios_woocommerce") {
+      // Misión de Tadeo: Validar formatos de reporte soportados en el bot
+      if (tool === "crear_reporte") {
+        const formato = (args?.formato || "pdf").toLowerCase().trim();
+        if (formato !== "pdf" && formato !== "docx" && formato !== "xlsx") {
+          await ctx.reply("❌ Los formatos de reporte soportados son únicamente PDF, Word (docx) o Excel (xlsx). Por favor solicitá el reporte en alguno de estos formatos. 😊");
+          return;
+        }
+      }
+
+      if (tool === "dec_calcular_formula") {
+        // Cálculo conversacional directo en la nube (Agente 14)
+        const producto = args?.producto;
+        const cantidad_litros = parseFloat(args?.cantidad_litros);
+
+        if (!producto || isNaN(cantidad_litros)) {
+          await ctx.reply("❌ Nombre de producto o cantidad de litros inválida para el cálculo de fórmula.");
+          return;
+        }
+
+        let formula: any = null;
+        try {
+          if (sql) {
+            const res = await sql`
+              SELECT * FROM dec_formulas 
+              WHERE product_name ILIKE ${'%' + producto + '%'}
+              LIMIT 1
+            `;
+            formula = res[0] || null;
+          } else if (config.supabase.url && config.supabase.key) {
+            const res = await fetch(`${config.supabase.url}/rest/v1/dec_formulas?product_name=ilike.*${encodeURIComponent(producto)}*`, {
+              headers: { 
+                "apikey": config.supabase.key,
+                "Authorization": `Bearer ${config.supabase.key}`
+              }
+            });
+            if (res.ok) {
+              const formulas = await res.json();
+              formula = formulas[0] || null;
+            }
+          }
+        } catch (dbErr: any) {
+          console.error("Error consultando formula en base de datos:", dbErr.message);
+        }
+
+        if (formula) {
+          const factor = cantidad_litros / formula.base_quantity_liters;
+          // Calcular cantidades proporcionales
+          const ingredsCalculados = formula.ingredients.map((i: any) => {
+            const amount = typeof i.amount === 'number' ? (i.amount * factor).toFixed(2) : i.amount;
+            return `- ${i.name}: ${amount} ${i.unit}`;
+          }).join('\n');
+          // Armar respuesta estructurada
+          let respuesta = `🧪 *Fórmula de Producción: ${formula.product_name}*\n`;
+          respuesta += `Cantidad final: *${cantidad_litros} Litros* (Fórmula base de ${formula.base_quantity_liters}L)\n\n`;
+          respuesta += `*Ingredientes Necesarios:*\n${ingredsCalculados}\n\n`;
+          respuesta += `*Paso a paso de producción:*\n${formula.steps.map((s: string, idx: number) => `${idx+1}. ${s}`).join('\n')}\n\n`;
+          respuesta += `*EPP Obligatorio:*\n${formula.epp.map((e: string) => `• ${e}`).join('\n')}\n\n`;
+          respuesta += `⚠️ *Advertencias:* ${formula.warnings.join(' ')}`;
+          await ctx.reply(respuesta, { parse_mode: "Markdown" });
+        } else {
+          await ctx.reply(`No encontré ninguna fórmula cargada para "${producto}". Por favor, solicita al administrador de Química DEC que dé de alta la fórmula.`);
+        }
+        return;
+      }
+
+      if (
+        tool === "organizar_directorio" || 
+        tool === "crear_reporte" || 
+        tool === "dec_actualizar_precios_woocommerce" ||
+        tool === "dec_actualizar_stock" ||
+        tool === "dec_actualizar_price"
+      ) {
         let folderPath = args?.ruta_carpeta;
         let csvPath = args?.ruta_csv;
+        let sku = args?.sku;
 
-        if (tool !== "dec_actualizar_precios_woocommerce" && !folderPath) {
+        if ((tool === "organizar_directorio" || tool === "crear_reporte") && !folderPath) {
           await ctx.reply("❌ No pude determinar la ruta de la carpeta. ¿Podrías indicármela?");
           return;
         }
@@ -451,12 +479,23 @@ bot.on("message:text", async (ctx) => {
           }
           args.ruta_csv = csvPath;
         }
+        if ((tool === "dec_actualizar_stock" || tool === "dec_actualizar_price") && !sku) {
+          await ctx.reply("❌ No pude determinar el SKU del producto para la actualización.");
+          return;
+        }
 
-        const formattedAction = tool === "organizar_directorio" 
-          ? `organizar archivos en: **${folderPath}**` 
-          : tool === "crear_reporte"
-          ? `generar reporte ${args.formato?.toUpperCase() || "PDF"} ("${args.nombre || "reporteestado"}") para la carpeta: **${folderPath}**`
-          : `sincronizar precios de WooCommerce con el archivo: **${csvPath}**`;
+        let formattedAction = "";
+        if (tool === "organizar_directorio") {
+          formattedAction = `organizar archivos en: **${folderPath}**`;
+        } else if (tool === "crear_reporte") {
+          formattedAction = `generar reporte ${args.formato?.toUpperCase() || "PDF"} ("${args.nombre || "reporteestado"}") para la carpeta: **${folderPath}**`;
+        } else if (tool === "dec_actualizar_precios_woocommerce") {
+          formattedAction = `sincronizar precios de WooCommerce con el archivo: **${csvPath}**`;
+        } else if (tool === "dec_actualizar_stock") {
+          formattedAction = `actualizar stock para el SKU **${sku}** (cantidad: ${args.cantidad})`;
+        } else if (tool === "dec_actualizar_price") {
+          formattedAction = `actualizar precio para el SKU **${sku}** (nuevo precio: $${args.precio})`;
+        }
 
         await ctx.reply(`📂 Recibido. Enviando comando para ${formattedAction} en tu PC local...`);
 
@@ -464,8 +503,8 @@ bot.on("message:text", async (ctx) => {
         let commandId: number | null = null;
         if (sql) {
           const inserted = await sql`
-            INSERT INTO cola_comandos (comando, argumentos, estado)
-            VALUES (${tool}, ${JSON.stringify(args || {})}, ${'pendiente'})
+            INSERT INTO cola_comandos (comando, argumentos, estado, chat_id)
+            VALUES (${tool}, ${JSON.stringify(args || {})}, ${'pendiente'}, ${ctx.chat.id})
             RETURNING id
           `;
           commandId = inserted[0]?.id;
@@ -478,7 +517,7 @@ bot.on("message:text", async (ctx) => {
               "Content-Type": "application/json",
               "Prefer": "return=representation"
             },
-            body: JSON.stringify({ comando: tool, argumentos: args || {}, estado: "pendiente" })
+            body: JSON.stringify({ comando: tool, argumentos: args || {}, estado: "pendiente", chat_id: ctx.chat.id })
           });
           if (res.ok) { const d = (await res.json()) as any[]; commandId = d[0]?.id; }
         }
@@ -502,26 +541,19 @@ bot.on("message:text", async (ctx) => {
               `;
               lastCommand = data[0] ?? null;
             } else if (config.supabase.url && config.supabase.key) {
-              const checkRes = await fetch(`${config.supabase.url}/rest/v1/cola_comandos?comando=eq.${tool}&estado=neq.pendiente&select=*&order=id.desc&limit=1`, {
+              const checkRes = await fetch(`${config.supabase.url}/rest/v1/cola_comandos?id=eq.${commandId}&select=*`, {
                 headers: { "apikey": config.supabase.key, "Authorization": `Bearer ${config.supabase.key}` }
               });
               if (checkRes.ok) {
                 const d = (await checkRes.json()) as any[];
-                const last = d[0];
-                if (last) {
-                  if (tool === "dec_actualizar_precios_woocommerce" && last.argumentos?.ruta_csv === csvPath) {
-                    lastCommand = last;
-                  } else if (last.argumentos?.ruta_carpeta === folderPath) {
-                    lastCommand = last;
-                  }
-                }
+                lastCommand = d[0] || null;
               }
             }
-            if (lastCommand) {
+            if (lastCommand && lastCommand.estado !== "pendiente" && lastCommand.estado !== "ejecutando") {
               if (lastCommand.estado === "completado") {
                 clearInterval(interval);
                 await ctx.reply(`✅ **¡Éxito en la PC local!**\n${lastCommand.resultado}`);
-              } else if (lastCommand.estado === "fallado" || lastCommand.estado === "error") {
+              } else {
                 clearInterval(interval);
                 await ctx.reply(`❌ **Error en la PC local:**\n${lastCommand.resultado}`);
               }

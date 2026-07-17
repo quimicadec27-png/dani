@@ -157,7 +157,11 @@ async function crearReporte(rutaRaw: string, formato: string = "pdf", nombre: st
           doc.moveDown(0.5);
         }
         const currentY = doc.y;
-        doc.text(file.rutaRelativa, 30, currentY, { width: 300 });
+        let textToShow = file.rutaRelativa;
+        if (file.tamanoMB > 10) {
+          textToShow += " ⚠️ [ALERTA: >10MB]";
+        }
+        doc.text(textToShow, 30, currentY, { width: 300 });
         doc.text(file.extension, 350, currentY, { width: 80 });
         doc.text(`${file.tamanoMB} MB`, 450, currentY, { width: 100 });
         doc.moveDown(0.3);
@@ -168,8 +172,6 @@ async function crearReporte(rutaRaw: string, formato: string = "pdf", nombre: st
         stream.on("finish", resolve);
         stream.on("error", reject);
       });
-
-      return `Éxito: Reporte PDF generado en: ${nombreLimpio}.pdf`;
     } else if (formatoLimpio === "xlsx") {
       const data = archivos.map(f => ({
         "Nombre de Archivo": f.nombre,
@@ -182,8 +184,6 @@ async function crearReporte(rutaRaw: string, formato: string = "pdf", nombre: st
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Inventario de Archivos");
       XLSX.writeFile(workbook, rutaSalida);
-
-      return `Éxito: Reporte Excel generado en: ${nombreLimpio}.xlsx`;
     } else if (formatoLimpio === "docx") {
       const tableRows = [
         new TableRow({
@@ -197,10 +197,14 @@ async function crearReporte(rutaRaw: string, formato: string = "pdf", nombre: st
       ];
 
       archivos.forEach(file => {
+        let nameToShow = file.nombre;
+        if (file.tamanoMB > 10) {
+          nameToShow += " ⚠️ [ALERTA: >10MB]";
+        }
         tableRows.push(
           new TableRow({
             children: [
-              new TableCell({ children: [new Paragraph(file.nombre)] }),
+              new TableCell({ children: [new Paragraph(nameToShow)] }),
               new TableCell({ children: [new Paragraph(file.rutaRelativa)] }),
               new TableCell({ children: [new Paragraph(file.extension)] }),
               new TableCell({ children: [new Paragraph(`${file.tamanoMB} MB`)] })
@@ -232,22 +236,70 @@ async function crearReporte(rutaRaw: string, formato: string = "pdf", nombre: st
 
       const buffer = await Packer.toBuffer(doc);
       fs.writeFileSync(rutaSalida, buffer);
-
-      return `Éxito: Reporte Word generado en: ${nombreLimpio}.docx`;
     } else {
       return `Error: Formato '${formatoLimpio}' no soportado. Debe ser pdf, docx o xlsx.`;
     }
+
+    // Misión de Darío: Copia automática de respaldo en backup_reportes
+    try {
+      const backupDir = path.join(ruta, "backup_reportes");
+      if (!fs.existsSync(backupDir)) {
+        fs.mkdirSync(backupDir, { recursive: true });
+      }
+      const backupPath = path.join(backupDir, `${nombreLimpio}.${formatoLimpio}`);
+      fs.copyFileSync(rutaSalida, backupPath);
+      console.log(`💾 Copia de respaldo guardada en: ${backupPath}`);
+    } catch (backupErr: any) {
+      console.error(`⚠️ Advertencia de respaldo: ${backupErr.message}`);
+    }
+
+    return `Éxito: Reporte ${formatoLimpio.toUpperCase()} generado en: ${nombreLimpio}.${formatoLimpio}`;
   } catch (error: any) {
     return `Error al generar reporte: ${error.message}`;
   }
 }
 
+function parseCSVLine(line: string): string[] {
+  const result: string[] = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (char === '"') {
+      inQuotes = !inQuotes;
+    } else if (char === ',' && !inQuotes) {
+      result.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  result.push(current.trim());
+  return result;
+}
+
+function serializeCSVLine(cols: string[]): string {
+  return cols.map(val => {
+    if (val.includes(',') || val.includes('"') || val.includes('\n')) {
+      const escaped = val.replace(/"/g, '""');
+      return `"${escaped}"`;
+    }
+    return val;
+  }).join(',');
+}
+
 // Process a single command safely with atomic state transition
 async function procesarComando(id: number, comando: string, argumentos: any, estadoActual: string) {
   if (estadoActual !== "pendiente") return;
-  if (comando !== "organizar_directorio" && comando !== "crear_reporte" && comando !== "dec_actualizar_precios_woocommerce") return;
+  if (
+    comando !== "organizar_directorio" && 
+    comando !== "crear_reporte" && 
+    comando !== "dec_actualizar_precios_woocommerce" &&
+    comando !== "dec_actualizar_stock" &&
+    comando !== "dec_actualizar_price"
+  ) return;
 
-  const targetPath = argumentos?.ruta_carpeta;
+  const targetPath = argumentos?.ruta_carpeta || argumentos?.sku || "";
   
   // Atomic claim: Transition state from 'pendiente' to 'ejecutando'
   // If another process or previous listener already updated it, this update will return 0 rows.
@@ -268,7 +320,7 @@ async function procesarComando(id: number, comando: string, argumentos: any, est
     return;
   }
 
-  console.log(`📥 Procesando orden #${id}: ${comando} para la carpeta: ${targetPath}`);
+  console.log(`📥 Procesando orden #${id}: ${comando} para: ${targetPath}`);
   
   let resultado = "";
   try {
@@ -285,6 +337,107 @@ async function procesarComando(id: number, comando: string, argumentos: any, est
       const syncColaResult = await procesarColaSincronizacion();
       console.log(`[Sync Queue Result] ${syncColaResult}`);
       resultado = `Éxito: ${actualizacionCsvResult} | Detalle Cola: ${syncColaResult}`;
+    } else if (comando === "dec_actualizar_stock" || comando === "dec_actualizar_price") {
+      const { sku } = argumentos;
+      const csvPath = path.resolve("../productos_activos_quimica_dec_csv-1784311287287.csv");
+      
+      if (!fs.existsSync(csvPath)) {
+        throw new Error(`Archivo CSV no encontrado en: ${csvPath}`);
+      }
+
+      const csvContent = fs.readFileSync(csvPath, "utf-8");
+      const lines = csvContent.split(/\r?\n/);
+      let modificado = false;
+
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+
+        const cols = parseCSVLine(line);
+        if (cols[1] === sku) { // cols[1] es SKU
+          if (comando === "dec_actualizar_stock") {
+            const cantidad = parseInt(argumentos.cantidad, 10);
+            if (isNaN(cantidad)) throw new Error("La cantidad provista no es un número válido.");
+            const currentStock = parseInt(cols[4] || "0", 10);
+            cols[4] = (currentStock + cantidad).toString();
+            cols[5] = parseInt(cols[4], 10) > 0 ? "instock" : "outofstock";
+          } else {
+            const precio = parseFloat(argumentos.precio);
+            if (isNaN(precio)) throw new Error("El precio provisto no es un número válido.");
+            cols[3] = precio.toString();
+          }
+          lines[i] = serializeCSVLine(cols);
+          modificado = true;
+          break;
+        }
+      }
+
+      if (!modificado) {
+        throw new Error(`Producto con SKU ${sku} no encontrado en el archivo CSV local.`);
+      }
+
+      fs.writeFileSync(csvPath, lines.join("\n"), "utf-8");
+      console.log(`✅ CSV local modificado exitosamente.`);
+
+      // 2. Sincronizar y actualizar la tabla dec_products en Supabase
+      const updatedFields: any = {};
+      if (comando === "dec_actualizar_stock") {
+        const cantidad = parseInt(argumentos.cantidad, 10);
+        const { data: prodData, error: selectErr } = await supabase
+          .from("dec_products")
+          .select("stock")
+          .eq("sku", sku)
+          .single();
+
+        if (selectErr) {
+          throw new Error(`Error al obtener stock actual de Supabase: ${selectErr.message}`);
+        }
+
+        updatedFields.stock = (prodData?.stock || 0) + cantidad;
+        updatedFields.stock_status = updatedFields.stock > 0 ? "instock" : "outofstock";
+      } else {
+        const precio = parseFloat(argumentos.precio);
+        // Obtenemos info actual para guardar historial antes de actualizar
+        const { data: prodData, error: selectErr } = await supabase
+          .from("dec_products")
+          .select("price, name")
+          .eq("sku", sku)
+          .single();
+
+        if (selectErr) {
+          throw new Error(`Error al obtener precio actual de Supabase: ${selectErr.message}`);
+        }
+
+        const priceOld = prodData?.price || 0;
+        const productName = prodData?.name || "";
+
+        updatedFields.price = precio;
+
+        // Registrar en dec_price_history
+        const { error: histErr } = await supabase
+          .from("dec_price_history")
+          .insert({
+            sku,
+            product_name: productName,
+            price_old: priceOld,
+            price_new: precio
+          });
+
+        if (histErr) {
+          console.error(`⚠️ Advertencia: No se pudo registrar historial de precios: ${histErr.message}`);
+        }
+      }
+
+      const { error: updateErr } = await supabase
+        .from("dec_products")
+        .update(updatedFields)
+        .eq("sku", sku);
+
+      if (updateErr) {
+        throw new Error(`Error actualizando Supabase: ${updateErr.message}`);
+      }
+
+      resultado = `Éxito: Actualización física completada para el SKU ${sku}`;
     }
   } catch (err: any) {
     resultado = `Error general de ejecución: ${err.message}`;
@@ -324,7 +477,7 @@ setInterval(async () => {
       .from("cola_comandos")
       .select("*")
       .eq("estado", "pendiente")
-      .in("comando", ["organizar_directorio", "crear_reporte", "dec_actualizar_precios_woocommerce"]);
+      .in("comando", ["organizar_directorio", "crear_reporte", "dec_actualizar_precios_woocommerce", "dec_actualizar_stock", "dec_actualizar_price"]);
 
     if (error) {
       console.error("❌ Error en sondeo (polling) de comandos:", error.message);
@@ -353,4 +506,5 @@ setInterval(async () => {
     console.error("❌ Error en sincronización en segundo plano de WooCommerce:", err.message);
   }
 }, 15000);
+
 

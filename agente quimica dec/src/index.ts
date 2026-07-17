@@ -34,7 +34,7 @@ startBot();
 const PORT = process.env.PORT || 10000;
 http.createServer((req, res) => {
   res.writeHead(200, { "Content-Type": "application/json" });
-  res.end(JSON.stringify({ status: "online", bot: "DANI", timestamp: new Date().toISOString() }));
+  res.end(JSON.stringify({ status: "online", bot: "Santi", timestamp: new Date().toISOString() }));
 }).listen(PORT, () => {
   console.log(`📡 Servidor HTTP activo en el puerto ${PORT} (para verificación de Render)`);
 });

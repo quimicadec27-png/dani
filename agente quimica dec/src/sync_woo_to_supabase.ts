@@ -180,7 +180,7 @@ async function runSync() {
         sku,
         name: product.name,
         price: parseFloat(product.price || "0"),
-        stock: product.stock_quantity || 0,
+        stock: product.manage_stock ? (product.stock_quantity || 0) : (product.stock_status === 'instock' ? 999 : 0),
         status: product.status || "publish",
         category_id: categoryId,
         image_url: imageUrl,
@@ -209,7 +209,7 @@ async function runSync() {
             sku: vSku,
             name: vName,
             price: parseFloat(v.price || "0"),
-            stock: v.stock_quantity || 0,
+            stock: v.manage_stock ? (v.stock_quantity || 0) : (v.stock_status === 'instock' ? 999 : 0),
             status: v.status || "publish",
             category_id: categoryId,
             image_url: v.image?.src || imageUrl, // Fallback a la imagen del padre
