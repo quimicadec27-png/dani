@@ -15,6 +15,12 @@ Tienes acceso a las siguientes herramientas que debes invocar devolviendo un blo
    JSON: { "tool": "dec_actualizar_price", "args": { "sku": "SKU_DEL_PRODUCTO", "precio": 2500.00 } }
 3. dec_calcular_formula: Invocar cuando un operario pida la receta o vaya a fabricar un producto (Ej: "Voy a fabricar 100 litros de Jabón de Manos").
    JSON: { "tool": "dec_calcular_formula", "args": { "producto": "Nombre del producto", "cantidad_litros": 100 } }
+4. organizar_directorio: Invocar cuando el usuario pida organizar, ordenar o clasificar archivos por extensión en una carpeta local (Ej: "Organizar la carpeta C:\\test").
+   JSON: { "tool": "organizar_directorio", "args": { "ruta_carpeta": "C:\\\\ruta\\\\a\\\\carpeta" } }
+5. crear_reporte: Invocar cuando el usuario pida generar un reporte, informe o inventario de archivos en PDF, Word (docx) o Excel (xlsx).
+   JSON: { "tool": "crear_reporte", "args": { "ruta_carpeta": "C:\\\\ruta\\\\a\\\\carpeta", "formato": "pdf", "nombre": "reporte_ventas" } }
+6. dec_actualizar_precios_woocommerce: Invocar cuando el usuario solicite sincronizar o actualizar masivamente los precios desde el archivo CSV a WooCommerce.
+   JSON: { "tool": "dec_actualizar_precios_woocommerce", "args": { "ruta_csv": "woocommerce_final_completo.csv" } }
 
 CRÍTICAS REGLAS DE OPERACIÓN:
 - SI EL USUARIO SOLO PREGUNTA POR UN PRODUCTO, PRECIO, STOCK, O RESPONDE A UNA PREGUNTA PARA ELEGIR UN TAMAÑO/SKU: **NO LLAMES A NINGUNA HERRAMIENTA**. Simplemente responde conversacionalmente indicando los datos (nombre, SKU, precio y stock) que figuran en la base de datos de abajo.
@@ -520,14 +526,14 @@ bot.on("message:text", async (ctx) => {
           formattedAction = `actualizar precio para el SKU **${sku}** (nuevo precio: $${args.precio})`;
         }
 
-        await ctx.reply(`📂 Recibido. Enviando comando para ${formattedAction} en tu PC local...`);
+        const msgEspera = await ctx.reply(`⏳ Procesando solicitud para ${formattedAction}... por favor espera.`);
 
         // Insert command via direct PostgreSQL (con fallback HTTP)
         let commandId: number | null = null;
         if (sql) {
           const inserted = await sql`
             INSERT INTO cola_comandos (comando, argumentos, estado, chat_id)
-            VALUES (${tool}, ${JSON.stringify(args || {})}, ${'pendiente'}, ${ctx.chat.id})
+            VALUES (${tool}, ${sql.json(args || {})}, ${'pendiente'}, ${ctx.chat.id})
             RETURNING id
           `;
           commandId = inserted[0]?.id;
@@ -545,13 +551,22 @@ bot.on("message:text", async (ctx) => {
           if (res.ok) { const d = (await res.json()) as any[]; commandId = d[0]?.id; }
         }
 
-        // Poll for status change
+        // Poll for status change (Checks every 2 seconds for up to 8 seconds)
         let attempts = 0;
         const interval = setInterval(async () => {
           attempts++;
-          if (attempts > 30) {
+          
+          if (attempts >= 4) { // Pasaron 8 segundos (4 chequeos x 2s)
             clearInterval(interval);
-            await ctx.reply("⚠️ El ejecutor local en tu PC no respondió a tiempo. Asegurate de que local_executor.ts esté corriendo.");
+            try {
+              await ctx.api.editMessageText(
+                ctx.chat!.id,
+                msgEspera.message_id,
+                `⚠️ La PC local no está respondiendo en este momento. Tu orden quedó en cola de espera y se ejecutará de forma automática al restablecerse la conexión.`
+              );
+            } catch (editErr: any) {
+              console.error("Error editing message for timeout:", editErr.message);
+            }
             return;
           }
 
@@ -575,13 +590,25 @@ bot.on("message:text", async (ctx) => {
             if (lastCommand && lastCommand.estado !== "pendiente" && lastCommand.estado !== "ejecutando") {
               if (lastCommand.estado === "completado") {
                 clearInterval(interval);
-                await ctx.reply(`✅ **¡Éxito en la PC local!**\n${lastCommand.resultado}`);
+                await ctx.api.editMessageText(
+                  ctx.chat!.id,
+                  msgEspera.message_id,
+                  `✅ **¡Éxito en la PC local!**\n${lastCommand.resultado}`,
+                  { parse_mode: "Markdown" }
+                );
               } else {
                 clearInterval(interval);
-                await ctx.reply(`❌ **Error en la PC local:**\n${lastCommand.resultado}`);
+                await ctx.api.editMessageText(
+                  ctx.chat!.id,
+                  msgEspera.message_id,
+                  `❌ **Error en la PC local:**\n${lastCommand.resultado}`,
+                  { parse_mode: "Markdown" }
+                );
               }
             }
-          } catch (err: any) { console.error("Error polling command status:", err.message); }
+          } catch (err: any) { 
+            console.error("Error polling command status:", err.message); 
+          }
         }, 2000);
 
         return;

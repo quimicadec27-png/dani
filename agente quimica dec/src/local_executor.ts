@@ -34,6 +34,36 @@ function resolverRuta(ruta: string): string {
   return ruta;
 }
 
+function obtenerRutaCSVProductos(nombreEspecifico?: string): string {
+  const opciones = [
+    nombreEspecifico,
+    "productos_activos_quimica_dec.csv",
+    "productos_activos_quimica_dec_csv-1784311287287.csv",
+    "productos_activos_quimica_dec_csv.csv"
+  ].filter(Boolean) as string[];
+
+  // Buscar primero en la carpeta padre y en la carpeta actual
+  for (const opt of opciones) {
+    const pParent = path.join("..", opt);
+    if (fs.existsSync(pParent)) return pParent;
+    const pCurrent = path.resolve(opt);
+    if (fs.existsSync(pCurrent)) return pCurrent;
+  }
+
+  // Buscar dinámicamente cualquier CSV que empiece con "productos_activos"
+  try {
+    const parentFiles = fs.readdirSync("..");
+    const matchParent = parentFiles.find(f => f.toLowerCase().startsWith("productos_activos") && f.endsWith(".csv"));
+    if (matchParent) return path.join("..", matchParent);
+
+    const localFiles = fs.readdirSync(".");
+    const matchLocal = localFiles.find(f => f.toLowerCase().startsWith("productos_activos") && f.endsWith(".csv"));
+    if (matchLocal) return matchLocal;
+  } catch {}
+
+  return resolverRuta(nombreEspecifico || "productos_activos_quimica_dec.csv");
+}
+
 function organizarDirectorio(rutaRaw: string): string {
   const ruta = resolverRuta(rutaRaw);
   if (!fs.existsSync(ruta)) {
@@ -339,10 +369,10 @@ async function procesarComando(id: number, comando: string, argumentos: any, est
       resultado = `Éxito: ${actualizacionCsvResult} | Detalle Cola: ${syncColaResult}`;
     } else if (comando === "dec_actualizar_stock" || comando === "dec_actualizar_price") {
       const { sku } = argumentos;
-      const csvPath = path.resolve("../productos_activos_quimica_dec_csv-1784311287287.csv");
+      const csvPath = obtenerRutaCSVProductos(argumentos?.ruta_csv);
       
       if (!fs.existsSync(csvPath)) {
-        throw new Error(`Archivo CSV no encontrado en: ${csvPath}`);
+        throw new Error(`Archivo CSV de productos no encontrado en la ruta resuelta: ${csvPath}`);
       }
 
       const csvContent = fs.readFileSync(csvPath, "utf-8");
@@ -459,15 +489,38 @@ async function procesarComando(id: number, comando: string, argumentos: any, est
   }
 }
 
-// 1. Realtime postgres changes subscription
-supabase.channel("cola_comandos")
-  .on("postgres_changes", { event: "INSERT", schema: "public", table: "cola_comandos" }, async (payload: any) => {
-    const { id, comando, argumentos, estado } = payload.new;
-    await procesarComando(id, comando, argumentos, estado);
-  })
-  .subscribe((status) => {
+// 1. Realtime postgres changes subscription with auto-reconnection
+let realtimeChannel: any;
+
+function suscribirseRealtime() {
+  console.log("📡 Conectando al canal Realtime de Supabase...");
+  realtimeChannel = supabase.channel("cola_comandos")
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "cola_comandos" }, async (payload: any) => {
+      const { id, comando, argumentos, estado } = payload.new;
+      await procesarComando(id, comando, argumentos, estado);
+    });
+
+  realtimeChannel.subscribe((status: string, err: any) => {
     console.log(`📡 Estado de la suscripción Realtime: ${status}`);
+    if (err) {
+      console.error("❌ Error en suscripción Realtime:", err.message || err);
+    }
+    
+    if (status === "CLOSED" || status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+      console.log("⚠️ Conexión Realtime cerrada o perdida. Intentando reconectar en 5 segundos...");
+      if (realtimeChannel) {
+        try {
+          supabase.removeChannel(realtimeChannel);
+        } catch (removeErr: any) {
+          console.error("⚠️ Error removiendo canal anterior:", removeErr.message);
+        }
+      }
+      setTimeout(suscribirseRealtime, 5000);
+    }
   });
+}
+
+suscribirseRealtime();
 
 // 2. Polling Fallback (runs every 5 seconds as a backup for WebSockets/Replication issues)
 console.log("⏱️ Respaldo de sondeo (polling) activo cada 5 segundos.");
