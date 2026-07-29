@@ -8,6 +8,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const path = require('path');
 const { createClient } = require('@supabase/supabase-js');
 const Groq = require('groq-sdk');
 
@@ -15,9 +16,14 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Configuración de Seguridad y Middleware
-app.use(helmet());
+app.use(helmet({
+    contentSecurityPolicy: false // Permitir Tailwind y Google Fonts en el Dashboard
+}));
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
+
+// Servir archivos estáticos del CRM Dashboard Frontend
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Inicialización de Clientes
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, {
@@ -25,21 +31,13 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANO
 });
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-// Health Check
+// Health Check API
 app.get('/health', (req, res) => {
     res.json({
         status: 'online',
         service: 'Química DEC CRM API',
         timestamp: new Date().toISOString(),
         supabase: 'connected'
-    });
-});
-
-app.get('/', (req, res) => {
-    res.json({
-        service: 'Química DEC CRM API',
-        status: 'running',
-        documentation: '/health'
     });
 });
 
