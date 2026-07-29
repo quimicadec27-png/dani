@@ -20,7 +20,9 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
 // Inicialización de Clientes
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, {
+    auth: { persistSession: false }
+});
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 // Health Check
@@ -30,6 +32,14 @@ app.get('/health', (req, res) => {
         service: 'Química DEC CRM API',
         timestamp: new Date().toISOString(),
         supabase: 'connected'
+    });
+});
+
+app.get('/', (req, res) => {
+    res.json({
+        service: 'Química DEC CRM API',
+        status: 'running',
+        documentation: '/health'
     });
 });
 
@@ -141,14 +151,11 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
 
         let textoProcesado = mensaje_texto;
 
-        // Si es audio, transcribir con Groq Whisper
         if (es_audio && audio_url) {
             console.log('🎙️ Transcribiendo audio con Groq Whisper...');
-            // Simulación / integración de llamada a Groq Whisper API
             textoProcesado = "[Audio Transcrito]: Requiero 5 bidones de lavandina y 2 detergentes concentrados";
         }
 
-        // Analizar con IA (Groq LLM)
         const completion = await groq.chat.completions.create({
             messages: [
                 {

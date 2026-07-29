@@ -1,4 +1,5 @@
-FROM node:20-alpine
+# Usar Node.js 22 Alpine (soporta WebSocket nativo requerido por @supabase/supabase-js)
+FROM node:22-alpine
 
 # Directorio de trabajo
 WORKDIR /app
