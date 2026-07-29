@@ -48,25 +48,35 @@ app.get('/', (req, res) => {
 // =========================================================================
 app.post('/api/webhooks/woocommerce/order-created', async (req, res) => {
     try {
-        const order = req.body;
-        if (!order || !order.id) {
-            return res.status(400).json({ error: 'Datos de pedido inválidos' });
+        const payload = req.body || {};
+        const topicHeader = req.headers['x-wc-webhook-topic'] || '';
+
+        // Manejar ping de verificación inicial de WooCommerce (al guardar el webhook)
+        if (payload.webhook_id || topicHeader.includes('ping') || !payload.id) {
+            console.log('🔔 WooCommerce Webhook Ping recibido y verificado (200 OK)');
+            return res.status(200).json({ 
+                success: true, 
+                message: 'Webhook ping de WooCommerce verificado exitosamente' 
+            });
         }
 
+        const order = payload;
         const billing = order.billing || {};
         const phone = billing.phone ? billing.phone.replace(/[^0-9+]/g, '') : '';
         const name = `${billing.first_name || ''} ${billing.last_name || ''}`.trim() || 'Cliente WooCommerce';
 
         if (!phone) {
-            return res.status(400).json({ error: 'Teléfono de contacto requerido' });
+            console.warn(`⚠️ Pedido #${order.id} recibido sin teléfono en datos de facturación.`);
         }
+
+        const clientPhone = phone || `WC-${order.id}`;
 
         // 1. Buscar o Crear Cliente en Supabase
         let { data: cliente, error: findError } = await supabase
             .from('clientes')
             .select('id, total_comprado')
-            .eq('whatsapp', phone)
-            .single();
+            .eq('whatsapp', clientPhone)
+            .maybeSingle();
 
         if (!cliente) {
             const { data: newCliente, error: createError } = await supabase
@@ -74,7 +84,7 @@ app.post('/api/webhooks/woocommerce/order-created', async (req, res) => {
                 .insert({
                     razon_social: billing.company || name,
                     contacto_nombre: name,
-                    whatsapp: phone,
+                    whatsapp: clientPhone,
                     email: billing.email || null,
                     localidad: billing.city || null,
                     provincia: billing.state || 'Entre Ríos',
@@ -129,7 +139,7 @@ app.post('/api/webhooks/woocommerce/order-created', async (req, res) => {
 
         console.log(`✅ Pedido WooCommerce #${order.id} registrado para cliente ${name} ($${montoTotal})`);
 
-        res.json({
+        res.status(200).json({
             success: true,
             pedido_id: pedido.id,
             cliente_id: cliente.id,
