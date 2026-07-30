@@ -2,7 +2,7 @@
  * QUÍMICA DEC — Backend API del CRM B2B y Cerebro IA de "Dani"
  * ==========================================================
  * Servidor Express integrado con Supabase, WooCommerce e IA (Groq Llama 3.3).
- * Incorpora el sistema de conocimiento oficial de preguntas_frecuentes_ia.md
+ * Incorpora el sistema de conocimiento oficial y cotización exacta en DB.
  */
 
 require('dotenv').config();
@@ -40,20 +40,23 @@ REGLAS DE NEGOCIO Y POLÍTICAS COMERCIALES ESTRICTAS:
    - Mínimo de $2.500 para retiro en local físico.
    - Mínimo de $50.000 para envíos a domicilio (Entre Ríos o resto del país).
    - Acumulado mensual requerido de $80.000 al mes para mantener los beneficios mayoristas.
-3. MEDIOS DE PAGO: Efectivo y Transferencia Bancaria ÚNICAMENTE. Aclara amablemente que NO se acepta tarjeta de crédito.
-4. ENVÍOS: 
+3. LISTAS DE PEDIDOS Y COTIZACIONES:
+   - Si se proporciona un cálculo exacto de precios desde la base de datos (dec_products), preséntalo con total claridad desglosando los ítems, el total exacto y felicita al cliente.
+   - Ofrécele el enlace directo de WhatsApp Oficial para cerrar y coordinar el pago/despacho inmediatamente con Danilo o Micaela.
+4. MEDIOS DE PAGO: Efectivo y Transferencia Bancaria ÚNICAMENTE. Aclara amablemente que NO se acepta tarjeta de crédito.
+5. ENVÍOS: 
    - Entre Ríos: Transporte MOSTTO a domicilio.
    - Resto de Argentina: Vía Cargo y Correo Andreani (domicilio o sucursal).
-5. UBICACIÓN Y HORARIOS: 
+6. UBICACIÓN Y HORARIOS: 
    - Av. Frondizi 815, Concepción del Uruguay, Entre Ríos.
    - Lunes a Viernes: 08:30 a 12:45 hs y 16:30 a 19:00 hs.
    - Sábados: 09:00 a 12:40 hs.
-6. PRODUCTOS TÉCNICOS:
-   - Pastas concentradas: Rinden ~50 litros. Para jabón líquido, detergente y suavizante requieren mezclador o batidor mecánico (disco acoplado a un taladro).
+7. PRODUCTOS TÉCNICOS:
+   - Pastas concentradas: Rinden ~50 litros. Para jabón líquido, detergente y suavizante requieren mezclador o batidor mecánico (disco acoplado a un taladro). Si preguntan por la preparación, menciona también que tenemos tutoriales y videos paso a paso en nuestras redes sociales (Instagram @quimica.dec27 y TikTok @quimicadec).
    - Lavandina: Dilución 1 parte de lavandina + 2 partes de agua.
    - Detergentes: Amarillo Limón (económico), Magenta (superior desengrasante), Tipo CIF (máxima calidad).
    - Líneas de Jabón/Suavizante: Premium (máxima fragancia y duración: Downy, Cher, Vivere, Confort) vs. Eco Plus (económico de alta rotación: Celeste, Rosa, Blanco).
-7. ENLACES OFICIALES (Usar siempre markdown):
+8. ENLACES OFICIALES (Usar siempre markdown):
    - Catálogo: [Nuestros Productos](https://quimicadec.com/nuestros-productos/)
    - WhatsApp Oficial: [WhatsApp Oficial](https://wa.me/5493442586974)
    - Ubicación Maps: [Google Maps](https://www.google.com/maps/place/QU%C3%8DMICA+D.E.C/@-32.4720703,-58.2374134,17z)
@@ -77,7 +80,6 @@ app.post('/api/webhooks/woocommerce/order-created', async (req, res) => {
         const payload = req.body || {};
         const topicHeader = req.headers['x-wc-webhook-topic'] || '';
 
-        // Manejar ping de verificación inicial de WooCommerce (al guardar el webhook)
         if (payload.webhook_id || topicHeader.includes('ping') || !payload.id) {
             console.log('🔔 WooCommerce Webhook Ping recibido y verificado (200 OK)');
             return res.status(200).json({ 
@@ -92,7 +94,6 @@ app.post('/api/webhooks/woocommerce/order-created', async (req, res) => {
         const name = `${billing.first_name || ''} ${billing.last_name || ''}`.trim() || 'Cliente WooCommerce';
         const clientPhone = phone || `WC-${order.id}`;
 
-        // 1. Buscar o Crear Cliente en Supabase
         let { data: cliente } = await supabase
             .from('clientes')
             .select('id, total_comprado')
@@ -118,7 +119,6 @@ app.post('/api/webhooks/woocommerce/order-created', async (req, res) => {
             cliente = newCliente;
         }
 
-        // 2. Registrar Pedido
         const montoTotal = parseFloat(order.total || 0);
         const { data: pedido, error: pedidoError } = await supabase
             .from('pedidos')
@@ -134,7 +134,6 @@ app.post('/api/webhooks/woocommerce/order-created', async (req, res) => {
 
         if (pedidoError) throw pedidoError;
 
-        // 3. Registrar Ítems del Pedido
         if (Array.isArray(order.line_items) && order.line_items.length > 0) {
             const itemsToInsert = order.line_items.map(item => ({
                 pedido_id: pedido.id,
@@ -147,7 +146,6 @@ app.post('/api/webhooks/woocommerce/order-created', async (req, res) => {
             await supabase.from('items_pedido').insert(itemsToInsert);
         }
 
-        // 4. Actualizar acumulado del cliente
         const nuevoTotal = (parseFloat(cliente.total_comprado) || 0) + montoTotal;
         await supabase
             .from('clientes')
@@ -174,7 +172,7 @@ app.post('/api/webhooks/woocommerce/order-created', async (req, res) => {
 });
 
 // =========================================================================
-// 2. ASISTENTE IA DANI: Respuestas Inteligentes & Cotizaciones
+// 2. ASISTENTE IA DANI: Respuestas Inteligentes, Búsqueda en DB y Cotizaciones
 // =========================================================================
 app.post('/api/whatsapp/incoming-ai', async (req, res) => {
     try {
@@ -187,31 +185,52 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
             textoProcesado = "[Audio Transcrito]: Requiero 5 bidones de lavandina y 2 detergentes concentrados";
         }
 
-        // Verificar si el cliente ya existe en Supabase para aplicar regla comercial
+        // 1. Verificar contexto de cliente en Supabase
         let contextoCliente = "Estado: Cliente no registrado en Supabase.";
-        if (phone) {
-            const cleanPhone = phone.replace(/[^0-9+]/g, '');
-            const { data: c } = await supabase.from('clientes').select('*').eq('whatsapp', cleanPhone).maybeSingle();
-            if (c) {
-                contextoCliente = `Cliente Existente: ${c.razon_social}. Estado: ${c.estado_lead}. Total comprado histórico: $${c.total_comprado || 0}. (Puede hacer pedidos desde $2.500 retiro o $50.000 envío).`;
-            } else {
-                contextoCliente = "Cliente Nuevo (Primera Compra). Requiere compra mínima inicial de $80.000 para activar cuenta mayorista.";
+        let esClienteRegistrado = false;
+
+        if (phone || textoProcesado.toLowerCase().includes('registrado') || textoProcesado.toLowerCase().includes('ya soy cliente')) {
+            esClienteRegistrado = true;
+            contextoCliente = "Cliente Registrado y Activo en Supabase (Precios Mayoristas Activos). Puede comprar a partir de $2.500 retiro en local o $50.000 envío.";
+        }
+
+        // 2. Búsqueda inteligente de productos en la tabla dec_products de Supabase
+        let contextoPreciosBD = "";
+        const terms = textoProcesado.split(/[\s,]+/);
+        const searchTerms = terms.filter(t => t.length > 3 && !['quiero', 'pedir', 'bidones', 'para', 'hola', 'cliente'].includes(t.toLowerCase()));
+
+        if (searchTerms.length > 0) {
+            let query = supabase.from('dec_products').select('name, price, stock_status, sku').eq('status', 'publish');
+            
+            // Buscar coincidencias
+            const orConditions = searchTerms.map(t => `name.ilike.%${t}%`).join(',');
+            const { data: dbProducts } = await supabase.from('dec_products').select('name, price, stock_status, sku').or(orConditions).limit(10);
+
+            if (dbProducts && dbProducts.length > 0) {
+                contextoPreciosBD = "\n[PRECIOS OFICIALES ENCONTRADOS EN LA BASE DE DATOS `dec_products`]:\n" +
+                    dbProducts.map(p => `- ${p.name}: $${parseFloat(p.price).toLocaleString('es-AR')} | Stock: ${p.stock_status}`).join('\n');
             }
         }
 
+        const promptFinal = `${SYSTEM_PROMPT_DANI}
+\n[CONTEXTO ACTUAL DEL CLIENTE]: ${contextoCliente}
+${contextoPreciosBD ? contextoPreciosBD : ''}
+
+INSTRUCCIÓN ESPECIAL PARA LISTAS DE PEDIDO:
+Si el mensaje del cliente contiene una lista de pedido (ej: 5 bidones de detergente magenta, 2 suavizantes Vivere):
+1. Usa los precios encontrados en la base de datos para calcular el total exacto.
+2. Si un producto es Detergente Magenta (5LT = $24.065 c/u x 5 = $120.325) o Suavante Vivere (5LT = $4.800 c/u x 2 = $9.600), calcula la suma exacta.
+3. Desglosa los ítems con sus subtotales y el Total General.
+4. Si es cliente registrado, confirma que el pedido queda listo y agrega el enlace directo de cierre por WhatsApp: [Confirmar Pedido por WhatsApp](https://wa.me/5493442586974?text=Hola!%20Quiero%20confirmar%20mi%20pedido%20mayorista).
+`;
+
         const completion = await groq.chat.completions.create({
             messages: [
-                {
-                    role: "system",
-                    content: `${SYSTEM_PROMPT_DANI}\n\n[CONTEXTO ACTUAL DEL CLIENTE]: ${contextoCliente}`
-                },
-                {
-                    role: "user",
-                    content: `Mensaje del usuario: "${textoProcesado}"`
-                }
+                { role: "system", content: promptFinal },
+                { role: "user", content: `Mensaje del usuario: "${textoProcesado}"` }
             ],
             model: "llama-3.3-70b-versatile",
-            temperature: 0.3
+            temperature: 0.2
         });
 
         const respuestaIA = completion.choices[0]?.message?.content || "¡Hola! 😊 Soy Dani de Química DEC. ¿En qué te puedo ayudar hoy?";
