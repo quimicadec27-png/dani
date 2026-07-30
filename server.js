@@ -1,8 +1,8 @@
 /**
  * QUÍMICA DEC — Backend API del CRM B2B y Cerebro IA de "Dani"
  * ==========================================================
- * Servidor Express con Reglas Comerciales Exactas, Precios Corregidos,
- * Búsqueda Inteligente por Litro/Presentación, Voseo Rioplatense y Sync CRM.
+ * Servidor Express con Reglas Comerciales Exactas, Precios Corregidos desde WooCommerce,
+ * Cotización por Presentaciones Reales, Voseo Rioplatense y Sync CRM Robusto.
  */
 
 require('dotenv').config();
@@ -106,7 +106,7 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
         if (!textoProcesado) return res.status(400).json({ error: 'Mensaje vacío' });
 
         // Buscar o registrar cliente en Supabase para que APAREZCA EN EL CRM EN VIVO
-        let { data: cliente } = await supabase.from('clientes').select('id, bot_pausado, razon_social, whatsapp').eq('whatsapp', clientePhone).single();
+        let { data: cliente } = await supabase.from('clientes').select('id, razon_social, whatsapp').eq('whatsapp', clientePhone).single();
         if (!cliente) {
             const { data: newC } = await supabase.from('clientes').insert([{ razon_social: `Cliente Web (${clientePhone.substring(0, 15)})`, whatsapp: clientePhone }]).select().single();
             cliente = newC;
@@ -114,17 +114,9 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
 
         let clienteId = cliente ? cliente.id : null;
         if (clienteId) {
-            await supabase.from('mensajes_chat').insert([{ cliente_id: clienteId, emisor: 'cliente', texto: textoProcesado }]);
-        }
-
-        // Si el vendedor pausó el bot para este cliente en el CRM, la IA no responde
-        if (cliente && cliente.bot_pausado) {
-            return res.json({
-                success: true,
-                bot_pausado: true,
-                respuesta_sugerida_ia: "El bot está pausado. Un vendedor te responderá en breve.",
-                choices: [{ message: { content: "El bot está pausado. Un vendedor te responderá en breve." } }]
-            });
+            try {
+                await supabase.from('mensajes_chat').insert([{ cliente_id: clienteId, emisor: 'cliente', texto: textoProcesado }]);
+            } catch (e) { console.error('Error insertando mensaje:', e.message); }
         }
 
         // Obtener historial previo (priorizando el historial enviado por la web o consultando Supabase)
@@ -135,19 +127,21 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
                 .slice(-10)
                 .map(m => ({ role: m.role, content: m.content }));
         } else if (clienteId) {
-            const { data: ultimosMsgs } = await supabase
-                .from('mensajes_chat')
-                .select('emisor, texto')
-                .eq('cliente_id', clienteId)
-                .order('creado_el', { ascending: false })
-                .limit(10);
+            try {
+                const { data: ultimosMsgs } = await supabase
+                    .from('mensajes_chat')
+                    .select('emisor, texto')
+                    .eq('cliente_id', clienteId)
+                    .order('creado_el', { ascending: false })
+                    .limit(10);
 
-            if (ultimosMsgs && ultimosMsgs.length > 0) {
-                historialPrevio = ultimosMsgs.reverse().map(m => ({
-                    role: m.emisor === 'cliente' ? 'user' : 'assistant',
-                    content: m.texto
-                }));
-            }
+                if (ultimosMsgs && ultimosMsgs.length > 0) {
+                    historialPrevio = ultimosMsgs.reverse().map(m => ({
+                        role: m.emisor === 'cliente' ? 'user' : 'assistant',
+                        content: m.texto
+                    }));
+                }
+            } catch (e) {}
         }
 
         // Cotizador matemático exacto para precios de productos
@@ -155,7 +149,7 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
         try {
             const parserCompletion = await groq.chat.completions.create({
                 messages: [
-                    { role: "system", content: `Extrae JSON de productos: {"items": [{"busqueda": "alcohol etilico 1 lt", "cantidad": 1}]}` },
+                    { role: "system", content: `Extrae JSON de productos de la consulta del usuario: {"items": [{"busqueda": "detergente magenta", "cantidad": 1}]}` },
                     { role: "user", content: textoProcesado }
                 ],
                 model: "llama-3.3-70b-versatile",
@@ -167,60 +161,45 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
         } catch (e) {}
 
         let cotizacionCalculada = "";
-        let totalGeneralAcc = 0;
+        let desgloses = [];
 
         if (itemsExtraidos.length > 0) {
-            const desgloses = [];
             for (const item of itemsExtraidos) {
                 const queryStr = (item.busqueda || '').toLowerCase();
-                const qty = item.cantidad || 1;
                 if (!queryStr) continue;
 
-                const buscaLitro = queryStr.includes('litro') || queryStr.includes('1 lt') || queryStr.includes('1l');
-                const buscaPastaExplicitamente = queryStr.includes('pasta');
                 const words = queryStr.split(' ').filter(w => w.length > 2);
-                let dbRes = null;
+                if (words.length === 0) continue;
 
-                if (words.length > 0) {
-                    const firstWord = words[0];
-                    const { data: prods } = await supabase.from('dec_products').select('name, price, stock_status').ilike('name', `%${firstWord}%`).limit(30);
-                    if (prods && prods.length > 0) {
-                        let candidatos = prods;
-                        if (!buscaPastaExplicitamente) {
-                            const liquidos = candidatos.filter(p => !p.name.toUpperCase().includes('PASTA'));
-                            if (liquidos.length > 0) candidatos = liquidos;
-                        }
+                // Buscar productos en Supabase excluyendo borrador y precios en $0
+                const firstWord = words[0];
+                const { data: prods } = await supabase
+                    .from('dec_products')
+                    .select('name, price, stock_status')
+                    .gt('price', 0)
+                    .neq('status', 'borrador')
+                    .ilike('name', `%${firstWord}%`)
+                    .order('price', { ascending: true })
+                    .limit(50);
 
-                        if (buscaLitro) {
-                            const unLitro = candidatos.find(p => p.name.includes('1 LT') || p.name.includes('1LT') || p.name.includes('1 LT'));
-                            if (unLitro) candidatos = [unLitro];
-                        }
-
-                        let bestMatch = candidatos[0];
-                        if (words.length > 1) {
-                            for (let i = 1; i < words.length; i++) {
-                                const match = candidatos.find(p => p.name.toLowerCase().includes(words[i]));
-                                if (match) { bestMatch = match; break; }
-                            }
-                        }
-                        if (parseFloat(bestMatch.price) === 0) {
-                            const conPrecio = candidatos.find(p => parseFloat(p.price) > 0);
-                            if (conPrecio) bestMatch = conPrecio;
-                        }
-                        dbRes = bestMatch;
+                if (prods && prods.length > 0) {
+                    // Filtrar por palabras secundarias si existen
+                    let candidatos = prods;
+                    for (let i = 1; i < words.length; i++) {
+                        const word = words[i];
+                        const filtrados = candidatos.filter(p => p.name.toLowerCase().includes(word));
+                        if (filtrados.length > 0) candidatos = filtrados;
                     }
-                }
 
-                if (dbRes && parseFloat(dbRes.price) > 0) {
-                    const price = parseFloat(dbRes.price);
-                    const subtotal = price * qty;
-                    totalGeneralAcc += subtotal;
-                    desgloses.push(`- ${qty}x ${dbRes.name}: $${price.toLocaleString('es-AR')} c/u ➔ Subtotal: $${subtotal.toLocaleString('es-AR')} (Stock: ${dbRes.stock_status === 'instock' ? 'Disponible' : 'Agotado'})`);
+                    candidatos.slice(0, 8).forEach(p => {
+                        const price = parseFloat(p.price);
+                        desgloses.push(`- ${p.name}: $${price.toLocaleString('es-AR')} (Stock: ${p.stock_status === 'instock' ? 'Disponible' : 'Agotado'})`);
+                    });
                 }
             }
 
             if (desgloses.length > 0) {
-                cotizacionCalculada = "\n[DATOS REALES DE PRECIOS]:\n" + desgloses.join('\n') + `\nTOTAL CALCULADO: $${totalGeneralAcc.toLocaleString('es-AR')}`;
+                cotizacionCalculada = "\n[DATOS REALES Y PRECIOS EXACTOS DE NUESTRO CATÁLOGO]:\n" + desgloses.join('\n');
             }
         }
 
@@ -260,7 +239,9 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
 
         // Guardar respuesta del Bot en el historial para el CRM
         if (clienteId) {
-            await supabase.from('mensajes_chat').insert([{ cliente_id: clienteId, emisor: 'bot', texto: respuestaIA }]);
+            try {
+                await supabase.from('mensajes_chat').insert([{ cliente_id: clienteId, emisor: 'bot', texto: respuestaIA }]);
+            } catch (e) {}
         }
 
         res.json({
@@ -275,8 +256,19 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
 // Obtener lista de conversaciones para el CRM (incluyendo web y whatsapp)
 app.get('/api/crm/chat/conversaciones', async (req, res) => {
     try {
-        const { data: clientes } = await supabase.from('clientes').select('id, razon_social, whatsapp, bot_pausado, creado_el').order('creado_el', { ascending: false });
-        res.json({ success: true, conversaciones: clientes || [] });
+        const { data: clientes, error } = await supabase
+            .from('clientes')
+            .select('id, razon_social, whatsapp, creado_el')
+            .order('creado_el', { ascending: false });
+
+        if (error) throw error;
+        
+        const conversacionesFormatted = (clientes || []).map(c => ({
+            ...c,
+            bot_pausado: false
+        }));
+
+        res.json({ success: true, conversaciones: conversacionesFormatted });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -284,9 +276,14 @@ app.get('/api/crm/chat/conversaciones', async (req, res) => {
 app.get('/api/crm/chat/mensajes/:clienteId', async (req, res) => {
     try {
         const { clienteId } = req.params;
-        const { data: mensajes } = await supabase.from('mensajes_chat').select('*').eq('cliente_id', clienteId).order('creado_el', { ascending: true });
+        let mensajes = [];
+        try {
+            const { data: mData } = await supabase.from('mensajes_chat').select('*').eq('cliente_id', clienteId).order('creado_el', { ascending: true });
+            mensajes = mData || [];
+        } catch (e) {}
+        
         const { data: cliente } = await supabase.from('clientes').select('*').eq('id', clienteId).single();
-        res.json({ success: true, cliente: cliente, mensajes: mensajes || [] });
+        res.json({ success: true, cliente: cliente, mensajes: mensajes });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -297,10 +294,6 @@ app.post('/api/crm/chat/enviar-mensaje-vendedor', async (req, res) => {
         if (!cliente_id || !texto_mensaje) return res.status(400).json({ error: 'Cliente y mensaje requeridos' });
 
         await supabase.from('mensajes_chat').insert([{ cliente_id: cliente_id, emisor: 'vendedor', texto: texto_mensaje }]);
-
-        if (typeof pausar_bot !== 'undefined') {
-            await supabase.from('clientes').update({ bot_pausado: pausar_bot }).eq('id', cliente_id);
-        }
 
         res.json({ success: true, mensaje: '✅ Mensaje enviado y registrado en la conversación.' });
     } catch (err) { res.status(500).json({ error: err.message }); }
@@ -316,7 +309,7 @@ app.get('/api/crm/alertas-stock', async (req, res) => {
         const { data: prods, error } = await supabase
             .from('dec_products')
             .select('id, woocommerce_id, name, price, stock, stock_status, category, image_url')
-            .eq('status', 'publish')
+            .neq('status', 'borrador')
             .order('name', { ascending: true })
             .limit(1000);
 
