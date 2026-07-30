@@ -1,8 +1,8 @@
 /**
  * QUÍMICA DEC — Backend API del CRM B2B y Cerebro IA de "Dani"
  * ==========================================================
- * Servidor Express con Reglas Comerciales Exactas ($80k inicial, $80k acumulado mes),
- * Voseo Rioplatense Férreo (Sin "Che", sin jerga de DB), Sincronización Web/CRM y Auto-Ping.
+ * Servidor Express con Reglas Comerciales Exactas, Precios Corregidos,
+ * Búsqueda Inteligente por Litro/Presentación, Voseo Rioplatense y Sync CRM.
  */
 
 require('dotenv').config();
@@ -108,7 +108,7 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
         // Buscar o registrar cliente en Supabase para que APAREZCA EN EL CRM EN VIVO
         let { data: cliente } = await supabase.from('clientes').select('id, bot_pausado, razon_social, whatsapp').eq('whatsapp', clientePhone).single();
         if (!cliente) {
-            const { data: newC } = await supabase.from('clientes').insert([{ razon_social: `Cliente Web (${clientePhone.substring(0, 12)})`, whatsapp: clientePhone }]).select().single();
+            const { data: newC } = await supabase.from('clientes').insert([{ razon_social: `Cliente Web (${clientePhone.substring(0, 15)})`, whatsapp: clientePhone }]).select().single();
             cliente = newC;
         }
 
@@ -155,7 +155,7 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
         try {
             const parserCompletion = await groq.chat.completions.create({
                 messages: [
-                    { role: "system", content: `Extrae JSON de productos: {"items": [{"busqueda": "detergente magenta 5l", "cantidad": 5}]}` },
+                    { role: "system", content: `Extrae JSON de productos: {"items": [{"busqueda": "alcohol etilico 1 lt", "cantidad": 1}]}` },
                     { role: "user", content: textoProcesado }
                 ],
                 model: "llama-3.3-70b-versatile",
@@ -176,18 +176,24 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
                 const qty = item.cantidad || 1;
                 if (!queryStr) continue;
 
+                const buscaLitro = queryStr.includes('litro') || queryStr.includes('1 lt') || queryStr.includes('1l');
                 const buscaPastaExplicitamente = queryStr.includes('pasta');
                 const words = queryStr.split(' ').filter(w => w.length > 2);
                 let dbRes = null;
 
                 if (words.length > 0) {
                     const firstWord = words[0];
-                    const { data: prods } = await supabase.from('dec_products').select('name, price, stock_status').ilike('name', `%${firstWord}%`).limit(20);
+                    const { data: prods } = await supabase.from('dec_products').select('name, price, stock_status').ilike('name', `%${firstWord}%`).limit(30);
                     if (prods && prods.length > 0) {
                         let candidatos = prods;
                         if (!buscaPastaExplicitamente) {
                             const liquidos = candidatos.filter(p => !p.name.toUpperCase().includes('PASTA'));
                             if (liquidos.length > 0) candidatos = liquidos;
+                        }
+
+                        if (buscaLitro) {
+                            const unLitro = candidatos.find(p => p.name.includes('1 LT') || p.name.includes('1LT') || p.name.includes('1 LT'));
+                            if (unLitro) candidatos = [unLitro];
                         }
 
                         let bestMatch = candidatos[0];
@@ -225,12 +231,10 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
             { role: "system", content: promptInstrucciones }
         ];
 
-        // Agregar historial filtrando el system prompt si viniera
         historialPrevio.forEach(m => {
             if (m.role !== 'system') messagesPayload.push(m);
         });
 
-        // Asegurar que el último mensaje del usuario esté al final
         const lastMsgInPayload = messagesPayload[messagesPayload.length - 1];
         if (!lastMsgInPayload || lastMsgInPayload.role !== 'user' || lastMsgInPayload.content !== textoProcesado) {
             messagesPayload.push({ role: "user", content: textoProcesado });
@@ -268,7 +272,7 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Obtener lista de conversaciones para el CRM
+// Obtener lista de conversaciones para el CRM (incluyendo web y whatsapp)
 app.get('/api/crm/chat/conversaciones', async (req, res) => {
     try {
         const { data: clientes } = await supabase.from('clientes').select('id, razon_social, whatsapp, bot_pausado, creado_el').order('creado_el', { ascending: false });
