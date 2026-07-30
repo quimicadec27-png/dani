@@ -2,7 +2,7 @@
  * QUÍMICA DEC — Backend API del CRM B2B y Cerebro IA de "Dani"
  * ==========================================================
  * Servidor Express integrado con Supabase, WooCommerce e IA (Groq Llama 3.3).
- * Incorpora el sistema de conocimiento oficial y cotización exacta en DB.
+ * Sistema de 2 Etapas: Parser IA -> Búsqueda Exacta en DB -> Cotización Determinista.
  */
 
 require('dotenv').config();
@@ -40,9 +40,10 @@ REGLAS DE NEGOCIO Y POLÍTICAS COMERCIALES ESTRICTAS:
    - Mínimo de $2.500 para retiro en local físico.
    - Mínimo de $50.000 para envíos a domicilio (Entre Ríos o resto del país).
    - Acumulado mensual requerido de $80.000 al mes para mantener los beneficios mayoristas.
-3. LISTAS DE PEDIDOS Y COTIZACIONES:
-   - Si se proporciona un cálculo exacto de precios desde la base de datos (dec_products), preséntalo con total claridad desglosando los ítems, el total exacto y felicita al cliente.
-   - Ofrécele el enlace directo de WhatsApp Oficial para cerrar y coordinar el pago/despacho inmediatamente con Danilo o Micaela.
+3. REGLA ESTRICTA DE PRECIOS Y ESTIMACIONES:
+   - JAMÁS inventes rangos aproximados ni estimaciones de precios (ej: NO digas "$55.000 - $60.000").
+   - Si se te proporciona una cotización desglosada calculada desde la base de datos oficial, presenta los precios exactos centavo por centavo, muestra el Total General y confirma el stock disponible.
+   - Si el cliente confirma su lista o desea hacer el pedido, ofrécele el enlace clicable directo: [Confirmar Pedido por WhatsApp](https://wa.me/5493442586974) para que Danilo o Micaela lo cierren inmediatamente.
 4. MEDIOS DE PAGO: Efectivo y Transferencia Bancaria ÚNICAMENTE. Aclara amablemente que NO se acepta tarjeta de crédito.
 5. ENVÍOS: 
    - Entre Ríos: Transporte MOSTTO a domicilio.
@@ -172,7 +173,7 @@ app.post('/api/webhooks/woocommerce/order-created', async (req, res) => {
 });
 
 // =========================================================================
-// 2. ASISTENTE IA DANI: Respuestas Inteligentes, Búsqueda en DB y Cotizaciones
+// 2. ASISTENTE IA DANI: Pipeline de 2 Etapas (Parser -> SQL Lookup -> LLM)
 // =========================================================================
 app.post('/api/whatsapp/incoming-ai', async (req, res) => {
     try {
@@ -185,43 +186,91 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
             textoProcesado = "[Audio Transcrito]: Requiero 5 bidones de lavandina y 2 detergentes concentrados";
         }
 
-        // 1. Verificar contexto de cliente en Supabase
-        let contextoCliente = "Estado: Cliente no registrado en Supabase.";
-        let esClienteRegistrado = false;
+        // 1. ETAPA 1: Extraer la lista de productos requeridos usando Groq JSON mode
+        let itemsExtraidos = [];
+        try {
+            const parserCompletion = await groq.chat.completions.create({
+                messages: [
+                    {
+                        role: "system",
+                        content: `Extrae de la consulta del cliente una lista JSON pura de los productos pedidos con su término de búsqueda y cantidad. Ejemplo de salida: {"items": [{"busqueda": "detergente magenta 5l", "cantidad": 5}, {"busqueda": "suavizante vivere", "cantidad": 2}]}. Si el cliente solo está haciendo una pregunta general y NO está pidiendo una lista de productos, responde {"items": []}.`
+                    },
+                    { role: "user", content: textoProcesado }
+                ],
+                model: "llama-3.3-70b-versatile",
+                response_format: { type: "json_object" },
+                temperature: 0.1
+            });
 
-        if (phone || textoProcesado.toLowerCase().includes('registrado') || textoProcesado.toLowerCase().includes('ya soy cliente')) {
-            esClienteRegistrado = true;
-            contextoCliente = "Cliente Registrado y Activo en Supabase (Precios Mayoristas Activos). Puede comprar a partir de $2.500 retiro en local o $50.000 envío.";
+            const parsed = JSON.parse(parserCompletion.choices[0]?.message?.content || '{}');
+            itemsExtraidos = parsed.items || [];
+        } catch (e) {
+            console.warn("⚠️ No se extrajo JSON estructurado:", e.message);
         }
 
-        // 2. Búsqueda inteligente de productos en la tabla dec_products de Supabase
-        let contextoPreciosBD = "";
-        const terms = textoProcesado.split(/[\s,]+/);
-        const searchTerms = terms.filter(t => t.length > 3 && !['quiero', 'pedir', 'bidones', 'para', 'hola', 'cliente'].includes(t.toLowerCase()));
+        // 2. ETAPA 2: Búsqueda exacta de precios en Supabase (dec_products)
+        let cotizacionCalculada = "";
+        let totalGeneralAcc = 0;
 
-        if (searchTerms.length > 0) {
-            let query = supabase.from('dec_products').select('name, price, stock_status, sku').eq('status', 'publish');
-            
-            // Buscar coincidencias
-            const orConditions = searchTerms.map(t => `name.ilike.%${t}%`).join(',');
-            const { data: dbProducts } = await supabase.from('dec_products').select('name, price, stock_status, sku').or(orConditions).limit(10);
+        if (itemsExtraidos.length > 0) {
+            const desgloses = [];
 
-            if (dbProducts && dbProducts.length > 0) {
-                contextoPreciosBD = "\n[PRECIOS OFICIALES ENCONTRADOS EN LA BASE DE DATOS `dec_products`]:\n" +
-                    dbProducts.map(p => `- ${p.name}: $${parseFloat(p.price).toLocaleString('es-AR')} | Stock: ${p.stock_status}`).join('\n');
+            for (const item of itemsExtraidos) {
+                const queryStr = item.busqueda || '';
+                const qty = item.cantidad || 1;
+
+                if (!queryStr) continue;
+
+                // Extraer palabras clave de búsqueda
+                const words = queryStr.split(' ').filter(w => w.length > 2);
+                let dbRes = null;
+
+                if (words.length > 0) {
+                    const firstWord = words[0];
+                    const { data: prods } = await supabase
+                        .from('dec_products')
+                        .select('name, price, stock_status, sku')
+                        .ilike('name', `%${firstWord}%`)
+                        .limit(10);
+
+                    if (prods && prods.length > 0) {
+                        // Buscar la mejor coincidencia que contenga la segunda palabra o variante
+                        let bestMatch = prods[0];
+                        if (words.length > 1) {
+                            const secondWord = words[1].toLowerCase();
+                            const match = prods.find(p => p.name.toLowerCase().includes(secondWord));
+                            if (match) bestMatch = match;
+                        }
+                        dbRes = bestMatch;
+                    }
+                }
+
+                if (dbRes && parseFloat(dbRes.price) > 0) {
+                    const price = parseFloat(dbRes.price);
+                    const subtotal = price * qty;
+                    totalGeneralAcc += subtotal;
+                    desgloses.push(`- ${qty}x ${dbRes.name}: $${price.toLocaleString('es-AR')} c/u ➔ Subtotal: $${subtotal.toLocaleString('es-AR')} (Stock: ${dbRes.stock_status === 'instock' ? 'Disponible' : 'Agotado'})`);
+                } else if (dbRes) {
+                    desgloses.push(`- ${qty}x ${dbRes.name}: Consultar valor variante | Stock: ${dbRes.stock_status === 'instock' ? 'Disponible' : 'Agotado'}`);
+                }
             }
+
+            if (desgloses.length > 0) {
+                cotizacionCalculada = `\n[COTIZACIÓN MATEMÁTICA EXACTA BASADA EN LA BASE DE DATOS `dec_products`]:\n` +
+                    desgloses.join('\n') +
+                    `\nTOTAL GENERAL CALCULADO CENTAVO POR CENTAVO: $${totalGeneralAcc.toLocaleString('es-AR')}`;
+            }
+        }
+
+        // 3. ETAPA 3: Contexto de Cliente y Generación de Respuesta con Dani
+        let contextoCliente = "Estado: Cliente no registrado en Supabase.";
+        if (phone || textoProcesado.toLowerCase().includes('registrado') || textoProcesado.toLowerCase().includes('ya soy cliente')) {
+            contextoCliente = "Cliente Registrado y Activo en Supabase (Precios Mayoristas Activos). Puede comprar a partir de $2.500 retiro en local o $50.000 envío.";
         }
 
         const promptFinal = `${SYSTEM_PROMPT_DANI}
 \n[CONTEXTO ACTUAL DEL CLIENTE]: ${contextoCliente}
-${contextoPreciosBD ? contextoPreciosBD : ''}
-
-INSTRUCCIÓN ESPECIAL PARA LISTAS DE PEDIDO:
-Si el mensaje del cliente contiene una lista de pedido (ej: 5 bidones de detergente magenta, 2 suavizantes Vivere):
-1. Usa los precios encontrados en la base de datos para calcular el total exacto.
-2. Si un producto es Detergente Magenta (5LT = $24.065 c/u x 5 = $120.325) o Suavante Vivere (5LT = $4.800 c/u x 2 = $9.600), calcula la suma exacta.
-3. Desglosa los ítems con sus subtotales y el Total General.
-4. Si es cliente registrado, confirma que el pedido queda listo y agrega el enlace directo de cierre por WhatsApp: [Confirmar Pedido por WhatsApp](https://wa.me/5493442586974?text=Hola!%20Quiero%20confirmar%20mi%20pedido%20mayorista).
+${cotizacionCalculada ? cotizacionCalculada : ''}
 `;
 
         const completion = await groq.chat.completions.create({
