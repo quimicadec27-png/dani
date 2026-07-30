@@ -1,8 +1,8 @@
 /**
  * QUÍMICA DEC — Backend API del CRM B2B y Cerebro IA de "Dani"
  * ==========================================================
- * Servidor Express con Chat en Vivo con Contexto Continuo (Sin "Hola" repetitivo),
- * Voseo Rioplatense Estricto ("recordá"), Sincronización Web/CRM y Auto-KeepAlive Ping.
+ * Servidor Express con Reglas Comerciales Exactas ($80k inicial, $80k acumulado mes),
+ * Voseo Rioplatense Férreo (Sin "Che", sin jerga de DB), Sincronización Web/CRM y Auto-Ping.
  */
 
 require('dotenv').config();
@@ -37,23 +37,27 @@ Hablas en primera persona como representante oficial ("en Química DEC nos dedic
 
 ⚠️ REGLA DE ORO DE DIALECTO Y VOSEO ARGENTINO RIOPLATENSE ESTRICTO:
 - Habla SIEMPRE en Español Argentino Rioplatense natural, cercano, respetuoso y cálido.
+- ESTÁ ROTUNDAMENTE PROHIBIDO USAR LA PALABRA "Che" O "Che,". Es demasiado informal con los clientes. Saluda siempre con "¡Hola! ¿Cómo estás?", "¡Hola! Decime...", etc., tuteando con voseo pero NUNCA usando "Che".
 - ESTÁ ABSOLUTAMENTE PROHIBIDO usar conjugaciones en neutro o latino como:
-  * "recuerda" ➔ DEBES USAR OBLIGATORIAMENTE "recordá".
+  * "recuerda" / "recuerde" ➔ DEBES USAR OBLIGATORIAMENTE "recordá".
   * "puedes" ➔ DEBES USAR OBLIGATORIAMENTE "podés".
   * "quieres" ➔ DEBES USAR OBLIGATORIAMENTE "querés".
   * "tienes" ➔ DEBES USAR OBLIGATORIAMENTE "tenés".
   * "necesitas" ➔ DEBES USAR OBLIGATORIAMENTE "necesitás".
-  * "deseas" ➔ DEBES USAR OBLIGATORIAMENTE "querés".
+
+⚠️ REGLA DE COMUNICACIÓN COMERCIAL (PROHIBIDO MENCIONAR BASES DE DATOS):
+- ESTÁ PROHIBIDO MENCIONAR A UN CLIENTE PALABRAS TÉCNICAS COMO "base de datos", "dec_products", "nuestra DB" O "sistema".
+- Si el cliente te ofrece pasarte una lista de productos, responde de forma humana y comercial: "¡Claro que sí! Pasame la lista de productos que necesitás y te paso los precios actualizados al instante."
+
+⚠️ REGLAS COMERCIALES EXACTAS DE CLIENTE MAYORISTA EN QUÍMICA DEC:
+1. REGISTRO E INICIO MAYORISTA: Para registrarse y activar la cuenta con precios mayoristas por primera vez, el cliente debe realizar una COMPRA MÍNIMA INICIAL de $80.000.
+2. MANTENIMIENTO MES A MES: Para mantener los precios mayoristas en los meses siguientes, el cliente debe acumular compras totales de $80.000 o más en el transcurso del mes (puede realizar compras más pequeñas durante el mes, siempre que el acumulado del mes llegue a $80.000 o más).
+3. ENVÍOS A DOMICILIO (Concepción del Uruguay): Mínimo de $50.000 por pedido.
+4. RETIROS EN LOCAL: A partir de $2.500 por pedido.
 
 ⚠️ REGLA DE CONTINUIDAD DE CONVERSACIÓN (NO REPETIR SALUDOS):
 - SI EN EL HISTORIAL DE MENSAJES YA HUBO UN SALUDO O CONVERSACIÓN PREVIA, ESTÁ PROHIBIDO VOLVER A DECIR "¡Hola!", "Hola" O PRESENTARTE DE NUEVO ("Soy Dani...").
 - RESPONDE DIRECTAMENTE Y CON FLUIDEZ A LO QUE EL CLIENTE ACABA DE PREGUNTAR.
-
-REGLAS DE NEGOCIO Y POLÍTICAS COMERCIALES:
-1. COMPRA MÍNIMA INICIAL: $80.000 para registrarse y activar la cuenta de precios mayoristas por primera vez.
-2. CLIENTES ACTIVOS RECURRENTES: $2.500 retiro en local / $50.000 envío a domicilio / $80.000 acumulado mensual.
-3. PRECIOS REALES DE BASE DE DATOS: Presenta los precios exactos centavo por centavo de la DB dec_products.
-4. ENLACE DE CIERRE WHATSAPP: [Confirmar Pedido por WhatsApp](https://wa.me/5493442586974).
 `;
 
 // Health Check API
@@ -74,7 +78,7 @@ setInterval(() => {
     }).on('error', (err) => {
         console.log(`[KEEP-ALIVE PING ERROR]: ${err.message}`);
     });
-}, 10 * 60 * 1000); // 10 Minutos
+}, 10 * 60 * 1000);
 
 // Categorías Oficiales Estructuradas de Química DEC
 const CATEGORIAS_OFICIALES = [
@@ -90,40 +94,40 @@ const CATEGORIAS_OFICIALES = [
 ];
 
 // =========================================================================
-// 1. CHAT EN VIVO: RECEPCIÓN DESDE LA WEB Y WHATSAPP CON CONTEXTO COMPLETO
+// 1. CHAT EN VIVO: SINCRONIZACIÓN FLUIDA WEB + WHATSAPP Y CRM
 // =========================================================================
 
 app.post('/api/whatsapp/incoming-ai', async (req, res) => {
     try {
-        const { phone, user_id, session_id, mensaje_texto, user_message } = req.body;
-        const textoProcesado = (mensaje_texto || user_message || '').trim();
-        const clientePhone = phone || user_id || session_id || 'Cliente Web';
+        const { phone, user_id, session_id, mensaje_texto, user_message, message } = req.body;
+        const textoProcesado = (mensaje_texto || user_message || message || '').trim();
+        const clientePhone = (phone || user_id || session_id || 'Cliente Web').toString();
 
         if (!textoProcesado) return res.status(400).json({ error: 'Mensaje vacío' });
 
-        // Buscar o registrar cliente en Supabase
+        // Buscar o registrar cliente en Supabase para que APAREZCA EN EL CRM EN VIVO
         let { data: cliente } = await supabase.from('clientes').select('id, bot_pausado, razon_social, whatsapp').eq('whatsapp', clientePhone).single();
         if (!cliente) {
             const { data: newC } = await supabase.from('clientes').insert([{ razon_social: `Cliente Web (${clientePhone.substring(0, 12)})`, whatsapp: clientePhone }]).select().single();
             cliente = newC;
         }
 
-        // Guardar mensaje del cliente en el historial de Supabase
         let clienteId = cliente ? cliente.id : null;
         if (clienteId) {
             await supabase.from('mensajes_chat').insert([{ cliente_id: clienteId, emisor: 'cliente', texto: textoProcesado }]);
         }
 
-        // Si el vendedor pausó el bot para este cliente, la IA no responde
+        // Si el vendedor pausó el bot para este cliente en el CRM, la IA no responde
         if (cliente && cliente.bot_pausado) {
             return res.json({
                 success: true,
                 bot_pausado: true,
-                respuesta_sugerida_ia: "El bot está pausado. Un vendedor te responderá en breve."
+                respuesta_sugerida_ia: "El bot está pausado. Un vendedor te responderá en breve.",
+                choices: [{ message: { content: "El bot está pausado. Un vendedor te responderá en breve." } }]
             });
         }
 
-        // Obtener los últimos 6 mensajes del historial para MANTENER EL CONTEXTO CONTINUO
+        // Obtener los últimos 6 mensajes para CONTEXTO CONTINUO (Evitar el "Hola" repetitivo)
         let historialPrevio = [];
         if (clienteId) {
             const { data: ultimosMsgs } = await supabase
@@ -141,7 +145,7 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
             }
         }
 
-        // Extraer intenciones de productos para cotización matemática exactas
+        // Cotizador matemático exacto para precios de productos
         let itemsExtraidos = [];
         try {
             const parserCompletion = await groq.chat.completions.create({
@@ -205,19 +209,18 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
             }
 
             if (desgloses.length > 0) {
-                cotizacionCalculada = "\n[COTIZACIÓN MATEMÁTICA EXACTA DB dec_products]:\n" + desgloses.join('\n') + `\nTOTAL GENERAL CALCULADO: $${totalGeneralAcc.toLocaleString('es-AR')}`;
+                cotizacionCalculada = "\n[DATOS REALES DE PRECIOS]:\n" + desgloses.join('\n') + `\nTOTAL CALCULADO: $${totalGeneralAcc.toLocaleString('es-AR')}`;
             }
         }
 
         const tieneMensajesAnteriores = historialPrevio.length > 1;
-        const promptInstrucciones = `${SYSTEM_PROMPT_DANI}\n${tieneMensajesAnteriores ? '⚠️ ATENCIÓN: Esta conversación ya está en marcha. ESTÁ ESTRICTAMENTE PROHIBIDO DECIR "Hola", "¡Hola!" O PRESENTARTE DE NUEVO. Responde directo al grano.' : ''}\n${cotizacionCalculada}`;
+        const promptInstrucciones = `${SYSTEM_PROMPT_DANI}\n${tieneMensajesAnteriores ? '⚠️ ATENCIÓN: Esta conversación ya está en curso. ESTÁ ESTRICTAMENTE PROHIBIDO DECIR "Hola", "¡Hola!" O PRESENTARTE DE NUEVO. Responde directo al grano sin saludos.' : ''}\n${cotizacionCalculada}`;
 
         const messagesPayload = [
             { role: "system", content: promptInstrucciones },
             ...historialPrevio
         ];
 
-        // Asegurar que el último mensaje no esté duplicado
         if (messagesPayload.length === 1 || messagesPayload[messagesPayload.length - 1].content !== textoProcesado) {
             messagesPayload.push({ role: "user", content: textoProcesado });
         }
@@ -230,14 +233,17 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
 
         let respuestaIA = completion.choices[0]?.message?.content || "Perfecto, ¿en qué te puedo ayudar?";
         
-        // Reemplazo de seguridad contra fallos de dialecto neutro
-        respuestaIA = respuestaIA.replace(/\brecuerda\b/gi, 'recordá')
+        // Filtro de seguridad contra "Che", menciones de base de datos y dialecto neutro
+        respuestaIA = respuestaIA.replace(/\bche,?\s*/gi, '')
+                                 .replace(/base de datos dec_products/gi, 'nuestro catálogo')
+                                 .replace(/base de datos/gi, 'nuestro catálogo')
+                                 .replace(/\brecuerda\b/gi, 'recordá')
                                  .replace(/\brecuerde\b/gi, 'recordá')
                                  .replace(/\bpuedes\b/gi, 'podés')
                                  .replace(/\bquieres\b/gi, 'querés')
                                  .replace(/\btienes\b/gi, 'tenés');
 
-        // Guardar respuesta del Bot en el historial
+        // Guardar respuesta del Bot en el historial para el CRM
         if (clienteId) {
             await supabase.from('mensajes_chat').insert([{ cliente_id: clienteId, emisor: 'bot', texto: respuestaIA }]);
         }
@@ -245,7 +251,7 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
         res.json({
             success: true,
             respuesta_sugerida_ia: respuestaIA,
-            choices: [{ message: { content: respuestaIA } }] // Compatibilidad con el widget floatante PHP
+            choices: [{ message: { content: respuestaIA } }]
         });
 
     } catch (err) { res.status(500).json({ error: err.message }); }
