@@ -54,7 +54,7 @@
                 </div>
                 <div>
                     <h1 class="font-title text-xl font-bold tracking-tight uppercase text-white">Química DEC <span class="text-brand-yellow">CRM B2B</span></h1>
-                    <p class="text-xs text-gray-400">Gestión de Clientes, Inventario Real y Catálogo IA ($80k Mínimo)</p>
+                    <p class="text-xs text-gray-400">Gestión de Clientes, Inventario en Acordeón y Catálogo IA ($80k Mínimo)</p>
                 </div>
             </div>
 
@@ -72,7 +72,7 @@
 
     <main class="flex-grow max-w-7xl mx-auto w-full px-6 py-8 space-y-8">
 
-        <!-- Tabs de Navegación con Resaltado Dinámico en Amarillo -->
+        <!-- Tabs de Navegación -->
         <div class="flex flex-col sm:flex-row justify-between items-center gap-4 border-b border-white/10 pb-4">
             <div class="flex flex-wrap gap-2 bg-white/5 p-1.5 rounded-2xl border border-white/10">
                 <button id="tab-kanban-btn" onclick="switchTab('kanban')" class="tab-active px-4 py-2.5 rounded-xl font-title text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1">
@@ -141,25 +141,38 @@
             </div>
         </section>
 
-        <!-- TAB 2: ALERTAS DE STOCK BAJO POR CATEGORÍAS REALES DE QUÍMICA DEC -->
+        <!-- TAB 2: ALERTAS DE STOCK CON MENÚS DESPLEGABLES (ACORDEÓN COMERCIAL) -->
         <section id="view-stock" class="hidden space-y-6">
             <div class="glass-panel p-6 rounded-2xl space-y-6">
                 <div class="flex flex-col md:flex-row justify-between items-center gap-4 border-b border-white/10 pb-4">
                     <div>
                         <h2 class="font-title text-lg font-bold uppercase text-white tracking-wider flex items-center gap-2">
-                            <span class="material-symbols-outlined text-red-400">inventory_2</span> Alertas de Inventario Real por Categorías (Química DEC)
+                            <span class="material-symbols-outlined text-red-400">inventory_2</span> Alertas de Inventario en Menús Desplegables
                         </h2>
-                        <p class="text-xs text-gray-400">Agrupado por categorías oficiales para reposición rápida en depósito.</p>
+                        <p class="text-xs text-gray-400">Desplegá cada categoría oficial para revisar productos en stock crítico o bajo.</p>
                     </div>
-                    <div class="flex items-center gap-2 bg-white/5 p-2 rounded-xl border border-white/10">
-                        <label class="text-xs text-gray-300">Umbral de Alerta:</label>
-                        <input type="number" id="umbral-stock-input" value="20" onchange="loadAlertasStock()" class="w-16 bg-white/10 border border-brand-yellow/30 rounded-lg px-2 py-1 text-xs text-brand-yellow font-bold text-center focus:outline-none">
-                        <span class="text-xs text-gray-400">unidades</span>
+                    
+                    <div class="flex flex-wrap items-center gap-3">
+                        <!-- Ajuste de Umbral por Texto / IA -->
+                        <div class="flex items-center gap-2 bg-white/5 p-2 rounded-xl border border-white/10">
+                            <label class="text-xs text-gray-300">Límite Mínimo:</label>
+                            <input type="number" id="umbral-stock-input" value="20" onchange="loadAlertasStock()" class="w-16 bg-white/10 border border-brand-yellow/30 rounded-lg px-2 py-1 text-xs text-brand-yellow font-bold text-center focus:outline-none">
+                            <span class="text-xs text-gray-400">un.</span>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Contenedor de Categorías Reales -->
-                <div id="categorias-stock-container" class="space-y-8"></div>
+                <!-- Configurar Umbral Mínimo por Voz / IA -->
+                <div class="p-4 rounded-xl bg-white/5 border border-white/10 flex flex-col md:flex-row items-center gap-3">
+                    <span class="material-symbols-outlined text-brand-yellow">record_voice_over</span>
+                    <input type="text" id="ia-umbral-prompt" placeholder="Escribí o dictá tu límite mínimo. Ej: Definir límite mínimo de alerta en 30 unidades..." class="flex-grow bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-yellow">
+                    <button onclick="configurarUmbralIA()" class="px-4 py-2 bg-brand-yellow text-primary-dark rounded-xl font-title text-xs font-bold uppercase tracking-wider hover:bg-yellow-400 transition-all shrink-0">
+                        Aplicar Límite con IA
+                    </button>
+                </div>
+
+                <!-- Contenedor de Acordeones por Categoría -->
+                <div id="acordeon-stock-container" class="space-y-4"></div>
             </div>
         </section>
 
@@ -216,7 +229,7 @@ SUAVIZANTE VIVERE CLASICO 900ML ; 3700 ; 100" class="w-full bg-white/5 border bo
                     <div id="ia-admin-res" class="hidden text-xs text-emerald-400 font-bold p-3 bg-emerald-500/10 rounded-xl border border-emerald-500/30"></div>
                 </div>
 
-                <!-- Opción 3: Dónde se alojan las Fotos de Productos Nuevos (Respuesta Clara) -->
+                <!-- Opción 3: Dónde se alojan las Fotos de Productos Nuevos -->
                 <div class="p-5 rounded-2xl bg-white/5 border border-blue-500/30 space-y-3">
                     <h3 class="font-title text-xs font-bold uppercase text-blue-400 tracking-wider flex items-center gap-2">
                         <span class="material-symbols-outlined text-[18px]">image</span> 3. Dónde se guardan las fotos de Productos Nuevos
@@ -305,60 +318,106 @@ SUAVIZANTE VIVERE CLASICO 900ML ; 3700 ; 100" class="w-full bg-white/5 border bo
                 const data = await res.json();
                 if (data.success) {
                     alertasStockCategorias = data.categorias || {};
-                    renderCategoriasStockGrid();
+                    renderAcordeonStockGrid();
                 }
             } catch (e) {}
         }
 
-        function renderCategoriasStockGrid() {
-            const container = document.getElementById('categorias-stock-container');
+        function renderAcordeonStockGrid() {
+            const container = document.getElementById('acordeon-stock-container');
             container.innerHTML = '';
 
             const keys = Object.keys(alertasStockCategorias);
-            let totalAlertasRendered = 0;
+            let totalCategoriasRendered = 0;
 
-            keys.forEach(catName => {
-                const prods = alertasStockCategorias[catName];
-                if (prods && prods.length > 0) {
-                    totalAlertasRendered += prods.length;
+            keys.forEach((catKey, index) => {
+                const catObj = alertasStockCategorias[catKey];
+                const prods = catObj.productos || [];
+
+                if (prods.length > 0) {
+                    totalCategoriasRendered++;
+                    const tieneCritico = catObj.tiene_critico;
+                    const accordionId = `acc-body-${index}`;
+
                     const catBlock = document.createElement('div');
-                    catBlock.className = 'space-y-4';
+                    catBlock.className = 'glass-panel rounded-2xl overflow-hidden border transition-all ' + 
+                        (tieneCritico ? 'border-red-500/40' : 'border-amber-500/30');
 
                     catBlock.innerHTML = `
-                        <div class="flex items-center gap-2 border-b border-white/10 pb-2">
-                            <span class="w-3 h-3 rounded-full bg-brand-yellow"></span>
-                            <h3 class="font-title text-sm font-bold uppercase tracking-wider text-brand-yellow">${catName}</h3>
-                            <span class="px-2 py-0.5 rounded-full bg-white/10 text-xs text-gray-300 font-bold">${prods.length} alertas</span>
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            ${prods.map(s => {
-                                const esCritico = (s.stock_actual === 0);
-                                const precio = s.precio.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' });
+                        <!-- Cabecera del Acordeón -->
+                        <button onclick="toggleAccordion('${accordionId}')" class="w-full px-6 py-4 flex items-center justify-between bg-white/5 hover:bg-white/10 transition-colors text-left">
+                            <div class="flex items-center gap-3">
+                                <span class="material-symbols-outlined ${tieneCritico ? 'text-red-400' : 'text-amber-400'}">${catObj.icon || 'category'}</span>
+                                <h3 class="font-title text-sm font-bold uppercase tracking-wider text-white">${catKey}</h3>
+                            </div>
 
-                                return `
-                                    <div class="glass-card p-4 rounded-2xl space-y-3 border ${esCritico ? 'border-red-500/40 bg-red-500/5' : 'border-amber-500/30'}">
-                                        <div class="flex justify-between items-start gap-2">
-                                            <h4 class="font-bold text-xs text-white leading-snug">${s.nombre}</h4>
-                                            <span class="px-2 py-0.5 rounded-full text-[9px] font-bold shrink-0 ${esCritico ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'}">
-                                                ${s.nivel_alerta}
-                                            </span>
+                            <div class="flex items-center gap-3">
+                                <span class="px-3 py-1 rounded-full text-[10px] font-bold ${tieneCritico ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'}">
+                                    ${tieneCritico ? '🔴 ALERTA CRÍTICA (SIN STOCK)' : '⚠️ ALERTA STOCK BAJO'} (${prods.length})
+                                </span>
+                                <span class="material-symbols-outlined text-gray-400 transition-transform" id="icon-${accordionId}">expand_more</span>
+                            </div>
+                        </button>
+
+                        <!-- Cuerpo Desplegable -->
+                        <div id="${accordionId}" class="hidden p-6 border-t border-white/5 bg-black/20">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                ${prods.map(s => {
+                                    const esCritico = (s.stock_actual === 0);
+                                    const precio = s.precio.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' });
+
+                                    return `
+                                        <div class="glass-card p-4 rounded-2xl space-y-3 border ${esCritico ? 'border-red-500/40 bg-red-500/5' : 'border-amber-500/30'}">
+                                            <div class="flex justify-between items-start gap-2">
+                                                <h4 class="font-bold text-xs text-white leading-snug">${s.nombre}</h4>
+                                                <span class="px-2 py-0.5 rounded-full text-[9px] font-bold shrink-0 ${esCritico ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'}">
+                                                    ${s.nivel_alerta}
+                                                </span>
+                                            </div>
+                                            <div class="flex justify-between items-center text-xs pt-2 border-t border-white/5">
+                                                <span class="text-gray-400">Stock Actual: <strong class="${esCritico ? 'text-red-400 font-bold' : 'text-amber-400'}">${s.stock_actual} un.</strong></span>
+                                                <span class="font-bold text-brand-yellow">${precio}</span>
+                                            </div>
                                         </div>
-                                        <div class="flex justify-between items-center text-xs pt-1 border-t border-white/5">
-                                            <span class="text-gray-400">Stock Actual: <strong class="${esCritico ? 'text-red-400 font-bold' : 'text-amber-400'}">${s.stock_actual} un.</strong></span>
-                                            <span class="font-bold text-brand-yellow">${precio}</span>
-                                        </div>
-                                    </div>
-                                `;
-                            }).join('')}
+                                    `;
+                                }).join('')}
+                            </div>
                         </div>
                     `;
                     container.appendChild(catBlock);
                 }
             });
 
-            if (totalAlertasRendered === 0) {
+            if (totalCategoriasRendered === 0) {
                 container.innerHTML = `<div class="text-center py-12 text-gray-400 text-xs">✅ Todo el inventario de Química DEC supera el umbral mínimo configurado.</div>`;
             }
+        }
+
+        function toggleAccordion(accId) {
+            const body = document.getElementById(accId);
+            const icon = document.getElementById(`icon-${accId}`);
+            if (body) {
+                body.classList.toggle('hidden');
+                if (icon) icon.classList.toggle('rotate-180');
+            }
+        }
+
+        async function configurarUmbralIA() {
+            const prompt = document.getElementById('ia-umbral-prompt').value;
+            if (!prompt) return;
+            try {
+                const res = await fetch(`${API_URL}/crm/configurar-umbrales-ia`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ instruccion_texto: prompt })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById('umbral-stock-input').value = data.umbral;
+                    alert(data.mensaje);
+                    loadAlertasStock();
+                }
+            } catch (e) { alert('Error de conexión'); }
         }
 
         async function subirListaExcel() {
@@ -522,7 +581,6 @@ SUAVIZANTE VIVERE CLASICO 900ML ; 3700 ; 100" class="w-full bg-white/5 border bo
             `).join('');
         }
 
-        // Corrección Estricta del Resaltado de Pestañas en Amarillo
         function switchTab(tab) {
             const tabs = ['kanban', 'stock', 'alertas', 'catalogo', 'clientes'];
             tabs.forEach(t => {

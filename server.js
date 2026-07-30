@@ -1,8 +1,8 @@
 /**
  * QUÍMICA DEC — Backend API del CRM B2B y Cerebro IA de "Dani"
  * ==========================================================
- * Servidor Express con Gestión de Inventario Real por Categorías de Química DEC,
- * Carga Masiva de Excel/CSV, Subida de Imágenes a Hostinger/WordPress y Voseo.
+ * Servidor Express con Menús Desplegables de Alertas por Categoría Oficial,
+ * Umbrales Mínimos por Voz/IA/Excel, Descuento de Stock y Voseo Argentino.
  */
 
 require('dotenv').config();
@@ -29,18 +29,6 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANO
 });
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-// Categorías Oficiales de Química DEC
-const CATEGORIAS_QUIMICA_DEC = [
-    'JABONES LÍQUIDOS PARA ROPA',
-    'SUAVIZANTES',
-    'DETERGENTES Y DESENGRAZANTES',
-    'PRODUCTOS PARA DILUIR',
-    'PASTAS Y CONCENTRADOS',
-    'LIMPIADORES Y DESINFECTANTES',
-    'AROMATIZADORES Y PERFUMINAS',
-    'ACCESORIOS Y HERRAMIENTAS'
-];
-
 // System Prompt Oficial de "Dani"
 const SYSTEM_PROMPT_DANI = `
 Eres "Dani", el asistente virtual oficial de Química DEC (Concepción del Uruguay, Entre Ríos).
@@ -62,61 +50,76 @@ REGLAS DE NEGOCIO Y POLÍTICAS COMERCIALES:
 app.get('/health', (req, res) => {
     res.json({
         status: 'online',
-        service: 'Química DEC CRM, Inventario & IA API',
+        service: 'Química DEC CRM & Inventario API',
         timestamp: new Date().toISOString(),
         supabase: 'connected'
     });
 });
 
+// Categorías Oficiales Estructuradas de Química DEC
+const CATEGORIAS_OFICIALES = [
+    { key: 'PRODUCTOS LÍQUIDOS', icon: 'water_drop', terms: ['LIQUIDO', 'LÍQUIDO', 'JABON', 'JABÓN', 'SUAVIZANTE', 'DETERGENTE', 'DESODORANTE', 'LIMPIADOR'] },
+    { key: 'PRODUCTOS PARA DILUIR', icon: 'opacity', terms: ['DILUIR', 'CONCENTRADO 1+4'] },
+    { key: 'PASTAS Y CONCENTRADOS', icon: 'science', terms: ['PASTA'] },
+    { key: 'JABÓN EN POLVO Y PAN', icon: 'grain', terms: ['POLVO', 'PAN'] },
+    { key: 'AEROSOLES Y PERFUMERÍA', icon: 'air', terms: ['AEROSOL', 'PERFUMINA', 'AROMATIZADOR', 'SAHUMERIO'] },
+    { key: 'DESINFECTANTES Y REPELENTES', icon: 'sanitizer', terms: ['LAVANDINA', 'CLORO', 'DESINFECTANTE', 'REPELENTE', 'INSECTICIDA', 'RAID', 'FUYI', 'OFF'] },
+    { key: 'ACCESORIOS Y HERRAMIENTAS', icon: 'cleaning_services', terms: ['ESPONJA', 'ESCOBILLON', 'ESCOBILLÓN', 'CEPILLO', 'SECADOR', 'CABO', 'BURLETE', 'GUANTE'] },
+    { key: 'ENVASES Y BOLSAS', icon: 'inventory_2', terms: ['ENVASE', 'BOLSA', 'BIDON', 'BIDÓN', 'BOTELLA'] },
+    { key: 'ESPECIALIDADES Y VARIOS', icon: 'grid_view', terms: [] }
+];
+
 // =========================================================================
-// 1. GESTIÓN DE INVENTARIO REAL Y ALERTAS POR CATEGORÍAS DE QUÍMICA DEC
+// 1. ALERTAS DE INVENTARIO AGRUPADAS EN MENÚS DESPLEGABLES (ACORDEÓN)
 // =========================================================================
 app.get('/api/crm/alertas-stock', async (req, res) => {
     try {
         const umbralMinimoDefault = parseInt(req.query.umbral || 20);
 
-        // Consultar productos de la DB dec_products
         const { data: prods, error } = await supabase
             .from('dec_products')
             .select('id, woocommerce_id, name, price, stock, stock_status, category, image_url')
             .eq('status', 'publish')
             .order('name', { ascending: true })
-            .limit(300);
+            .limit(1000);
 
         if (error) throw error;
 
-        // Filtrar solo productos de Química DEC (filtrar muestras o ítems ajenos)
-        const productosQuimicaDec = (prods || []).filter(p => {
-            const n = (p.name || '').toUpperCase();
-            return n.includes('JABON') || n.includes('JABÓN') || n.includes('DETERGENTE') || 
-                   n.includes('SUAVIZANTE') || n.includes('PASTA') || n.includes('LAVANDINA') || 
-                   n.includes('LIMPIADOR') || n.includes('PERFUMINA') || n.includes('DESINFECTANTE') || 
-                   n.includes('CONCENTRADO') || n.includes('DILUIR') || n.includes('BIDON') || n.includes('CIF');
+        // Estructura de categorías con acordeón
+        const estructuraCategorias = {};
+        CATEGORIAS_OFICIALES.forEach(cat => {
+            estructuraCategorias[cat.key] = {
+                key: cat.key,
+                icon: cat.icon,
+                total_alertas: 0,
+                tiene_critico: false,
+                tiene_bajo: false,
+                productos: []
+            };
         });
 
-        // Agrupar por Categorías Oficiales
-        const categoriasConAlertas = {};
-        CATEGORIAS_QUIMICA_DEC.forEach(cat => { categoriasConAlertas[cat] = []; });
-        categoriasConAlertas['OTROS PRODUCTOS QUÍMICA DEC'] = [];
-
-        productosQuimicaDec.forEach(p => {
+        (prods || []).forEach(p => {
             const stockActual = parseInt(p.stock || 0);
             const esCritico = stockActual === 0 || p.stock_status === 'outofstock';
             const esBajo = stockActual <= umbralMinimoDefault;
 
             if (esCritico || esBajo) {
                 const nameUp = (p.name || '').toUpperCase();
-                let catAsignada = 'OTROS PRODUCTOS QUÍMICA DEC';
+                let catElegida = 'ESPECIALIDADES Y VARIOS';
 
-                if (nameUp.includes('JABON') || nameUp.includes('JABÓN')) catAsignada = 'JABONES LÍQUIDOS PARA ROPA';
-                else if (nameUp.includes('SUAVIZANTE')) catAsignada = 'SUAVIZANTES';
-                else if (nameUp.includes('DETERGENTE') || nameUp.includes('DESENGRAZANTE')) catAsignada = 'DETERGENTES Y DESENGRAZANTES';
-                else if (nameUp.includes('DILUIR') || nameUp.includes('CONCENTRADO 1+4')) catAsignada = 'PRODUCTOS PARA DILUIR';
-                else if (nameUp.includes('PASTA')) catAsignada = 'PASTAS Y CONCENTRADOS';
-                else if (nameUp.includes('LIMPIADOR') || nameUp.includes('LAVANDINA') || nameUp.includes('DESINFECTANTE')) catAsignada = 'LIMPIADORES Y DESINFECTANTES';
-                else if (nameUp.includes('PERFUMINA') || nameUp.includes('AROMATIZADOR')) catAsignada = 'AROMATIZADORES Y PERFUMINAS';
+                for (const catConfig of CATEGORIAS_OFICIALES) {
+                    if (catConfig.terms.some(t => nameUp.includes(t))) {
+                        catElegida = catConfig.key;
+                        break;
+                    }
+                }
 
-                categoriasConAlertas[catAsignada].push({
+                const catObj = estructuraCategorias[catElegida];
+                catObj.total_alertas++;
+                if (esCritico) catObj.tiene_critico = true;
+                if (esBajo) catObj.tiene_bajo = true;
+
+                catObj.productos.push({
                     id: p.id,
                     woocommerce_id: p.woocommerce_id,
                     nombre: p.name,
@@ -132,8 +135,7 @@ app.get('/api/crm/alertas-stock', async (req, res) => {
         res.json({
             success: true,
             umbral_aplicado: umbralMinimoDefault,
-            total_productos_analizados: productosQuimicaDec.length,
-            categorias: categoriasConAlertas
+            categorias: estructuraCategorias
         });
 
     } catch (err) {
@@ -142,11 +144,44 @@ app.get('/api/crm/alertas-stock', async (req, res) => {
 });
 
 // =========================================================================
-// 2. CARGA MASIVA DE EXCEL / CSV DE PRECIOS
+// 2. CONFIGURACIÓN DE UMBRALES MÍNIMOS POR VOZ / IA / EXCEL
+// =========================================================================
+app.post('/api/crm/configurar-umbrales-ia', async (req, res) => {
+    try {
+        const { instruccion_texto } = req.body;
+        if (!instruccion_texto) return res.status(400).json({ error: 'Instrucción requerida' });
+
+        const completion = await groq.chat.completions.create({
+            messages: [
+                {
+                    role: "system",
+                    content: `Analiza la instrucción para definir umbrales mínimos de stock. Devuelve JSON con el umbral deseado. Ejemplo: {"umbral_general": 30, "mensaje_confirmacion": "Se estableció el límite mínimo de alerta en 30 unidades."}`
+                },
+                { role: "user", content: instruccion_texto }
+            ],
+            model: "llama-3.3-70b-versatile",
+            response_format: { type: "json_object" },
+            temperature: 0.1
+        });
+
+        const parsed = JSON.parse(completion.choices[0]?.message?.content || '{}');
+        res.json({
+            success: true,
+            umbral: parsed.umbral_general || 20,
+            mensaje: parsed.mensaje_confirmacion || `✅ Umbral mínimo actualizado a ${parsed.umbral_general || 20} unidades.`
+        });
+
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// =========================================================================
+// 3. CARGA MASIVA DE EXCEL / CSV DE PRECIOS
 // =========================================================================
 app.post('/api/crm/subir-excel-catalogo', async (req, res) => {
     try {
-        const { productos_csv } = req.body; // Array de productos [{sku, nombre, precio, stock}]
+        const { productos_csv } = req.body;
         if (!Array.isArray(productos_csv) || productos_csv.length === 0) {
             return res.status(400).json({ error: 'Lista de productos CSV/Excel vacía' });
         }
@@ -184,7 +219,7 @@ app.post('/api/crm/subir-excel-catalogo', async (req, res) => {
 });
 
 // =========================================================================
-// 3. DESCUENTO DE STOCK EN KANBAN
+// 4. DESCUENTO DE STOCK EN KANBAN
 // =========================================================================
 app.post('/api/crm/confirmar-pago-descontar-stock', async (req, res) => {
     try {
@@ -208,7 +243,7 @@ app.post('/api/crm/confirmar-pago-descontar-stock', async (req, res) => {
 });
 
 // =========================================================================
-// 4. RESTO DE ENDPOINTS CRM & IA DANI
+// 5. RESTO DE ENDPOINTS CRM & IA DANI
 // =========================================================================
 app.post('/api/whatsapp/incoming-ai', async (req, res) => {
     try {
