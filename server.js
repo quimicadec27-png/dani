@@ -2,7 +2,7 @@
  * QUÍMICA DEC — Backend API del CRM B2B y Cerebro IA de "Dani"
  * ==========================================================
  * Servidor Express integrado con Supabase, WooCommerce e IA (Groq Llama 3.3).
- * Sistema de 2 Etapas con Español Argentino Rioplatense Estricto (Voseo).
+ * Sistema de 2 Etapas con Búsqueda Priorizada (Líquidos vs Pastas) y Voseo Argentino.
  */
 
 require('dotenv').config();
@@ -182,7 +182,7 @@ app.post('/api/webhooks/woocommerce/order-created', async (req, res) => {
 });
 
 // =========================================================================
-// 2. ASISTENTE IA DANI: Pipeline de 2 Etapas (Parser -> SQL Lookup -> LLM)
+// 2. ASISTENTE IA DANI: Pipeline con Búsqueda Priorizada (Líquidos vs Pastas)
 // =========================================================================
 app.post('/api/whatsapp/incoming-ai', async (req, res) => {
     try {
@@ -217,7 +217,7 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
             console.warn("⚠️ No se extrajo JSON estructurado:", e.message);
         }
 
-        // 2. ETAPA 2: Búsqueda exacta de precios en Supabase (dec_products)
+        // 2. ETAPA 2: Búsqueda priorizada de precios en Supabase (dec_products)
         let cotizacionCalculada = "";
         let totalGeneralAcc = 0;
 
@@ -225,10 +225,12 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
             const desgloses = [];
 
             for (const item of itemsExtraidos) {
-                const queryStr = item.busqueda || '';
+                const queryStr = (item.busqueda || '').toLowerCase();
                 const qty = item.cantidad || 1;
 
                 if (!queryStr) continue;
+
+                const buscaPastaExplicitamente = queryStr.includes('pasta');
 
                 const words = queryStr.split(' ').filter(w => w.length > 2);
                 let dbRes = null;
@@ -239,15 +241,37 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
                         .from('dec_products')
                         .select('name, price, stock_status, sku')
                         .ilike('name', `%${firstWord}%`)
-                        .limit(10);
+                        .limit(20);
 
                     if (prods && prods.length > 0) {
-                        let bestMatch = prods[0];
-                        if (words.length > 1) {
-                            const secondWord = words[1].toLowerCase();
-                            const match = prods.find(p => p.name.toLowerCase().includes(secondWord));
-                            if (match) bestMatch = match;
+                        // Filtrar y clasificar candidatos
+                        let candidatos = prods;
+
+                        // Si el usuario NO pidió pasta explícitamente, filtrar/despriorizar productos con "PASTA"
+                        if (!buscaPastaExplicitamente) {
+                            const liquidos = candidatos.filter(p => !p.name.toUpperCase().includes('PASTA'));
+                            if (liquidos.length > 0) candidatos = liquidos;
                         }
+
+                        // Buscar coincidencia secundaria con tamaño o variante (ej: "5 LT", "5L", "vivere")
+                        let bestMatch = candidatos[0];
+                        if (words.length > 1) {
+                            for (let i = 1; i < words.length; i++) {
+                                const w = words[i];
+                                const match = candidatos.find(p => p.name.toLowerCase().includes(w));
+                                if (match) {
+                                    bestMatch = match;
+                                    break;
+                                }
+                            }
+                        }
+
+                        // Si no tenía precio en variante padre, buscar una variante que sí tenga precio
+                        if (parseFloat(bestMatch.price) === 0) {
+                            const conPrecio = candidatos.find(p => parseFloat(p.price) > 0);
+                            if (conPrecio) bestMatch = conPrecio;
+                        }
+
                         dbRes = bestMatch;
                     }
                 }
