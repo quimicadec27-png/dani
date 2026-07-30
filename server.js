@@ -2,7 +2,7 @@
  * QUÍMICA DEC — Backend API del CRM B2B y Cerebro IA de "Dani"
  * ==========================================================
  * Servidor Express integrado con Supabase, WooCommerce e IA (Groq Llama 3.3).
- * Sistema de 2 Etapas: Parser IA -> Búsqueda Exacta en DB -> Cotización Determinista.
+ * Sistema de 2 Etapas con Español Argentino Rioplatense Estricto (Voseo).
  */
 
 require('dotenv').config();
@@ -32,9 +32,18 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 const SYSTEM_PROMPT_DANI = `
 Eres "Dani", el asistente virtual oficial de Química DEC (Concepción del Uruguay, Entre Ríos).
 Hablas en primera persona como representante oficial ("en Química DEC nos dedicamos", "ofrecemos", "nuestro local").
-Tu tono debe ser siempre amable, alegre, muy profesional y rioplatense (usando el "vos" con respeto y calidez).
 
-REGLAS DE NEGOCIO Y POLÍTICAS COMERCIALES ESTRICTAS:
+⚠️ REGLA DE ORO DE IDIOMA Y DIALECTO (ESPAÑOL ARGENTINO CON VOSEO ESTRICTO):
+- Habla SIEMPRE en Español Argentino Rioplatense natural, cercano, respetuoso y cálido.
+- ESTÁ ABSOLUTAMENTE PROHIBIDO usar conjugaciones en neutro o latinoamericano como: "puedes", "quieres", "tienes", "necesitas", "deseas", "consultas", "tienes que".
+- REEMPLÁZALAS OBLIGATORIAMENTE POR EL VOSEO ARGENTINO:
+  * "podés" (en vez de puedes)
+  * "querés" (en vez de quieres/deseas)
+  * "tenés" (en vez de tienes)
+  * "necesitás" (en vez de necesitas)
+  * "ingresá", "fijate", "avisame", "decime", "contame", "revisá", "armá".
+
+REGLAS DE NEGOCIO Y POLÍTICAS COMERCIALES:
 1. COMPRA MÍNIMA INICIAL: $80.000 para registrarse y activar la cuenta de precios mayoristas por primera vez.
 2. CLIENTES ACTIVOS RECURRENTES:
    - Mínimo de $2.500 para retiro en local físico.
@@ -221,7 +230,6 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
 
                 if (!queryStr) continue;
 
-                // Extraer palabras clave de búsqueda
                 const words = queryStr.split(' ').filter(w => w.length > 2);
                 let dbRes = null;
 
@@ -234,7 +242,6 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
                         .limit(10);
 
                     if (prods && prods.length > 0) {
-                        // Buscar la mejor coincidencia que contenga la segunda palabra o variante
                         let bestMatch = prods[0];
                         if (words.length > 1) {
                             const secondWord = words[1].toLowerCase();
@@ -249,14 +256,14 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
                     const price = parseFloat(dbRes.price);
                     const subtotal = price * qty;
                     totalGeneralAcc += subtotal;
-                    desgloses.push(`- ${qty}x ${dbRes.name}: $${price.toLocaleString('es-AR')} c/u ➔ Subtotal: $${subtotal.toLocaleString('es-AR')} (Stock: ${dbRes.stock_status === 'instock' ? 'Disponible' : 'Agotado'})`);
+                    desgloses.push(`- ${qty}x ${dbRes.name}: $${price.toLocaleString('es-AR')} c/u -> Subtotal: $${subtotal.toLocaleString('es-AR')} (Stock: ${dbRes.stock_status === 'instock' ? 'Disponible' : 'Agotado'})`);
                 } else if (dbRes) {
                     desgloses.push(`- ${qty}x ${dbRes.name}: Consultar valor variante | Stock: ${dbRes.stock_status === 'instock' ? 'Disponible' : 'Agotado'}`);
                 }
             }
 
             if (desgloses.length > 0) {
-                cotizacionCalculada = `\n[COTIZACIÓN MATEMÁTICA EXACTA BASADA EN LA BASE DE DATOS `dec_products`]:\n` +
+                cotizacionCalculada = "\n[COTIZACION MATEMATICA EXACTA BASE DE DATOS dec_products]:\n" +
                     desgloses.join('\n') +
                     `\nTOTAL GENERAL CALCULADO CENTAVO POR CENTAVO: $${totalGeneralAcc.toLocaleString('es-AR')}`;
             }
