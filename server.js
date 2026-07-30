@@ -1,8 +1,8 @@
 /**
  * QUÍMICA DEC — Backend API del CRM B2B y Cerebro IA de "Dani"
  * ==========================================================
- * Servidor Express con Menús Desplegables de Alertas por Categoría Oficial,
- * Umbrales Mínimos por Voz/IA/Excel, Descuento de Stock, Voseo y CHAT EN VIVO ESTILO KOMMO.
+ * Servidor Express con Chat en Vivo con Contexto Continuo (Sin "Hola" repetitivo),
+ * Voseo Rioplatense Estricto ("recordá"), Sincronización Web/CRM y Auto-KeepAlive Ping.
  */
 
 require('dotenv').config();
@@ -10,6 +10,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const path = require('path');
+const https = require('https');
 const { createClient } = require('@supabase/supabase-js');
 const Groq = require('groq-sdk');
 
@@ -34,10 +35,19 @@ const SYSTEM_PROMPT_DANI = `
 Eres "Dani", el asistente virtual oficial de Química DEC (Concepción del Uruguay, Entre Ríos).
 Hablas en primera persona como representante oficial ("en Química DEC nos dedicamos", "ofrecemos", "nuestro local").
 
-⚠️ REGLA DE ORO DE IDIOMA Y DIALECTO (ESPAÑOL ARGENTINO CON VOSEO ESTRICTO):
+⚠️ REGLA DE ORO DE DIALECTO Y VOSEO ARGENTINO RIOPLATENSE ESTRICTO:
 - Habla SIEMPRE en Español Argentino Rioplatense natural, cercano, respetuoso y cálido.
-- ESTÁ ABSOLUTAMENTE PROHIBIDO usar conjugaciones en neutro como "puedes", "quieres", "tienes", "necesitas", "deseas".
-- REEMPLÁZALAS OBLIGATORIAMENTE POR EL VOSEO ARGENTINO: "podés", "querés", "tenés", "necesitás", "ingresá", "fijate", "avisame", "decime".
+- ESTÁ ABSOLUTAMENTE PROHIBIDO usar conjugaciones en neutro o latino como:
+  * "recuerda" ➔ DEBES USAR OBLIGATORIAMENTE "recordá".
+  * "puedes" ➔ DEBES USAR OBLIGATORIAMENTE "podés".
+  * "quieres" ➔ DEBES USAR OBLIGATORIAMENTE "querés".
+  * "tienes" ➔ DEBES USAR OBLIGATORIAMENTE "tenés".
+  * "necesitas" ➔ DEBES USAR OBLIGATORIAMENTE "necesitás".
+  * "deseas" ➔ DEBES USAR OBLIGATORIAMENTE "querés".
+
+⚠️ REGLA DE CONTINUIDAD DE CONVERSACIÓN (NO REPETIR SALUDOS):
+- SI EN EL HISTORIAL DE MENSAJES YA HUBO UN SALUDO O CONVERSACIÓN PREVIA, ESTÁ PROHIBIDO VOLVER A DECIR "¡Hola!", "Hola" O PRESENTARTE DE NUEVO ("Soy Dani...").
+- RESPONDE DIRECTAMENTE Y CON FLUIDEZ A LO QUE EL CLIENTE ACABA DE PREGUNTAR.
 
 REGLAS DE NEGOCIO Y POLÍTICAS COMERCIALES:
 1. COMPRA MÍNIMA INICIAL: $80.000 para registrarse y activar la cuenta de precios mayoristas por primera vez.
@@ -56,6 +66,16 @@ app.get('/health', (req, res) => {
     });
 });
 
+// Auto Ping Interno de Render cada 10 Minutos para evitar suspensiones
+setInterval(() => {
+    const targetUrl = 'https://crm.quimicadec.com/health';
+    https.get(targetUrl, (res) => {
+        console.log(`[KEEP-ALIVE PING] Auto-ping enviado a ${targetUrl} - Status: ${res.statusCode}`);
+    }).on('error', (err) => {
+        console.log(`[KEEP-ALIVE PING ERROR]: ${err.message}`);
+    });
+}, 10 * 60 * 1000); // 10 Minutos
+
 // Categorías Oficiales Estructuradas de Química DEC
 const CATEGORIAS_OFICIALES = [
     { key: 'PRODUCTOS LÍQUIDOS', icon: 'water_drop', terms: ['LIQUIDO', 'LÍQUIDO', 'JABON', 'JABÓN', 'SUAVIZANTE', 'DETERGENTE', 'DESODORANTE', 'LIMPIADOR'] },
@@ -70,38 +90,58 @@ const CATEGORIAS_OFICIALES = [
 ];
 
 // =========================================================================
-// 1. CHAT EN VIVO ESTILO KOMMO: HISTORIAL Y ENVIAR MENSAJES VENDEDOR
+// 1. CHAT EN VIVO: RECEPCIÓN DESDE LA WEB Y WHATSAPP CON CONTEXTO COMPLETO
 // =========================================================================
 
-// Webhook / Proxy del Bot con registro de mensajes
 app.post('/api/whatsapp/incoming-ai', async (req, res) => {
     try {
-        const { phone, mensaje_texto } = req.body;
-        let textoProcesado = mensaje_texto || '';
-        const clientePhone = phone || 'WebCustomer';
+        const { phone, user_id, session_id, mensaje_texto, user_message } = req.body;
+        const textoProcesado = (mensaje_texto || user_message || '').trim();
+        const clientePhone = phone || user_id || session_id || 'Cliente Web';
 
-        // Buscar o crear cliente
-        let { data: cliente } = await supabase.from('clientes').select('id, bot_pausado').eq('whatsapp', clientePhone).single();
+        if (!textoProcesado) return res.status(400).json({ error: 'Mensaje vacío' });
+
+        // Buscar o registrar cliente en Supabase
+        let { data: cliente } = await supabase.from('clientes').select('id, bot_pausado, razon_social, whatsapp').eq('whatsapp', clientePhone).single();
         if (!cliente) {
-            const { data: newC } = await supabase.from('clientes').insert([{ razon_social: `Cliente Web (${clientePhone})`, whatsapp: clientePhone }]).select().single();
+            const { data: newC } = await supabase.from('clientes').insert([{ razon_social: `Cliente Web (${clientePhone.substring(0, 12)})`, whatsapp: clientePhone }]).select().single();
             cliente = newC;
         }
 
-        // Guardar mensaje del cliente en el historial
-        if (cliente) {
-            await supabase.from('mensajes_chat').insert([{ cliente_id: cliente.id, emisor: 'cliente', texto: textoProcesado }]);
+        // Guardar mensaje del cliente en el historial de Supabase
+        let clienteId = cliente ? cliente.id : null;
+        if (clienteId) {
+            await supabase.from('mensajes_chat').insert([{ cliente_id: clienteId, emisor: 'cliente', texto: textoProcesado }]);
         }
 
-        // Si el vendedor pausó el bot para este cliente, la IA no interfiere
+        // Si el vendedor pausó el bot para este cliente, la IA no responde
         if (cliente && cliente.bot_pausado) {
             return res.json({
                 success: true,
                 bot_pausado: true,
-                respuesta_sugerida_ia: "El bot está pausado. Un vendedor responderá a la brevedad."
+                respuesta_sugerida_ia: "El bot está pausado. Un vendedor te responderá en breve."
             });
         }
 
-        // Extraer intenciones de compra
+        // Obtener los últimos 6 mensajes del historial para MANTENER EL CONTEXTO CONTINUO
+        let historialPrevio = [];
+        if (clienteId) {
+            const { data: ultimosMsgs } = await supabase
+                .from('mensajes_chat')
+                .select('emisor, texto')
+                .eq('cliente_id', clienteId)
+                .order('creado_el', { ascending: false })
+                .limit(6);
+
+            if (ultimosMsgs && ultimosMsgs.length > 0) {
+                historialPrevio = ultimosMsgs.reverse().map(m => ({
+                    role: m.emisor === 'cliente' ? 'user' : 'assistant',
+                    content: m.texto
+                }));
+            }
+        }
+
+        // Extraer intenciones de productos para cotización matemática exactas
         let itemsExtraidos = [];
         try {
             const parserCompletion = await groq.chat.completions.create({
@@ -169,34 +209,49 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
             }
         }
 
-        let contextoCliente = "Cliente Registrado y Activo en Supabase.";
-        const promptFinal = `${SYSTEM_PROMPT_DANI}\n[CONTEXTO CLIENTE]: ${contextoCliente}\n${cotizacionCalculada}`;
+        const tieneMensajesAnteriores = historialPrevio.length > 1;
+        const promptInstrucciones = `${SYSTEM_PROMPT_DANI}\n${tieneMensajesAnteriores ? '⚠️ ATENCIÓN: Esta conversación ya está en marcha. ESTÁ ESTRICTAMENTE PROHIBIDO DECIR "Hola", "¡Hola!" O PRESENTARTE DE NUEVO. Responde directo al grano.' : ''}\n${cotizacionCalculada}`;
+
+        const messagesPayload = [
+            { role: "system", content: promptInstrucciones },
+            ...historialPrevio
+        ];
+
+        // Asegurar que el último mensaje no esté duplicado
+        if (messagesPayload.length === 1 || messagesPayload[messagesPayload.length - 1].content !== textoProcesado) {
+            messagesPayload.push({ role: "user", content: textoProcesado });
+        }
 
         const completion = await groq.chat.completions.create({
-            messages: [
-                { role: "system", content: promptFinal },
-                { role: "user", content: `Mensaje del usuario: "${textoProcesado}"` }
-            ],
+            messages: messagesPayload,
             model: "llama-3.3-70b-versatile",
             temperature: 0.2
         });
 
-        const respuestaIA = completion.choices[0]?.message?.content || "¡Hola! 😊 ¿En qué te puedo ayudar hoy?";
+        let respuestaIA = completion.choices[0]?.message?.content || "Perfecto, ¿en qué te puedo ayudar?";
+        
+        // Reemplazo de seguridad contra fallos de dialecto neutro
+        respuestaIA = respuestaIA.replace(/\brecuerda\b/gi, 'recordá')
+                                 .replace(/\brecuerde\b/gi, 'recordá')
+                                 .replace(/\bpuedes\b/gi, 'podés')
+                                 .replace(/\bquieres\b/gi, 'querés')
+                                 .replace(/\btienes\b/gi, 'tenés');
 
         // Guardar respuesta del Bot en el historial
-        if (cliente) {
-            await supabase.from('mensajes_chat').insert([{ cliente_id: cliente.id, emisor: 'bot', texto: respuestaIA }]);
+        if (clienteId) {
+            await supabase.from('mensajes_chat').insert([{ cliente_id: clienteId, emisor: 'bot', texto: respuestaIA }]);
         }
 
         res.json({
             success: true,
-            respuesta_sugerida_ia: respuestaIA
+            respuesta_sugerida_ia: respuestaIA,
+            choices: [{ message: { content: respuestaIA } }] // Compatibilidad con el widget floatante PHP
         });
 
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Obtener lista de conversaciones estilo Kommo
+// Obtener lista de conversaciones para el CRM
 app.get('/api/crm/chat/conversaciones', async (req, res) => {
     try {
         const { data: clientes } = await supabase.from('clientes').select('id, razon_social, whatsapp, bot_pausado, creado_el').order('creado_el', { ascending: false });
@@ -220,10 +275,8 @@ app.post('/api/crm/chat/enviar-mensaje-vendedor', async (req, res) => {
         const { cliente_id, texto_mensaje, pausar_bot } = req.body;
         if (!cliente_id || !texto_mensaje) return res.status(400).json({ error: 'Cliente y mensaje requeridos' });
 
-        // Guardar respuesta del vendedor
         await supabase.from('mensajes_chat').insert([{ cliente_id: cliente_id, emisor: 'vendedor', texto: texto_mensaje }]);
 
-        // Actualizar estado del bot para ese cliente
         if (typeof pausar_bot !== 'undefined') {
             await supabase.from('clientes').update({ bot_pausado: pausar_bot }).eq('id', cliente_id);
         }
@@ -300,9 +353,7 @@ app.get('/api/crm/alertas-stock', async (req, res) => {
             categorias: estructuraCategorias
         });
 
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.post('/api/crm/configurar-umbrales-ia', async (req, res) => {
@@ -314,7 +365,7 @@ app.post('/api/crm/configurar-umbrales-ia', async (req, res) => {
             messages: [
                 {
                     role: "system",
-                    content: `Analiza la instrucción para definir umbrales mínimos de stock. Devuelve JSON con el umbral deseado. Ejemplo: {"umbral_general": 30, "mensaje_confirmacion": "Se estableció el límite mínimo de alerta en 30 unidades."}`
+                    content: `Analiza la instrucción para definir umbrales mínimos de stock. Devuelve JSON: {"umbral_general": 30, "mensaje_confirmacion": "Se estableció el límite mínimo de alerta en 30 unidades."}`
                 },
                 { role: "user", content: instruccion_texto }
             ],
@@ -330,9 +381,7 @@ app.post('/api/crm/configurar-umbrales-ia', async (req, res) => {
             mensaje: parsed.mensaje_confirmacion || `✅ Umbral mínimo actualizado a ${parsed.umbral_general || 20} unidades.`
         });
 
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // =========================================================================
@@ -372,9 +421,7 @@ app.post('/api/crm/subir-excel-catalogo', async (req, res) => {
             mensaje: `🎉 ¡Éxito! Se actualizaron ${actualizados} productos masivamente en Supabase.`
         });
 
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.post('/api/crm/confirmar-pago-descontar-stock', async (req, res) => {
