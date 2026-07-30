@@ -127,15 +127,20 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
             });
         }
 
-        // Obtener los últimos 6 mensajes para CONTEXTO CONTINUO (Evitar el "Hola" repetitivo)
+        // Obtener historial previo (priorizando el historial enviado por la web o consultando Supabase)
         let historialPrevio = [];
-        if (clienteId) {
+        if (req.body.messages && Array.isArray(req.body.messages) && req.body.messages.length > 0) {
+            historialPrevio = req.body.messages
+                .filter(m => m.role === 'user' || m.role === 'assistant')
+                .slice(-10)
+                .map(m => ({ role: m.role, content: m.content }));
+        } else if (clienteId) {
             const { data: ultimosMsgs } = await supabase
                 .from('mensajes_chat')
                 .select('emisor, texto')
                 .eq('cliente_id', clienteId)
                 .order('creado_el', { ascending: false })
-                .limit(6);
+                .limit(10);
 
             if (ultimosMsgs && ultimosMsgs.length > 0) {
                 historialPrevio = ultimosMsgs.reverse().map(m => ({
@@ -214,14 +219,20 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
         }
 
         const tieneMensajesAnteriores = historialPrevio.length > 1;
-        const promptInstrucciones = `${SYSTEM_PROMPT_DANI}\n${tieneMensajesAnteriores ? '⚠️ ATENCIÓN: Esta conversación ya está en curso. ESTÁ ESTRICTAMENTE PROHIBIDO DECIR "Hola", "¡Hola!" O PRESENTARTE DE NUEVO. Responde directo al grano sin saludos.' : ''}\n${cotizacionCalculada}`;
+        const promptInstrucciones = `${SYSTEM_PROMPT_DANI}\n${tieneMensajesAnteriores ? '⚠️ ATENCIÓN CRÍTICA DE CONTINUIDAD DE CHAT:\nEsta conversación YA ESTÁ EN CURSO. Recordá perfectamente lo que se habló antes en el historial. ESTÁ ABSOLUTAMENTE PROHIBIDO SALUDAR DE NUEVO ("¡Hola!", "Hola", "Soy Dani..."). Responde directo y con memoria al último mensaje del usuario.' : ''}\n${cotizacionCalculada}`;
 
         const messagesPayload = [
-            { role: "system", content: promptInstrucciones },
-            ...historialPrevio
+            { role: "system", content: promptInstrucciones }
         ];
 
-        if (messagesPayload.length === 1 || messagesPayload[messagesPayload.length - 1].content !== textoProcesado) {
+        // Agregar historial filtrando el system prompt si viniera
+        historialPrevio.forEach(m => {
+            if (m.role !== 'system') messagesPayload.push(m);
+        });
+
+        // Asegurar que el último mensaje del usuario esté al final
+        const lastMsgInPayload = messagesPayload[messagesPayload.length - 1];
+        if (!lastMsgInPayload || lastMsgInPayload.role !== 'user' || lastMsgInPayload.content !== textoProcesado) {
             messagesPayload.push({ role: "user", content: textoProcesado });
         }
 
