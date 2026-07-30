@@ -1,8 +1,8 @@
 /**
  * QUÍMICA DEC — Backend API del CRM B2B y Cerebro IA de "Dani"
  * ==========================================================
- * Servidor Express integrado con Supabase, WooCommerce e IA (Groq Llama 3.3).
- * Sistema de 2 Etapas con Búsqueda Priorizada (Líquidos vs Pastas) y Voseo Argentino.
+ * Servidor Express integrado con Supabase, WooCommerce, IA (Groq)
+ * y Módulo de Alertas de Seguimiento Comercial ($80.000 Mensual).
  */
 
 require('dotenv').config();
@@ -195,7 +195,6 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
             textoProcesado = "[Audio Transcrito]: Requiero 5 bidones de lavandina y 2 detergentes concentrados";
         }
 
-        // 1. ETAPA 1: Extraer la lista de productos requeridos usando Groq JSON mode
         let itemsExtraidos = [];
         try {
             const parserCompletion = await groq.chat.completions.create({
@@ -217,7 +216,6 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
             console.warn("⚠️ No se extrajo JSON estructurado:", e.message);
         }
 
-        // 2. ETAPA 2: Búsqueda priorizada de precios en Supabase (dec_products)
         let cotizacionCalculada = "";
         let totalGeneralAcc = 0;
 
@@ -231,7 +229,6 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
                 if (!queryStr) continue;
 
                 const buscaPastaExplicitamente = queryStr.includes('pasta');
-
                 const words = queryStr.split(' ').filter(w => w.length > 2);
                 let dbRes = null;
 
@@ -244,16 +241,12 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
                         .limit(20);
 
                     if (prods && prods.length > 0) {
-                        // Filtrar y clasificar candidatos
                         let candidatos = prods;
-
-                        // Si el usuario NO pidió pasta explícitamente, filtrar/despriorizar productos con "PASTA"
                         if (!buscaPastaExplicitamente) {
                             const liquidos = candidatos.filter(p => !p.name.toUpperCase().includes('PASTA'));
                             if (liquidos.length > 0) candidatos = liquidos;
                         }
 
-                        // Buscar coincidencia secundaria con tamaño o variante (ej: "5 LT", "5L", "vivere")
                         let bestMatch = candidatos[0];
                         if (words.length > 1) {
                             for (let i = 1; i < words.length; i++) {
@@ -266,7 +259,6 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
                             }
                         }
 
-                        // Si no tenía precio en variante padre, buscar una variante que sí tenga precio
                         if (parseFloat(bestMatch.price) === 0) {
                             const conPrecio = candidatos.find(p => parseFloat(p.price) > 0);
                             if (conPrecio) bestMatch = conPrecio;
@@ -293,7 +285,6 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
             }
         }
 
-        // 3. ETAPA 3: Contexto de Cliente y Generación de Respuesta con Dani
         let contextoCliente = "Estado: Cliente no registrado en Supabase.";
         if (phone || textoProcesado.toLowerCase().includes('registrado') || textoProcesado.toLowerCase().includes('ya soy cliente')) {
             contextoCliente = "Cliente Registrado y Activo en Supabase (Precios Mayoristas Activos). Puede comprar a partir de $2.500 retiro en local o $50.000 envío.";
@@ -328,7 +319,7 @@ ${cotizacionCalculada ? cotizacionCalculada : ''}
 });
 
 // =========================================================================
-// 3. RUTAS DE CONSULTA DEL CRM (Fichas de Clientes y Embudo)
+// 3. RUTAS DEL CRM Y ALERTAS DE SEGUIMIENTO COMERCIAL ($80.000 MENSUAL)
 // =========================================================================
 app.get('/api/crm/clientes', async (req, res) => {
     try {
@@ -354,6 +345,72 @@ app.get('/api/crm/pedidos', async (req, res) => {
         if (error) throw error;
         res.json({ success: true, count: data.length, pedidos: data });
     } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Endpoint de Alertas Comerciales para Vendedores
+app.get('/api/crm/alertas-seguimiento', async (req, res) => {
+    try {
+        const firstDayOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+
+        // 1. Obtener todos los clientes
+        const { data: clientes, error: cErr } = await supabase
+            .from('clientes')
+            .select('*')
+            .order('razon_social', { ascending: true });
+
+        if (cErr) throw cErr;
+
+        // 2. Obtener los pedidos del mes actual
+        const { data: pedidosMes, error: pErr } = await supabase
+            .from('pedidos')
+            .select('cliente_id, monto_total')
+            .gte('creado_el', firstDayOfMonth);
+
+        if (pErr) throw pErr;
+
+        // 3. Sumar consumos por cliente
+        const consumosPorCliente = {};
+        (pedidosMes || []).forEach(p => {
+            const cid = p.cliente_id;
+            consumosPorCliente[cid] = (consumosPorCliente[cid] || 0) + parseFloat(p.monto_total || 0);
+        });
+
+        // 4. Calcular estado del cupo de $80.000
+        const alertas = (clientes || []).map(c => {
+            const consumidoMes = consumosPorCliente[c.id] || 0;
+            const faltaParaMinimo = Math.max(0, 80000 - consumidoMes);
+            const cumpleMinimo = consumidoMes >= 80000;
+
+            let mensajeSeguimiento = "";
+            if (cumpleMinimo) {
+                mensajeSeguimiento = `¡Hola ${c.contacto_nombre || c.razon_social}! 👋 Muchas gracias por tu compra. Ya alcanzaste el mínimo mayorista de este mes ($${consumidoMes.toLocaleString('es-AR')}).`;
+            } else {
+                mensajeSeguimiento = `¡Hola ${c.contacto_nombre || c.razon_social}! 👋 Te recordamos de Química DEC que tenés acumulados $${consumidoMes.toLocaleString('es-AR')} en compras este mes. Te faltan sólo $${faltaParaMinimo.toLocaleString('es-AR')} para mantener tu beneficio de cliente mayorista. ¿Querés que te preparemos un pedido rápido?`;
+            }
+
+            return {
+                cliente_id: c.id,
+                razon_social: c.razon_social || c.contacto_nombre,
+                whatsapp: c.whatsapp,
+                consumido_mes: consumidoMes,
+                falta_para_80k: faltaParaMinimo,
+                cumple_minimo_80k: cumpleMinimo,
+                porcentaje_cumplido: Math.min(100, Math.round((consumidoMes / 80000) * 100)),
+                mensaje_whatsapp_sugerido: encodeURIComponent(mensajeSeguimiento)
+            };
+        });
+
+        res.json({
+            success: true,
+            mes_actual: new Date().toLocaleString('es-AR', { month: 'long', year: 'numeric' }),
+            total_clientes: alertas.length,
+            alertas: alertas
+        });
+
+    } catch (err) {
+        console.error('❌ Error calculando alertas comerciales:', err);
         res.status(500).json({ error: err.message });
     }
 });

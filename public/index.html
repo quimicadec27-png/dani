@@ -57,14 +57,14 @@
                 </div>
                 <div>
                     <h1 class="font-title text-xl font-bold tracking-tight uppercase text-white">Química DEC <span class="text-brand-yellow">CRM B2B</span></h1>
-                    <p class="text-xs text-gray-400">Gestión de Clientes, Pedidos y Asistente IA Mayorista ($80k Mínimo)</p>
+                    <p class="text-xs text-gray-400">Gestión de Clientes, Pedidos y Alertas de Seguimiento ($80k Mínimo)</p>
                 </div>
             </div>
 
             <!-- Stats Badge Bar -->
             <div class="flex items-center gap-3">
                 <div class="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-xs">
-                    <span class="text-gray-400">Mínimo Mayorista:</span> <strong class="text-brand-yellow">$80.000</strong>
+                    <span class="text-gray-400">Mínimo Mayorista:</span> <strong class="text-brand-yellow">$80.000 / mes</strong>
                 </div>
                 <div class="px-4 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold flex items-center gap-1.5">
                     <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
@@ -79,15 +79,18 @@
 
         <!-- Navigation Tabs & Actions -->
         <div class="flex flex-col sm:flex-row justify-between items-center gap-4 border-b border-white/10 pb-4">
-            <div class="flex gap-2 bg-white/5 p-1.5 rounded-2xl border border-white/10">
+            <div class="flex flex-wrap gap-2 bg-white/5 p-1.5 rounded-2xl border border-white/10">
                 <button id="tab-kanban-btn" onclick="switchTab('kanban')" class="px-5 py-2.5 rounded-xl font-title text-xs font-bold uppercase tracking-wider bg-brand-yellow text-primary-dark shadow-lg transition-all">
                     Embudo de Pedidos
+                </button>
+                <button id="tab-alertas-btn" onclick="switchTab('alertas')" class="px-5 py-2.5 rounded-xl font-title text-xs font-bold uppercase tracking-wider text-gray-300 hover:text-white hover:bg-white/10 transition-all flex items-center gap-1">
+                    <span class="material-symbols-outlined text-[16px] text-amber-400">notifications_active</span> Alertas $80k
                 </button>
                 <button id="tab-clientes-btn" onclick="switchTab('clientes')" class="px-5 py-2.5 rounded-xl font-title text-xs font-bold uppercase tracking-wider text-gray-300 hover:text-white hover:bg-white/10 transition-all">
                     Fichas de Clientes
                 </button>
                 <button id="tab-ia-btn" onclick="switchTab('ia')" class="px-5 py-2.5 rounded-xl font-title text-xs font-bold uppercase tracking-wider text-gray-300 hover:text-white hover:bg-white/10 transition-all flex items-center gap-1">
-                    <span class="material-symbols-outlined text-[16px] text-brand-yellow">auto_awesome</span> Asistente IA
+                    <span class="material-symbols-outlined text-[16px] text-brand-yellow">auto_awesome</span> Asistente Dani IA
                 </button>
             </div>
             <button onclick="refreshData()" class="px-4 py-2.5 rounded-xl bg-accent-blue/10 border border-accent-blue/30 text-accent-blue hover:bg-accent-blue/20 text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-all">
@@ -106,9 +109,7 @@
                         </h3>
                         <span id="count-presupuestos" class="px-2 py-0.5 rounded-full bg-yellow-400/20 text-yellow-400 text-xs font-bold">0</span>
                     </div>
-                    <div id="col-presupuestos" class="space-y-3 min-h-[300px]">
-                        <!-- Rendered via JS -->
-                    </div>
+                    <div id="col-presupuestos" class="space-y-3 min-h-[300px]"></div>
                 </div>
 
                 <!-- Columna Confirmados -->
@@ -119,9 +120,7 @@
                         </h3>
                         <span id="count-confirmados" class="px-2 py-0.5 rounded-full bg-blue-400/20 text-blue-400 text-xs font-bold">0</span>
                     </div>
-                    <div id="col-confirmados" class="space-y-3 min-h-[300px]">
-                        <!-- Rendered via JS -->
-                    </div>
+                    <div id="col-confirmados" class="space-y-3 min-h-[300px]"></div>
                 </div>
 
                 <!-- Columna Pagados -->
@@ -132,9 +131,7 @@
                         </h3>
                         <span id="count-pagados" class="px-2 py-0.5 rounded-full bg-emerald-400/20 text-emerald-400 text-xs font-bold">0</span>
                     </div>
-                    <div id="col-pagados" class="space-y-3 min-h-[300px]">
-                        <!-- Rendered via JS -->
-                    </div>
+                    <div id="col-pagados" class="space-y-3 min-h-[300px]"></div>
                 </div>
 
                 <!-- Columna Despachados -->
@@ -145,14 +142,34 @@
                         </h3>
                         <span id="count-despachados" class="px-2 py-0.5 rounded-full bg-purple-400/20 text-purple-400 text-xs font-bold">0</span>
                     </div>
-                    <div id="col-despachados" class="space-y-3 min-h-[300px]">
-                        <!-- Rendered via JS -->
-                    </div>
+                    <div id="col-despachados" class="space-y-3 min-h-[300px]"></div>
                 </div>
             </div>
         </section>
 
-        <!-- TAB 2: FICHAS DE CLIENTES -->
+        <!-- TAB 2: ALERTAS DE SEGUIMIENTO COMERCIAL ($80.000 MENSUAL) -->
+        <section id="view-alertas" class="hidden space-y-6">
+            <div class="glass-panel p-6 rounded-2xl space-y-6">
+                <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                    <div>
+                        <h2 class="font-title text-lg font-bold uppercase text-white tracking-wider flex items-center gap-2">
+                            <span class="material-symbols-outlined text-amber-400">notifications_active</span> Seguimiento del Mínimo Mayorista ($80.000 / mes)
+                        </h2>
+                        <p class="text-xs text-gray-400">Control de compras acumuladas del mes actual para Danilo y Micaela.</p>
+                    </div>
+                    <span id="mes-actual-label" class="px-3 py-1 rounded-xl bg-white/5 border border-white/10 text-xs font-bold text-brand-yellow uppercase">
+                        Cargando Mes...
+                    </span>
+                </div>
+
+                <!-- Grid de Tarjetas de Alerta por Cliente -->
+                <div id="grid-alertas" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Rendered via JS -->
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 3: FICHAS DE CLIENTES -->
         <section id="view-clientes" class="hidden space-y-6">
             <div class="glass-panel p-6 rounded-2xl space-y-6">
                 <div class="flex flex-col md:flex-row justify-between items-center gap-4">
@@ -170,26 +187,24 @@
                                 <th class="py-3 px-4 text-center">Acciones</th>
                             </tr>
                         </thead>
-                        <tbody id="clientes-tbody" class="divide-y divide-white/5">
-                            <!-- Rendered via JS -->
-                        </tbody>
+                        <tbody id="clientes-tbody" class="divide-y divide-white/5"></tbody>
                     </table>
                 </div>
             </div>
         </section>
 
-        <!-- TAB 3: ASISTENTE IA Y COTIZADOR -->
+        <!-- TAB 4: ASISTENTE DANI IA -->
         <section id="view-ia" class="hidden space-y-6">
             <div class="glass-panel p-6 rounded-2xl space-y-6 max-w-3xl mx-auto">
                 <div class="flex items-center gap-3">
                     <span class="material-symbols-outlined text-3xl text-brand-yellow">smart_toy</span>
                     <div>
-                        <h2 class="font-title text-lg font-bold uppercase text-white tracking-wider">Asistente IA Mayorista (Groq Llama 3.3)</h2>
-                        <p class="text-xs text-gray-400">Pegá un texto de WhatsApp o consulta para analizar requerimientos y calcular el mínimo mayorista.</p>
+                        <h2 class="font-title text-lg font-bold uppercase text-white tracking-wider">Asistente Dani IA (Groq Llama 3.3)</h2>
+                        <p class="text-xs text-gray-400">Prueba de respuesta con voseo argentino y cotización determinista de Supabase.</p>
                     </div>
                 </div>
                 <div class="space-y-4">
-                    <textarea id="ia-prompt" rows="4" placeholder="Ejemplo: Cliente solicita 10 cajas de lavandina 5LT, 2 detergentes concentrados y 5 jabones en pan..." class="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-yellow leading-relaxed"></textarea>
+                    <textarea id="ia-prompt" rows="4" placeholder="Ejemplo: Ya soy cliente registrado. Quiero pedir 5 bidones de detergente Magenta 5L y 2 suavizantes Vivere..." class="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-yellow leading-relaxed"></textarea>
                     <button onclick="consultarIA()" class="w-full py-3 rounded-xl bg-brand-yellow text-primary-dark font-title text-xs font-bold uppercase tracking-wider hover:bg-yellow-400 transition-all flex items-center justify-center gap-2">
                         <span class="material-symbols-outlined text-[18px]">psychology</span> Analizar y Generar Respuesta
                     </button>
@@ -212,6 +227,7 @@
         const API_URL = 'https://dani-bxav.onrender.com/api';
         let clientesData = [];
         let pedidosData = [];
+        let alertasData = [];
 
         async function init() {
             await refreshData();
@@ -219,18 +235,25 @@
 
         async function refreshData() {
             try {
-                const [resC, resP] = await Promise.all([
+                const [resC, resP, resA] = await Promise.all([
                     fetch(`${API_URL}/crm/clientes`),
-                    fetch(`${API_URL}/crm/pedidos`)
+                    fetch(`${API_URL}/crm/pedidos`),
+                    fetch(`${API_URL}/crm/alertas-seguimiento`)
                 ]);
 
                 const dataC = await resC.json();
                 const dataP = await resP.json();
+                const dataA = await resA.json();
 
                 if (dataC.success) clientesData = dataC.clientes || [];
                 if (dataP.success) pedidosData = dataP.pedidos || [];
+                if (dataA.success) {
+                    alertasData = dataA.alertas || [];
+                    document.getElementById('mes-actual-label').innerText = dataA.mes_actual || 'Mes Actual';
+                }
 
                 renderKanban();
+                renderAlertas();
                 renderClientes();
             } catch (err) {
                 console.error("Error al cargar datos del CRM:", err);
@@ -245,14 +268,12 @@
                 'Despachado': { el: document.getElementById('col-despachados'), count: document.getElementById('count-despachados'), items: [] }
             };
 
-            // Clasificar pedidos
             pedidosData.forEach(p => {
                 const est = p.estado || 'Presupuesto';
                 if (cols[est]) cols[est].items.push(p);
                 else cols['Presupuesto'].items.push(p);
             });
 
-            // Renderizar tarjetas
             Object.keys(cols).forEach(k => {
                 const col = cols[k];
                 col.count.innerText = col.items.length;
@@ -286,6 +307,53 @@
                     }).join('');
                 }
             });
+        }
+
+        function renderAlertas() {
+            const grid = document.getElementById('grid-alertas');
+            if (!alertasData || alertasData.length === 0) {
+                grid.innerHTML = `<div class="col-span-3 text-center py-12 text-gray-500 text-xs">Sin clientes para analizar en este mes.</div>`;
+                return;
+            }
+
+            grid.innerHTML = alertasData.map(a => {
+                const consumido = a.consumido_mes.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' });
+                const falta = a.falta_para_80k.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' });
+                const pct = a.porcentaje_cumplido;
+                const esOk = a.cumple_minimo_80k;
+
+                return `
+                    <div class="glass-card p-5 rounded-2xl space-y-4 border ${esOk ? 'border-emerald-500/30' : 'border-amber-500/30'}">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h3 class="font-bold text-sm text-white">${a.razon_social}</h3>
+                                <p class="text-[10px] text-gray-400 font-mono">${a.whatsapp}</p>
+                            </div>
+                            <span class="px-2.5 py-1 rounded-full text-[10px] font-bold ${esOk ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}">
+                                ${esOk ? '🟢 Mínimo Cumplido' : '⚠️ Cupo Incompleto'}
+                            </span>
+                        </div>
+
+                        <!-- Barra de Progreso del Mínimo -->
+                        <div class="space-y-1">
+                            <div class="flex justify-between text-[10px] text-gray-400">
+                                <span>Acumulado: <strong class="text-white">${consumido}</strong></span>
+                                <span>Objetivo: <strong class="text-brand-yellow">$80.000</strong></span>
+                            </div>
+                            <div class="w-full h-2.5 bg-white/10 rounded-full overflow-hidden">
+                                <div class="h-full ${esOk ? 'bg-emerald-400' : 'bg-amber-400'} transition-all" style="width: ${pct}%"></div>
+                            </div>
+                        </div>
+
+                        ${!esOk ? `<p class="text-[11px] text-amber-300">Faltan <strong>${falta}</strong> para mantener beneficio mayorista.</p>` : ''}
+
+                        <a href="https://wa.me/${a.whatsapp}?text=${a.mensaje_whatsapp_sugerido}" target="_blank" class="w-full py-2.5 rounded-xl ${esOk ? 'bg-white/5 hover:bg-white/10 text-gray-300' : 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30'} text-xs font-bold flex items-center justify-center gap-1 transition-all">
+                            <span class="material-symbols-outlined text-[16px]">chat</span>
+                            ${esOk ? 'Enviar Saludo Fidelización' : '📲 Enviar Alerta de Seguimiento'}
+                        </a>
+                    </div>
+                `;
+            }).join('');
         }
 
         function renderClientes() {
@@ -350,15 +418,15 @@
         }
 
         function switchTab(tab) {
-            ['kanban', 'clientes', 'ia'].forEach(t => {
+            ['kanban', 'alertas', 'clientes', 'ia'].forEach(t => {
                 document.getElementById(`view-${t}`).classList.add('hidden');
                 const btn = document.getElementById(`tab-${t}-btn`);
-                btn.className = "px-5 py-2.5 rounded-xl font-title text-xs font-bold uppercase tracking-wider text-gray-300 hover:text-white hover:bg-white/10 transition-all";
+                if (btn) btn.className = "px-5 py-2.5 rounded-xl font-title text-xs font-bold uppercase tracking-wider text-gray-300 hover:text-white hover:bg-white/10 transition-all flex items-center gap-1";
             });
 
             document.getElementById(`view-${tab}`).classList.remove('hidden');
             const activeBtn = document.getElementById(`tab-${tab}-btn`);
-            activeBtn.className = "px-5 py-2.5 rounded-xl font-title text-xs font-bold uppercase tracking-wider bg-brand-yellow text-primary-dark shadow-lg transition-all";
+            if (activeBtn) activeBtn.className = "px-5 py-2.5 rounded-xl font-title text-xs font-bold uppercase tracking-wider bg-brand-yellow text-primary-dark shadow-lg transition-all flex items-center gap-1";
         }
 
         window.onload = init;
