@@ -46,7 +46,7 @@
 </head>
 <body class="flex flex-col min-h-screen">
 
-    <!-- PANTALLA DE AUTENTICACIÓN / ACCESO CON CLAVE -->
+    <!-- PANTALLA DE AUTENTICACIÓN / ACCESO CON CLAVE CON LOGO S21 SOLUCIONES -->
     <div id="login-modal" class="fixed inset-0 z-[100] bg-primary-dark/95 backdrop-filter backdrop-blur-xl flex items-center justify-center p-4">
         <div class="glass-panel p-8 rounded-3xl max-w-md w-full border border-brand-yellow/30 shadow-2xl space-y-6 text-center">
             <div class="w-16 h-16 rounded-2xl bg-brand-yellow/15 border border-brand-yellow/30 flex items-center justify-center text-brand-yellow mx-auto">
@@ -67,7 +67,11 @@
                     Clave incorrecta. Por favor reintentá.
                 </div>
             </form>
-            <p class="text-[10px] text-gray-500 font-mono">Desarrollado por S21 Soluciones</p>
+            <div class="pt-4 border-t border-white/10 flex justify-center">
+                <a href="https://siglo21soluciones.com" target="_blank" class="inline-flex flex-col items-center gap-1.5 hover:opacity-90 transition-opacity">
+                    <img src="/images/logos21.png" alt="Siglo 21 Soluciones — Diseño & Desarrollo" class="h-9 w-auto object-contain">
+                </a>
+            </div>
         </div>
     </div>
 
@@ -316,9 +320,13 @@
 
         </main>
 
-        <footer class="border-t border-white/10 py-6 text-center text-xs text-gray-400 space-y-1">
-            <p>Química DEC CRM Mayorista B2B &copy; 2026</p>
-            <p class="font-bold text-brand-yellow">S21 Soluciones — Diseño & Desarrollo</p>
+        <!-- FOOTER OFICIAL CON LOGO SIGLO 21 SOLUCIONES -->
+        <footer class="border-t border-white/10 py-6 flex flex-col items-center justify-center gap-3 text-center text-xs text-gray-400">
+            <p class="font-medium">Química DEC CRM Mayorista B2B &copy; 2026</p>
+            <a href="https://siglo21soluciones.com" target="_blank" class="inline-flex flex-col items-center gap-1.5 hover:opacity-90 transition-all group">
+                <img src="/images/logos21.png" alt="Siglo 21 Soluciones — Diseño & Desarrollo" class="h-10 w-auto object-contain group-hover:scale-105 transition-transform">
+                <span class="text-[11px] font-bold text-accent-blue group-hover:text-brand-yellow transition-colors">Diseño & Desarrollo — Siglo 21 Soluciones</span>
+            </a>
         </footer>
     </div>
 
