@@ -2,7 +2,7 @@
  * QUÍMICA DEC — Backend API del CRM B2B y Cerebro IA de "Dani"
  * ==========================================================
  * Servidor Express con Menús Desplegables de Alertas por Categoría Oficial,
- * Umbrales Mínimos por Voz/IA/Excel, Descuento de Stock y Voseo Argentino.
+ * Umbrales Mínimos por Voz/IA/Excel, Descuento de Stock, Voseo y CHAT EN VIVO ESTILO KOMMO.
  */
 
 require('dotenv').config();
@@ -50,7 +50,7 @@ REGLAS DE NEGOCIO Y POLÍTICAS COMERCIALES:
 app.get('/health', (req, res) => {
     res.json({
         status: 'online',
-        service: 'Química DEC CRM & Inventario API',
+        service: 'Química DEC CRM, Chat en Vivo & IA API',
         timestamp: new Date().toISOString(),
         supabase: 'connected'
     });
@@ -70,186 +70,38 @@ const CATEGORIAS_OFICIALES = [
 ];
 
 // =========================================================================
-// 1. ALERTAS DE INVENTARIO AGRUPADAS EN MENÚS DESPLEGABLES (ACORDEÓN)
+// 1. CHAT EN VIVO ESTILO KOMMO: HISTORIAL Y ENVIAR MENSAJES VENDEDOR
 // =========================================================================
-app.get('/api/crm/alertas-stock', async (req, res) => {
-    try {
-        const umbralMinimoDefault = parseInt(req.query.umbral || 20);
 
-        const { data: prods, error } = await supabase
-            .from('dec_products')
-            .select('id, woocommerce_id, name, price, stock, stock_status, category, image_url')
-            .eq('status', 'publish')
-            .order('name', { ascending: true })
-            .limit(1000);
-
-        if (error) throw error;
-
-        // Estructura de categorías con acordeón
-        const estructuraCategorias = {};
-        CATEGORIAS_OFICIALES.forEach(cat => {
-            estructuraCategorias[cat.key] = {
-                key: cat.key,
-                icon: cat.icon,
-                total_alertas: 0,
-                tiene_critico: false,
-                tiene_bajo: false,
-                productos: []
-            };
-        });
-
-        (prods || []).forEach(p => {
-            const stockActual = parseInt(p.stock || 0);
-            const esCritico = stockActual === 0 || p.stock_status === 'outofstock';
-            const esBajo = stockActual <= umbralMinimoDefault;
-
-            if (esCritico || esBajo) {
-                const nameUp = (p.name || '').toUpperCase();
-                let catElegida = 'ESPECIALIDADES Y VARIOS';
-
-                for (const catConfig of CATEGORIAS_OFICIALES) {
-                    if (catConfig.terms.some(t => nameUp.includes(t))) {
-                        catElegida = catConfig.key;
-                        break;
-                    }
-                }
-
-                const catObj = estructuraCategorias[catElegida];
-                catObj.total_alertas++;
-                if (esCritico) catObj.tiene_critico = true;
-                if (esBajo) catObj.tiene_bajo = true;
-
-                catObj.productos.push({
-                    id: p.id,
-                    woocommerce_id: p.woocommerce_id,
-                    nombre: p.name,
-                    precio: parseFloat(p.price || 0),
-                    stock_actual: stockActual,
-                    estado_stock: p.stock_status,
-                    imagen_url: p.image_url || 'https://quimicadec.com/assets/img/categorias/productosparadiluir.jpeg',
-                    nivel_alerta: esCritico ? 'CRÍTICO (SIN STOCK)' : 'ADVERTENCIA (STOCK BAJO)'
-                });
-            }
-        });
-
-        res.json({
-            success: true,
-            umbral_aplicado: umbralMinimoDefault,
-            categorias: estructuraCategorias
-        });
-
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// =========================================================================
-// 2. CONFIGURACIÓN DE UMBRALES MÍNIMOS POR VOZ / IA / EXCEL
-// =========================================================================
-app.post('/api/crm/configurar-umbrales-ia', async (req, res) => {
-    try {
-        const { instruccion_texto } = req.body;
-        if (!instruccion_texto) return res.status(400).json({ error: 'Instrucción requerida' });
-
-        const completion = await groq.chat.completions.create({
-            messages: [
-                {
-                    role: "system",
-                    content: `Analiza la instrucción para definir umbrales mínimos de stock. Devuelve JSON con el umbral deseado. Ejemplo: {"umbral_general": 30, "mensaje_confirmacion": "Se estableció el límite mínimo de alerta en 30 unidades."}`
-                },
-                { role: "user", content: instruccion_texto }
-            ],
-            model: "llama-3.3-70b-versatile",
-            response_format: { type: "json_object" },
-            temperature: 0.1
-        });
-
-        const parsed = JSON.parse(completion.choices[0]?.message?.content || '{}');
-        res.json({
-            success: true,
-            umbral: parsed.umbral_general || 20,
-            mensaje: parsed.mensaje_confirmacion || `✅ Umbral mínimo actualizado a ${parsed.umbral_general || 20} unidades.`
-        });
-
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// =========================================================================
-// 3. CARGA MASIVA DE EXCEL / CSV DE PRECIOS
-// =========================================================================
-app.post('/api/crm/subir-excel-catalogo', async (req, res) => {
-    try {
-        const { productos_csv } = req.body;
-        if (!Array.isArray(productos_csv) || productos_csv.length === 0) {
-            return res.status(400).json({ error: 'Lista de productos CSV/Excel vacía' });
-        }
-
-        let actualizados = 0;
-        for (const item of productos_csv) {
-            if (item.nombre && item.precio) {
-                const precio = parseFloat(item.precio || 0);
-                const stock = parseInt(item.stock || 50);
-
-                const { data: prods } = await supabase
-                    .from('dec_products')
-                    .select('id')
-                    .ilike('name', `%${item.nombre.split(' ')[0]}%`)
-                    .limit(1);
-
-                if (prods && prods.length > 0) {
-                    await supabase
-                        .from('dec_products')
-                        .update({ price: precio, stock: stock, updated_at: new Date().toISOString() })
-                        .eq('id', prods[0].id);
-                    actualizados++;
-                }
-            }
-        }
-
-        res.json({
-            success: true,
-            mensaje: `🎉 ¡Éxito! Se actualizaron ${actualizados} productos masivamente en Supabase.`
-        });
-
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// =========================================================================
-// 4. DESCUENTO DE STOCK EN KANBAN
-// =========================================================================
-app.post('/api/crm/confirmar-pago-descontar-stock', async (req, res) => {
-    try {
-        const { pedido_id } = req.body;
-        const { data: pedido } = await supabase.from('pedidos').select('*, items_pedido(*)').eq('id', pedido_id).single();
-        if (!pedido) throw new Error('Pedido no encontrado');
-
-        const items = pedido.items_pedido || [];
-        for (const item of items) {
-            const cant = parseInt(item.cantidad || 1);
-            const { data: prods } = await supabase.from('dec_products').select('id, stock').ilike('name', `%${(item.producto_nombre || '').split(' ')[0]}%`).limit(1);
-            if (prods && prods.length > 0) {
-                const nuevoStock = Math.max(0, parseInt(prods[0].stock || 0) - cant);
-                await supabase.from('dec_products').update({ stock: nuevoStock, stock_status: nuevoStock > 0 ? 'instock' : 'outofstock' }).eq('id', prods[0].id);
-            }
-        }
-
-        await supabase.from('pedidos').update({ estado: 'Pagado' }).eq('id', pedido_id);
-        res.json({ success: true, mensaje: `✅ Pago confirmado y stock descontado.` });
-    } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-// =========================================================================
-// 5. RESTO DE ENDPOINTS CRM & IA DANI
-// =========================================================================
+// Webhook / Proxy del Bot con registro de mensajes
 app.post('/api/whatsapp/incoming-ai', async (req, res) => {
     try {
         const { phone, mensaje_texto } = req.body;
         let textoProcesado = mensaje_texto || '';
+        const clientePhone = phone || 'WebCustomer';
 
+        // Buscar o crear cliente
+        let { data: cliente } = await supabase.from('clientes').select('id, bot_pausado').eq('whatsapp', clientePhone).single();
+        if (!cliente) {
+            const { data: newC } = await supabase.from('clientes').insert([{ razon_social: `Cliente Web (${clientePhone})`, whatsapp: clientePhone }]).select().single();
+            cliente = newC;
+        }
+
+        // Guardar mensaje del cliente en el historial
+        if (cliente) {
+            await supabase.from('mensajes_chat').insert([{ cliente_id: cliente.id, emisor: 'cliente', texto: textoProcesado }]);
+        }
+
+        // Si el vendedor pausó el bot para este cliente, la IA no interfiere
+        if (cliente && cliente.bot_pausado) {
+            return res.json({
+                success: true,
+                bot_pausado: true,
+                respuesta_sugerida_ia: "El bot está pausado. Un vendedor responderá a la brevedad."
+            });
+        }
+
+        // Extraer intenciones de compra
         let itemsExtraidos = [];
         try {
             const parserCompletion = await groq.chat.completions.create({
@@ -329,11 +181,220 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
             temperature: 0.2
         });
 
+        const respuestaIA = completion.choices[0]?.message?.content || "¡Hola! 😊 ¿En qué te puedo ayudar hoy?";
+
+        // Guardar respuesta del Bot en el historial
+        if (cliente) {
+            await supabase.from('mensajes_chat').insert([{ cliente_id: cliente.id, emisor: 'bot', texto: respuestaIA }]);
+        }
+
         res.json({
             success: true,
-            respuesta_sugerida_ia: completion.choices[0]?.message?.content || "¡Hola! 😊 ¿En qué te puedo ayudar hoy?"
+            respuesta_sugerida_ia: respuestaIA
         });
 
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Obtener lista de conversaciones estilo Kommo
+app.get('/api/crm/chat/conversaciones', async (req, res) => {
+    try {
+        const { data: clientes } = await supabase.from('clientes').select('id, razon_social, whatsapp, bot_pausado, creado_el').order('creado_el', { ascending: false });
+        res.json({ success: true, conversaciones: clientes || [] });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Obtener mensajes de un chat específico
+app.get('/api/crm/chat/mensajes/:clienteId', async (req, res) => {
+    try {
+        const { clienteId } = req.params;
+        const { data: mensajes } = await supabase.from('mensajes_chat').select('*').eq('cliente_id', clienteId).order('creado_el', { ascending: true });
+        const { data: cliente } = await supabase.from('clientes').select('*').eq('id', clienteId).single();
+        res.json({ success: true, cliente: cliente, mensajes: mensajes || [] });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Responder como Vendedor Humano e Interrumpir Bot
+app.post('/api/crm/chat/enviar-mensaje-vendedor', async (req, res) => {
+    try {
+        const { cliente_id, texto_mensaje, pausar_bot } = req.body;
+        if (!cliente_id || !texto_mensaje) return res.status(400).json({ error: 'Cliente y mensaje requeridos' });
+
+        // Guardar respuesta del vendedor
+        await supabase.from('mensajes_chat').insert([{ cliente_id: cliente_id, emisor: 'vendedor', texto: texto_mensaje }]);
+
+        // Actualizar estado del bot para ese cliente
+        if (typeof pausar_bot !== 'undefined') {
+            await supabase.from('clientes').update({ bot_pausado: pausar_bot }).eq('id', cliente_id);
+        }
+
+        res.json({ success: true, mensaje: '✅ Mensaje enviado y registrado en la conversación.' });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// =========================================================================
+// 2. ALERTAS DE INVENTARIO Y UMBRALES
+// =========================================================================
+app.get('/api/crm/alertas-stock', async (req, res) => {
+    try {
+        const umbralMinimoDefault = parseInt(req.query.umbral || 20);
+
+        const { data: prods, error } = await supabase
+            .from('dec_products')
+            .select('id, woocommerce_id, name, price, stock, stock_status, category, image_url')
+            .eq('status', 'publish')
+            .order('name', { ascending: true })
+            .limit(1000);
+
+        if (error) throw error;
+
+        const estructuraCategorias = {};
+        CATEGORIAS_OFICIALES.forEach(cat => {
+            estructuraCategorias[cat.key] = {
+                key: cat.key,
+                icon: cat.icon,
+                total_alertas: 0,
+                tiene_critico: false,
+                tiene_bajo: false,
+                productos: []
+            };
+        });
+
+        (prods || []).forEach(p => {
+            const stockActual = parseInt(p.stock || 0);
+            const esCritico = stockActual === 0 || p.stock_status === 'outofstock';
+            const esBajo = stockActual <= umbralMinimoDefault;
+
+            if (esCritico || esBajo) {
+                const nameUp = (p.name || '').toUpperCase();
+                let catElegida = 'ESPECIALIDADES Y VARIOS';
+
+                for (const catConfig of CATEGORIAS_OFICIALES) {
+                    if (catConfig.terms.some(t => nameUp.includes(t))) {
+                        catElegida = catConfig.key;
+                        break;
+                    }
+                }
+
+                const catObj = estructuraCategorias[catElegida];
+                catObj.total_alertas++;
+                if (esCritico) catObj.tiene_critico = true;
+                if (esBajo) catObj.tiene_bajo = true;
+
+                catObj.productos.push({
+                    id: p.id,
+                    woocommerce_id: p.woocommerce_id,
+                    nombre: p.name,
+                    precio: parseFloat(p.price || 0),
+                    stock_actual: stockActual,
+                    estado_stock: p.stock_status,
+                    imagen_url: p.image_url || 'https://quimicadec.com/assets/img/categorias/productosparadiluir.jpeg',
+                    nivel_alerta: esCritico ? 'CRÍTICO (SIN STOCK)' : 'ADVERTENCIA (STOCK BAJO)'
+                });
+            }
+        });
+
+        res.json({
+            success: true,
+            umbral_aplicado: umbralMinimoDefault,
+            categorias: estructuraCategorias
+        });
+
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/crm/configurar-umbrales-ia', async (req, res) => {
+    try {
+        const { instruccion_texto } = req.body;
+        if (!instruccion_texto) return res.status(400).json({ error: 'Instrucción requerida' });
+
+        const completion = await groq.chat.completions.create({
+            messages: [
+                {
+                    role: "system",
+                    content: `Analiza la instrucción para definir umbrales mínimos de stock. Devuelve JSON con el umbral deseado. Ejemplo: {"umbral_general": 30, "mensaje_confirmacion": "Se estableció el límite mínimo de alerta en 30 unidades."}`
+                },
+                { role: "user", content: instruccion_texto }
+            ],
+            model: "llama-3.3-70b-versatile",
+            response_format: { type: "json_object" },
+            temperature: 0.1
+        });
+
+        const parsed = JSON.parse(completion.choices[0]?.message?.content || '{}');
+        res.json({
+            success: true,
+            umbral: parsed.umbral_general || 20,
+            mensaje: parsed.mensaje_confirmacion || `✅ Umbral mínimo actualizado a ${parsed.umbral_general || 20} unidades.`
+        });
+
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// =========================================================================
+// 3. CARGA MASIVA EXCEL & KANBAN PAGO/STOCK
+// =========================================================================
+app.post('/api/crm/subir-excel-catalogo', async (req, res) => {
+    try {
+        const { productos_csv } = req.body;
+        if (!Array.isArray(productos_csv) || productos_csv.length === 0) {
+            return res.status(400).json({ error: 'Lista de productos CSV/Excel vacía' });
+        }
+
+        let actualizados = 0;
+        for (const item of productos_csv) {
+            if (item.nombre && item.precio) {
+                const precio = parseFloat(item.precio || 0);
+                const stock = parseInt(item.stock || 50);
+
+                const { data: prods } = await supabase
+                    .from('dec_products')
+                    .select('id')
+                    .ilike('name', `%${item.nombre.split(' ')[0]}%`)
+                    .limit(1);
+
+                if (prods && prods.length > 0) {
+                    await supabase
+                        .from('dec_products')
+                        .update({ price: precio, stock: stock, updated_at: new Date().toISOString() })
+                        .eq('id', prods[0].id);
+                    actualizados++;
+                }
+            }
+        }
+
+        res.json({
+            success: true,
+            mensaje: `🎉 ¡Éxito! Se actualizaron ${actualizados} productos masivamente en Supabase.`
+        });
+
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/crm/confirmar-pago-descontar-stock', async (req, res) => {
+    try {
+        const { pedido_id } = req.body;
+        const { data: pedido } = await supabase.from('pedidos').select('*, items_pedido(*)').eq('id', pedido_id).single();
+        if (!pedido) throw new Error('Pedido no encontrado');
+
+        const items = pedido.items_pedido || [];
+        for (const item of items) {
+            const cant = parseInt(item.cantidad || 1);
+            const { data: prods } = await supabase.from('dec_products').select('id, stock').ilike('name', `%${(item.producto_nombre || '').split(' ')[0]}%`).limit(1);
+            if (prods && prods.length > 0) {
+                const nuevoStock = Math.max(0, parseInt(prods[0].stock || 0) - cant);
+                await supabase.from('dec_products').update({ stock: nuevoStock, stock_status: nuevoStock > 0 ? 'instock' : 'outofstock' }).eq('id', prods[0].id);
+            }
+        }
+
+        await supabase.from('pedidos').update({ estado: 'Pagado' }).eq('id', pedido_id);
+        res.json({ success: true, mensaje: `✅ Pago confirmado y stock descontado.` });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
