@@ -609,12 +609,21 @@ app.get('/api/products/search', async (req, res) => {
         }
 
         // 2. Fallback: Consultar directamente WooCommerce si no está en Supabase
-        const wcRes = await axios.get(`https://quimicadec.com/?qdec_api=search_product&q=${encodeURIComponent(query)}`, { timeout: 8000 }).catch(() => null);
-        if (wcRes && wcRes.data && wcRes.data.success && wcRes.data.products && wcRes.data.products.length > 0) {
-            return res.json({ success: true, count: wcRes.data.products.length, products: wcRes.data.products });
+        try {
+            const wcUrl = `https://quimicadec.com/?qdec_api=search_product&q=${encodeURIComponent(query)}`;
+            const wcRes = await fetch(wcUrl);
+            if (wcRes.ok) {
+                const wcData = await wcRes.json();
+                if (wcData && wcData.success && wcData.products && wcData.products.length > 0) {
+                    return res.json({ success: true, count: wcData.products.length, products: wcData.products });
+                }
+            }
+        } catch (wcErr) {
+            console.error('Error fallback WooCommerce search:', wcErr.message);
         }
 
         res.json({ success: true, count: 0, products: [] });
+
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
     }
