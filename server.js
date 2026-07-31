@@ -630,8 +630,54 @@ app.get('/api/products/search', async (req, res) => {
 });
 
 
+// Endpoint para editar Título, Precios y Detalles de un Producto (WooCommerce + Supabase)
+app.post('/api/products/update-details', async (req, res) => {
+    try {
+        const { sku, name, regular_price, sale_price } = req.body;
+        if (!sku) {
+            return res.status(400).json({ success: false, error: 'Se requiere el SKU del producto.' });
+        }
+
+        // 1. Enviar a WooCommerce API (WPCode)
+        const targetUrl = 'https://quimicadec.com/?qdec_api=update_product_details';
+        const payload = {
+            secret_key: 'qdec_crm_sec_2026',
+            sku,
+            name: name || '',
+            regular_price: regular_price || '',
+            sale_price: sale_price || ''
+        };
+
+        const wcRes = await fetch(targetUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const wcData = await wcRes.json();
+
+        // 2. Actualizar Supabase
+        const updateDb = {};
+        if (name) updateDb.name = name;
+        if (regular_price) updateDb.regular_price = parseFloat(regular_price);
+        if (sale_price || regular_price) updateDb.price = parseFloat(sale_price || regular_price);
+
+        if (Object.keys(updateDb).length > 0) {
+            await supabase.from('dec_products').update(updateDb).eq('sku', sku);
+        }
+
+        res.json({
+            success: true,
+            mensaje: `🎉 Producto SKU ${sku} actualizado con éxito en WooCommerce y Supabase.`,
+            wc_response: wcData
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 // Endpoint de Carga e Integración Directa de Imagen a WooCommerce + Supabase
 app.post('/api/products/upload-image', async (req, res) => {
+
     try {
         const { sku, imageBase64, imageUrl, filename } = req.body;
         if (!sku) {
