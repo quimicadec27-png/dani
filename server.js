@@ -618,8 +618,23 @@ app.get('/api/crm/alertas-seguimiento', async (req, res) => {
 });
 
 // =========================================================================
+// Endpoint para limpiar productos obsoletos/borradores de Supabase dec_products
+app.get('/api/products/cleanup-outdated', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('dec_products')
+            .delete()
+            .or('name.ilike.%MAGISTRAL AZUL%,price.eq.785.02,status.eq.draft,status.eq.trash');
+            
+        res.json({ success: true, message: 'Borradores y productos obsoletos eliminados de Supabase dec_products', data, error });
+    } catch(err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Endpoint para obtener la lista completa de productos (para Carga Masiva por Lote)
 app.get('/api/products/all', async (req, res) => {
+
     try {
         let { data, error } = await supabase
             .from('dec_products')
