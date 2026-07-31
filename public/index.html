@@ -1077,22 +1077,16 @@
             const files = Array.from(evt.target.files);
             if (!files.length) return;
 
-            // Intentar cargar la lista completa de productos
+            // Cargar la lista completa de productos sin filtrar para la cola masiva
             try {
-                const res = await fetch(`${API_URL}/products/search?q=qd`);
+                const res = await fetch(`${API_URL}/products/all`);
                 const data = await res.json();
                 if (data.success && data.products && data.products.length > 0) {
                     allProductsCacheForBulk = data.products;
-                } else {
-                    const resAll = await fetch(`${API_URL}/products/search?q=a`);
-                    const dataAll = await resAll.json();
-                    if (dataAll.success && dataAll.products) {
-                        allProductsCacheForBulk = dataAll.products;
-                    }
                 }
             } catch(e) {}
 
-            bulkFilesQueue = [];
+            const startIdx = bulkFilesQueue.length;
             for (let i = 0; i < files.length; i++) {
                 const file = files[i];
                 const base64 = await readFileAsBase64(file);
@@ -1106,7 +1100,7 @@
                 }
 
                 bulkFilesQueue.push({
-                    id: i,
+                    id: startIdx + i,
                     file: file,
                     fileName: file.name,
                     base64: base64,
@@ -1120,6 +1114,7 @@
 
             renderBulkQueueUI();
         }
+
 
         function readFileAsBase64(file) {
             return new Promise((resolve) => {

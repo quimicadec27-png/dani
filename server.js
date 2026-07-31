@@ -577,11 +577,34 @@ app.get('/api/crm/alertas-seguimiento', async (req, res) => {
 });
 
 // =========================================================================
-// BÚSQUEDA Y CARGA DIRECTA DE IMÁGENES A WOOCOMMERCE & SUPABASE
-// =========================================================================
+// Endpoint para obtener la lista completa de productos (para Carga Masiva por Lote)
+app.get('/api/products/all', async (req, res) => {
+    try {
+        let { data, error } = await supabase
+            .from('dec_products')
+            .select('id, name, sku, regular_price, stock, image_url, stock_status')
+            .order('name', { ascending: true })
+            .limit(200);
+
+        if (error || !data || data.length === 0) {
+            const wcUrl = 'https://quimicadec.com/?qdec_api=search_product&q=a';
+            const wcRes = await fetch(wcUrl);
+            const wcData = await wcRes.json();
+            if (wcData && wcData.products) {
+                return res.json({ success: true, count: wcData.products.length, products: wcData.products });
+            }
+            return res.json({ success: true, count: 0, products: [] });
+        }
+
+        res.json({ success: true, count: data.length, products: data });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
 
 // Endpoint de búsqueda de productos por SKU o Nombre (Supabase + Fallback WooCommerce)
 app.get('/api/products/search', async (req, res) => {
+
     try {
         let query = (req.query.q || '').trim();
         // Limpiar prefijos habituales como "SKU: ", "sku: ", "sku "
