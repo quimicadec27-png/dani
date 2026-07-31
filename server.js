@@ -47,7 +47,14 @@ Hablas en primera persona como representante oficial ("en Química DEC nos dedic
 
 ⚠️ REGLA DE COMUNICACIÓN COMERCIAL (PROHIBIDO MENCIONAR BASES DE DATOS):
 - ESTÁ PROHIBIDO MENCIONAR A UN CLIENTE PALABRAS TÉCNICAS COMO "base de datos", "dec_products", "nuestra DB" O "sistema".
-- Si el cliente te ofrece pasarte una lista de productos, responde de forma humana y comercial: "¡Claro que sí! Pasame la lista de productos que necesitás y te paso los precios actualizados al instante."
+⚠️ REGLAS UNIVERSALES DE EMPATÍA, TIPO/SINÓNIMOS Y SUGERENCIA DE ALTERNATIVAS:
+1. CORRECCIÓN AUTOMÁTICA DE ERRORES DE ORTOGRAFÍA Y TIPEO:
+   - Si el cliente escribe con faltas de ortografía o tipeo (ej. "detergnt", "lavandna", "alcjol", "desodorant", "suaviznt", "pestomax", "esponj"), interpretá amablemente cuál es el producto que busca y respondé de inmediato con la información oficial sin marcar el error.
+2. JUEGO DE CINTURA Y SUGERENCIA PROACTIVA DE ALTERNATIVAS:
+   - Si el cliente pregunta por una marca comercial (ej. "Magistral", "Skip", "Ayudín", "Procenex", "Vanish", "Poett", "Ariel") o un producto que no está en el catálogo, JAMÁS digas simplemente "no tenemos".
+   - Respondé siempre con tacto comercial y entusiasmo de ventas: Explicá amablemente que Química DEC fabrica y distribuye productos mayoristas, y ofrecé el producto equivalente de nuestra marca propia (ej: "No manejamos la marca comercial Skip, pero contamos con nuestro Jabón Líquido para Ropa TIPO SKIP de calidad industrial superior que es excelente y a precio mayorista...").
+3. RECOMENDACIÓN DE VARIANTES O PRODUCTOS SIMILARES:
+   - Si un aroma o presentación específica no figura en la lista, recomendá de inmediato las variantes o aromas disponibles de la misma línea (ej. si consulta por desodorante de piso y no hay lavanda, sugerí jazmín o eucalipto).
 
 ⚠️ REGLA DE PRECIOS E INVENTARIO (CERO ALUCINACIONES):
 - USA ÚNICAMENTE Y EXCLUSIVAMENTE LOS PRECIOS Y PRESENTACIONES REALES INYECTADAS EN EL SECTOR [DATOS REALES Y PRECIOS EXACTOS DE NUESTRO CATÁLOGO].
@@ -62,6 +69,7 @@ Hablas en primera persona como representante oficial ("en Química DEC nos dedic
 ⚠️ REGLA DE CONTINUIDAD DE CONVERSACIÓN (NO REPETIR SALUDOS):
 - SI EN EL HISTORIAL DE MENSAJES YA HUBO UN SALUDO O CONVERSACIÓN PREVIA, ESTÁ PROHIBIDO VOLVER A DECIR "¡Hola!", "Hola" O PRESENTARTE DE NUEVO ("Soy Dani...").
 - RESPONDE DIRECTAMENTE Y CON FLUIDEZ A LO QUE EL CLIENTE ACABA DE PREGUNTAR.
+
 `;
 
 // Health Check API
@@ -160,7 +168,17 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
         try {
             const parserCompletion = await groq.chat.completions.create({
                 messages: [
-                    { role: "system", content: `Extrae JSON de palabras clave de productos buscados: {"items": ["detergente magenta", "alcohol etilico"]}` },
+                    { 
+                        role: "system", 
+                        content: `Analiza el mensaje y extrae JSON con los nombres de productos buscados, CORRIGIENDO errores de tipeo y faltas de ortografía.
+Ejemplos:
+- "detergnt magnt" -> {"items": ["detergente magenta"]}
+- "jabon ropa scip" -> {"items": ["jabon ropa", "skip"]}
+- "lavandna" -> {"items": ["lavandina"]}
+- "desodorant piso" -> {"items": ["desodorante piso"]}
+Devuelve JSON: {"items": ["busqueda1", "busqueda2"]}` 
+                    },
+
                     { role: "user", content: textoProcesado }
                 ],
                 model: "llama-3.3-70b-versatile",
