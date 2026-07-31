@@ -185,40 +185,49 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
                 const words = queryStr.split(' ').filter(w => w.length > 2 && !stopWords.includes(w));
                 if (words.length === 0) continue;
 
-                // Consulta flexible multi-palabra en Supabase
+                // Consulta flexible en Supabase (sin restricciones rígidas de status o price > 0)
                 let queryBuilder = supabase
                     .from('dec_products')
-                    .select('name, price, stock_status')
-                    .gt('price', 0)
-                    .in('status', ['publicado', 'publish']);
+                    .select('name, price, regular_price, stock_status, sku');
 
                 for (const w of words) {
                     queryBuilder = queryBuilder.ilike('name', `%${w}%`);
                 }
 
-                let { data: prods } = await queryBuilder.order('price', { ascending: true }).limit(20);
+                let { data: prods } = await queryBuilder.limit(20);
 
-                // Fallback: si no matchea con todas las palabras juntas, probar con la palabra clave más larga
+                // Fallback 1: Buscar por la palabra clave más representativa en Supabase
                 if (!prods || prods.length === 0) {
                     const sortedWords = words.sort((a,b) => b.length - a.length);
                     const longestWord = sortedWords[0];
-                    if (longestWord && longestWord.length > 3) {
+                    if (longestWord && longestWord.length > 2) {
                         const { data: fallbackProds } = await supabase
                             .from('dec_products')
-                            .select('name, price, stock_status')
-                            .gt('price', 0)
-                            .in('status', ['publicado', 'publish'])
+                            .select('name, price, regular_price, stock_status, sku')
                             .ilike('name', `%${longestWord}%`)
-                            .order('price', { ascending: true })
                             .limit(15);
                         prods = fallbackProds;
                     }
                 }
 
+                // Fallback 2: Consultar WooCommerce Live Search en vivo si Supabase no devolvió resultados
+                if (!prods || prods.length === 0) {
+                    try {
+                        const wcRes = await fetch(`https://quimicadec.com/?qdec_api=search_product&q=${encodeURIComponent(queryStr)}`);
+                        const wcData = await wcRes.json();
+                        if (wcData && wcData.success && wcData.products && wcData.products.length > 0) {
+                            prods = wcData.products;
+                        }
+                    } catch(e) {}
+                }
+
                 if (prods && prods.length > 0) {
                     prods.forEach(p => {
-                        const price = parseFloat(p.price);
-                        const descLine = `- ${p.name}: $${price.toLocaleString('es-AR')} (Stock: ${p.stock_status === 'instock' ? 'Disponible' : 'Agotado'})`;
+                        const rawPrice = parseFloat(p.price || p.regular_price || 0);
+                        const priceTxt = rawPrice > 0 
+                            ? `$${rawPrice.toLocaleString('es-AR')}` 
+                            : 'Precios por tamaño disponibles en la tienda (5LT, 10LT, 20LT, 40LT, 120LT)';
+                        const descLine = `- ${p.name} (SKU: ${p.sku || 'N/A'}): ${priceTxt} | Stock: ${p.stock_status === 'instock' || !p.stock_status ? 'Disponible' : 'Consultar'}`;
                         if (!desgloses.includes(descLine)) {
                             desgloses.push(descLine);
                         }
@@ -227,12 +236,20 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
             }
 
             if (desgloses.length > 0) {
-                cotizacionCalculada = "\n[DATOS REALES DE PRODUCTOS PUBLICADOS Y PRECIOS OFICIALES EN NUESTRO CATÁLOGO]:\n" + desgloses.join('\n') + "\n⚠️ INSTRUCCIÓN OBLIGATORIA DE PRECIOS: Mencioná ÚNICAMENTE los productos y precios oficiales listados arriba. ESTÁ ABSOLUTAMENTE PROHIBIDO decir que no tenemos un producto si está en la lista anterior, y está prohibido inventar cualquier otro valor.";
+                cotizacionCalculada = "\n[DATOS REALES Y OFICIALES DEL CATÁLOGO DE QUÍMICA DEC]:\n" + desgloses.join('\n') + 
+                "\n⚠️ INSTRUCCIONES ESTRUCTURALES Y OBLIGATORIAS DE RESPUESTA:" +
+                "\n1. SI EL PRODUCTO SOLICITADO FIGURA EN LA LISTA ANTERIOR (ej: DETERGENTE TIPO MAGISTRAL MAGENTA), CONFIRMÁ DE INMEDIATO QUE SÍ ESTÁ EN EL CATÁLOGO Y OFRECÉ SUS OPCIONES." +
+                "\n2. PROHIBIDO DECIR QUE NO TENEMOS UN PRODUCTO SI FIGURA EN LA LISTA O EN EL SITIO WEB." +
+                "\n3. PROHIBIDO INVENTAR VALORES COMO $785 O PRECIOS QUE NO PROVENGAN DE LOS DATOS REALES DE ARRIBA." +
+                "\n4. Para los detergentes y productos líquidos, explicá que se pueden seleccionar los bidones desde 5 Litros hasta 120 Litros con sus respectivos descuentos por volumen.";
+            } else {
+                cotizacionCalculada = "\n⚠️ INSTRUCCIÓN SI NO SE ENCONTRÓ EN BÚSQUEDA AUTOMÁTICA:\nInformá amablemente al cliente que puede revisar la categoría completa de Productos Líquidos en el catálogo oficial (quimicadec.com/catalogo). JAMÁS INVENTES PRECIOS FALSOS NI PRODUCTOS QUE NO EXISTAN.";
             }
         }
 
         const tieneMensajesAnteriores = historialPrevio.length > 1;
         const promptInstrucciones = `${SYSTEM_PROMPT_DANI}\n${tieneMensajesAnteriores ? '⚠️ ATENCIÓN CRÍTICA DE CONTINUIDAD DE CHAT:\nEsta conversación YA ESTÁ EN CURSO. Recordá perfectamente lo que se habló antes en el historial. ESTÁ ABSOLUTAMENTE PROHIBIDO SALUDAR DE NUEVO ("¡Hola!", "Hola", "Soy Dani..."). Responde directo y con memoria al último mensaje del usuario.' : ''}\n${cotizacionCalculada}`;
+
 
         const messagesPayload = [
             { role: "system", content: promptInstrucciones }
