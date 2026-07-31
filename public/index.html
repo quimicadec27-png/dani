@@ -1125,6 +1125,7 @@
         }
 
         function renderBulkQueueUI() {
+
             const container = document.getElementById('bulk-img-queue-container');
             const list = document.getElementById('bulk-img-queue-list');
             const countSpan = document.getElementById('bulk-img-count');
@@ -1137,20 +1138,19 @@
             container.classList.remove('hidden');
 
             list.innerHTML = bulkFilesQueue.map(item => {
-                const q = (item.searchQuery || '').replace(/^sku:\s*/i, '').replace(/^sku\s+/i, '').toLowerCase().trim();
+                const cleanSku = (item.searchQuery || '').replace(/^sku:\s*/i, '').replace(/^sku\s+/i, '').trim();
+                const q = cleanSku.toLowerCase();
+                
+                // Si el campo de búsqueda tiene un SKU/Código ingresado, asignarlo directamente como matchedSku
+                if (cleanSku.length >= 3) {
+                    item.matchedSku = cleanSku;
+                }
+
                 const filteredProds = allProductsCacheForBulk.filter(p => 
                     !q || 
                     (p.sku && p.sku.toLowerCase().includes(q)) || 
                     (p.name && p.name.toLowerCase().includes(q))
                 );
-
-                // Auto-asignación si hay coincidencia exacta de SKU o una sola opción
-                if (!item.matchedSku && filteredProds.length === 1) {
-                    item.matchedSku = filteredProds[0].sku;
-                } else if (q && !item.matchedSku) {
-                    const exact = allProductsCacheForBulk.find(p => p.sku && p.sku.toLowerCase() === q);
-                    if (exact) item.matchedSku = exact.sku;
-                }
 
                 return `
                     <div class="py-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-xs border-b border-white/5">
@@ -1173,7 +1173,9 @@
                             <select id="bulk-sku-select-${item.id}" 
                                 onchange="updateBulkSkuSelection(${item.id}, this.value)" 
                                 class="bg-white/10 border border-white/20 text-white rounded-lg px-2.5 py-1.5 text-xs font-mono w-full sm:w-60 focus:outline-none focus:border-amber-400">
-                                <option value="" class="bg-slate-900 text-gray-400">-- Seleccionar SKU (${filteredProds.length}) --</option>
+                                <option value="${item.matchedSku || ''}" selected class="bg-slate-900 text-amber-400 font-bold">
+                                    ${item.matchedSku ? `✓ Asignado SKU: ${item.matchedSku}` : `-- Seleccionar SKU (${filteredProds.length}) --`}
+                                </option>
                                 ${filteredProds.map(p => `
                                     <option value="${p.sku}" ${p.sku === item.matchedSku ? 'selected' : ''} class="bg-slate-900 text-white">
                                         ${p.sku} - ${p.name.slice(0, 24)}
@@ -1198,34 +1200,32 @@
             if (!item) return;
             item.searchQuery = val;
 
-            const q = val.replace(/^sku:\s*/i, '').replace(/^sku\s+/i, '').toLowerCase().trim();
+            const cleanSku = val.replace(/^sku:\s*/i, '').replace(/^sku\s+/i, '').trim();
+            if (cleanSku.length >= 3) {
+                item.matchedSku = cleanSku;
+            } else {
+                item.matchedSku = '';
+            }
+
+            const q = cleanSku.toLowerCase();
             const filtered = allProductsCacheForBulk.filter(p => 
                 !q || 
                 (p.sku && p.sku.toLowerCase().includes(q)) || 
                 (p.name && p.name.toLowerCase().includes(q))
             );
 
-            // Auto-asignar si hay coincidencia exacta de SKU
-            const exactMatch = allProductsCacheForBulk.find(p => p.sku && p.sku.toLowerCase() === q);
-            if (exactMatch) {
-                item.matchedSku = exactMatch.sku;
-            } else if (filtered.length === 1) {
-                item.matchedSku = filtered[0].sku;
-            }
-
             const selectElem = document.getElementById(`bulk-sku-select-${id}`);
             if (selectElem) {
                 selectElem.innerHTML = `
-                    <option value="" class="bg-slate-900 text-gray-400">-- Seleccionar SKU (${filtered.length}) --</option>
+                    <option value="${item.matchedSku || ''}" selected class="bg-slate-900 text-amber-400 font-bold">
+                        ${item.matchedSku ? `✓ Asignado SKU: ${item.matchedSku}` : `-- Seleccionar SKU (${filtered.length}) --`}
+                    </option>
                     ${filtered.map(p => `
-                        <option value="${p.sku}" ${p.sku === item.matchedSku ? 'selected' : ''} class="bg-slate-900 text-white">
+                        <option value="${p.sku}" class="bg-slate-900 text-white">
                             ${p.sku} - ${p.name.slice(0, 26)}
                         </option>
                     `).join('')}
                 `;
-                if (item.matchedSku) {
-                    selectElem.value = item.matchedSku;
-                }
             }
         }
 
@@ -1237,8 +1237,6 @@
             }
         }
 
-
-
         function clearBulkQueue() {
             bulkFilesQueue = [];
             document.getElementById('bulk-img-input').value = '';
@@ -1248,11 +1246,20 @@
         async function startBulkImageUpload() {
             if (!bulkFilesQueue.length) return;
 
+            // Asegurar que cada elemento tenga un SKU asignado desde searchQuery si está ingresado
+            bulkFilesQueue.forEach(item => {
+                if (!item.matchedSku && item.searchQuery) {
+                    const clean = item.searchQuery.replace(/^sku:\s*/i, '').replace(/^sku\s+/i, '').trim();
+                    if (clean.length >= 3) item.matchedSku = clean;
+                }
+            });
+
             const unassigned = bulkFilesQueue.filter(i => !i.matchedSku);
             if (unassigned.length > 0) {
                 alert(`⚠️ Hay ${unassigned.length} imagen(es) sin producto seleccionado. Por favor asignales un SKU antes de subir.`);
                 return;
             }
+
 
             const btn = document.getElementById('bulk-upload-btn');
             const progressContainer = document.getElementById('bulk-upload-progress');
