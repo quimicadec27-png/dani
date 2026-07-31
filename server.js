@@ -196,6 +196,7 @@ Devuelve JSON: {"items": ["busqueda1", "busqueda2"]}`
             const busquedas = itemsExtraidos.length > 0 ? itemsExtraidos : [textoProcesado];
             
             for (const queryItem of busquedas) {
+                let prods = [];
                 const queryStr = (typeof queryItem === 'string' ? queryItem : (queryItem.busqueda || '')).toLowerCase();
                 if (!queryStr) continue;
 
@@ -203,7 +204,7 @@ Devuelve JSON: {"items": ["busqueda1", "busqueda2"]}`
                 const words = queryStr.split(' ').filter(w => w.length > 2 && !stopWords.includes(w));
                 if (words.length === 0) continue;
 
-                // 1. Consultar WooCommerce Live Search PRIMERO (Garantiza 100% productos PUBLICADOS en la tienda, omitiendo borradores)
+                // 1. Consultar WooCommerce Live Search PRIMERO (Exclusivamente productos PUBLICADOS)
                 try {
                     const wcRes = await fetch(`https://quimicadec.com/?qdec_api=search_product&q=${encodeURIComponent(queryStr)}`);
                     if (wcRes.ok) {
@@ -214,12 +215,12 @@ Devuelve JSON: {"items": ["busqueda1", "busqueda2"]}`
                     }
                 } catch(e) {}
 
-                // 2. Fallback a Supabase dec_products si WooCommerce live search no devolvió resultados
-                if (!prods || prods.length === 0) {
+                // 2. Fallback a Supabase dec_products ÚNICAMENTE si WooCommerce no devolvió NINGÚN resultado
+                if (prods.length === 0) {
                     let queryBuilder = supabase
                         .from('dec_products')
                         .select('name, price, regular_price, stock_status, sku')
-                        .or('status.eq.publish,status.eq.publicado,status.is.null');
+                        .or('status.eq.publish,status.eq.publicado');
 
                     for (const w of words) {
                         queryBuilder = queryBuilder.ilike('name', `%${w}%`);
@@ -233,7 +234,7 @@ Devuelve JSON: {"items": ["busqueda1", "busqueda2"]}`
                             const { data: fallbackProds } = await supabase
                                 .from('dec_products')
                                 .select('name, price, regular_price, stock_status, sku')
-                                .or('status.eq.publish,status.eq.publicado,status.is.null')
+                                .or('status.eq.publish,status.eq.publicado')
                                 .ilike('name', `%${longestWord}%`)
                                 .limit(10);
                             sbProds = fallbackProds;
@@ -241,6 +242,7 @@ Devuelve JSON: {"items": ["busqueda1", "busqueda2"]}`
                     }
                     if (sbProds && sbProds.length > 0) prods = sbProds;
                 }
+
 
                 if (prods && prods.length > 0) {
                     prods.forEach(p => {
