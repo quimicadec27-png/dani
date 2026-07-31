@@ -293,8 +293,53 @@
                         </button>
                         <div id="ia-admin-res" class="hidden text-xs text-emerald-400 font-bold p-3 bg-emerald-500/10 rounded-xl"></div>
                     </div>
+
+                    <!-- MÓDULO 3: CARGA Y VINCULACIÓN DIRECTA DE IMÁGENES -->
+                    <div class="space-y-5 p-5 rounded-2xl bg-white/5 border border-blue-500/30">
+                        <div class="flex items-center gap-2">
+                            <span class="material-symbols-outlined text-blue-400">add_photo_alternate</span>
+                            <h3 class="font-title text-xs font-bold uppercase text-blue-400 tracking-wider">3. Carga y Vinculación Directa de Imágenes (WooCommerce + Supabase)</h3>
+                        </div>
+
+                        <!-- BUSCADOR DE PRODUCTOS CON PREVIEW -->
+                        <div class="relative space-y-2">
+                            <label class="text-[11px] font-bold text-gray-300 uppercase">Buscar Producto por Nombre o SKU (QD-):</label>
+                            <input type="text" id="img-prod-search" oninput="buscarProductoImagen(this.value)" placeholder="Ej: QD-DTRG-1322 o Detergente Magistral..." class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-blue-400 font-mono">
+                            <div id="img-search-results" class="hidden absolute left-0 right-0 top-full mt-1 z-50 bg-primary-dark/95 border border-blue-500/30 rounded-xl max-h-56 overflow-y-auto shadow-2xl divide-y divide-white/5 backdrop-blur-xl"></div>
+                        </div>
+
+                        <!-- TARJETA DEL PRODUCTO SELECCIONADO -->
+                        <div id="selected-prod-card" class="hidden p-4 rounded-xl glass-card border border-blue-400/40 flex items-center justify-between gap-4">
+                            <div class="flex items-center gap-3">
+                                <img id="selected-prod-thumb" src="/images/placeholder.png" alt="Preview" class="w-14 h-14 object-cover rounded-lg border border-white/10 bg-black/40">
+                                <div>
+                                    <h4 id="selected-prod-name" class="font-bold text-xs text-white">---</h4>
+                                    <p class="text-[10px] text-blue-300 font-mono">SKU: <span id="selected-prod-sku">---</span> | Precio: $<span id="selected-prod-price">0</span></p>
+                                </div>
+                            </div>
+                            <span class="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-bold">Seleccionado</span>
+                        </div>
+
+                        <!-- ENTRADA DE IMAGEN (ARCHIVO O URL) -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-white/10">
+                            <div class="space-y-1.5">
+                                <label class="text-[10px] font-bold text-gray-300 uppercase">Opción A: Subir Archivo Local (JPG, PNG, WEBP)</label>
+                                <input type="file" id="img-file-input" accept="image/*" onchange="previewSelectedFile(event)" class="w-full text-xs text-gray-400 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-500/20 file:text-blue-400 hover:file:bg-blue-500/30 cursor-pointer">
+                            </div>
+                            <div class="space-y-1.5">
+                                <label class="text-[10px] font-bold text-gray-300 uppercase">Opción B: Pegar URL Directa de Imagen</label>
+                                <input type="url" id="img-url-input" placeholder="https://..." class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-500">
+                            </div>
+                        </div>
+
+                        <button onclick="subirImagenProducto()" class="w-full py-3 rounded-xl bg-blue-500 text-white font-title text-xs font-bold uppercase tracking-wider hover:bg-blue-600 shadow-lg transition-all flex items-center justify-center gap-2">
+                            <span class="material-symbols-outlined text-[18px]">cloud_upload</span> Subir y Vincular Imagen (WooCommerce + Supabase)
+                        </button>
+                        <div id="img-upload-res" class="hidden text-xs font-bold p-3 rounded-xl border"></div>
+                    </div>
                 </div>
             </section>
+
 
             <!-- TAB 5: CLIENTES -->
             <section id="view-clientes" class="hidden space-y-6">
@@ -776,7 +821,137 @@
             }
         }
 
+        // =========================================================================
+        // HANDLERS JS: BÚSQUEDA Y CARGA DIRECTA DE IMÁGENES
+        // =========================================================================
+        let selectedProductForImage = null;
+        let selectedFileBase64 = null;
+        let selectedFileName = '';
+
+        let searchDebounceTimer = null;
+        async function buscarProductoImagen(val) {
+            clearTimeout(searchDebounceTimer);
+            const resultsContainer = document.getElementById('img-search-results');
+            if (!val || val.trim().length < 2) {
+                resultsContainer.classList.add('hidden');
+                return;
+            }
+
+            searchDebounceTimer = setTimeout(async () => {
+                try {
+                    const res = await fetch(`${API_URL}/products/search?q=${encodeURIComponent(val)}`);
+                    const data = await res.json();
+                    if (data.success && data.products && data.products.length > 0) {
+                        resultsContainer.innerHTML = data.products.map(p => `
+                            <div onclick="selectProdForImg('${p.sku}', '${p.name.replace(/'/g, "\\'")}', ${p.regular_price}, '${p.image_url || ''}')" class="p-3 hover:bg-blue-500/20 cursor-pointer flex items-center justify-between transition-colors">
+                                <div class="flex items-center gap-3">
+                                    <img src="${p.image_url || '/images/placeholder.png'}" class="w-10 h-10 object-cover rounded border border-white/10 bg-black/40">
+                                    <div>
+                                        <div class="font-bold text-xs text-white">${p.name}</div>
+                                        <div class="text-[10px] text-blue-300 font-mono">SKU: ${p.sku}</div>
+                                    </div>
+                                </div>
+                                <span class="font-bold text-xs text-brand-yellow">$${parseFloat(p.regular_price || 0).toLocaleString('es-AR')}</span>
+                            </div>
+                        `).join('');
+                        resultsContainer.classList.remove('hidden');
+                    } else {
+                        resultsContainer.innerHTML = `<div class="p-3 text-xs text-gray-400 text-center">No se encontraron productos.</div>`;
+                        resultsContainer.classList.remove('hidden');
+                    }
+                } catch (e) {
+                    console.error('Error buscando productos:', e);
+                }
+            }, 300);
+        }
+
+        function selectProdForImg(sku, name, price, imgUrl) {
+            selectedProductForImage = { sku, name, price, imgUrl };
+            document.getElementById('img-search-results').classList.add('hidden');
+            document.getElementById('img-prod-search').value = `${name} (${sku})`;
+
+            document.getElementById('selected-prod-card').classList.remove('hidden');
+            document.getElementById('selected-prod-name').innerText = name;
+            document.getElementById('selected-prod-sku').innerText = sku;
+            document.getElementById('selected-prod-price').innerText = parseFloat(price || 0).toLocaleString('es-AR');
+            document.getElementById('selected-prod-thumb').src = imgUrl || '/images/placeholder.png';
+        }
+
+        function previewSelectedFile(evt) {
+            const file = evt.target.files[0];
+            if (file) {
+                selectedFileName = file.name;
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    selectedFileBase64 = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            } else {
+                selectedFileBase64 = null;
+                selectedFileName = '';
+            }
+        }
+
+        async function subirImagenProducto() {
+            const resDiv = document.getElementById('img-upload-res');
+            resDiv.classList.add('hidden');
+
+            if (!selectedProductForImage || !selectedProductForImage.sku) {
+                resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-red-500/40 bg-red-500/10 text-red-400';
+                resDiv.innerText = '⚠️ Por favor buscá y seleccioná un producto primero.';
+                resDiv.classList.remove('hidden');
+                return;
+            }
+
+            const urlInput = document.getElementById('img-url-input').value.trim();
+            if (!selectedFileBase64 && !urlInput) {
+                resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-red-500/40 bg-red-500/10 text-red-400';
+                resDiv.innerText = '⚠️ Por favor elegí un archivo de imagen o pegá una URL directa.';
+                resDiv.classList.remove('hidden');
+                return;
+            }
+
+            resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-blue-500/40 bg-blue-500/10 text-blue-300';
+            resDiv.innerText = '⏳ Subiendo imagen y vinculando a WooCommerce + Supabase... Por favor aguardá.';
+            resDiv.classList.remove('hidden');
+
+            try {
+                const payload = {
+                    sku: selectedProductForImage.sku,
+                    imageBase64: selectedFileBase64 || '',
+                    imageUrl: urlInput || '',
+                    filename: selectedFileName || `producto_${selectedProductForImage.sku}.jpg`
+                };
+
+                const response = await fetch(`${API_URL}/products/upload-image`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-400';
+                    resDiv.innerHTML = `🎉 ${data.mensaje} <br><a href="${data.image_url}" target="_blank" class="underline text-brand-yellow font-mono">Ver Imagen Oficial en WordPress</a>`;
+                    if (data.image_url) {
+                        document.getElementById('selected-prod-thumb').src = data.image_url;
+                    }
+                    // Reset inputs
+                    document.getElementById('img-file-input').value = '';
+                    document.getElementById('img-url-input').value = '';
+                    selectedFileBase64 = null;
+                } else {
+                    resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-red-500/40 bg-red-500/10 text-red-400';
+                    resDiv.innerText = `❌ Error: ${data.error || 'No se pudo subir la imagen.'}`;
+                }
+            } catch (err) {
+                resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-red-500/40 bg-red-500/10 text-red-400';
+                resDiv.innerText = `❌ Error de red al comunicarse con el servidor CRM: ${err.message}`;
+            }
+        }
+
         window.onload = checkAuth;
     </script>
 </body>
 </html>
+

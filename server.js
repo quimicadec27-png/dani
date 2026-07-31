@@ -576,6 +576,95 @@ app.get('/api/crm/alertas-seguimiento', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// =========================================================================
+// BÚSQUEDA Y CARGA DIRECTA DE IMÁGENES A WOOCOMMERCE & SUPABASE
+// =========================================================================
+
+// Endpoint de búsqueda de productos por SKU o Nombre
+app.get('/api/products/search', async (req, res) => {
+    try {
+        const query = (req.query.q || '').trim();
+        if (!query || query.length < 2) {
+            return res.json({ success: true, count: 0, products: [] });
+        }
+
+        const { data, error } = await supabase
+            .from('dec_products')
+            .select('id, name, sku, regular_price, stock, image_url, stock_status')
+            .or(`name.ilike.%${query}%,sku.ilike.%${query}%`)
+            .limit(20);
+
+        if (error) throw error;
+        res.json({ success: true, count: data ? data.length : 0, products: data || [] });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Endpoint de Carga e Integración Directa de Imagen a WooCommerce + Supabase
+app.post('/api/products/upload-image', async (req, res) => {
+    try {
+        const { sku, imageBase64, imageUrl, filename } = req.body;
+        if (!sku) {
+            return res.status(400).json({ success: false, error: 'Se requiere el SKU del producto.' });
+        }
+        if (!imageBase64 && !imageUrl) {
+            return res.status(400).json({ success: false, error: 'Se requiere la imagen en Base64 o la URL de la imagen.' });
+        }
+
+        // 1. Enviar imagen a WordPress / WooCommerce API (endpoint WPCode)
+        const targetUrl = 'https://quimicadec.com/?qdec_api=upload_image';
+        const payload = {
+            secret_key: 'qdec_crm_sec_2026',
+            sku: sku,
+            image_base64: imageBase64 || '',
+            image_url: imageUrl || '',
+            filename: filename || `producto_${sku}_${Date.now()}.jpg`
+        };
+
+        let wcResult = null;
+        try {
+            const resp = await fetch(targetUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            wcResult = await resp.json();
+        } catch (fetchErr) {
+            console.error('[WOOCOMMERCE UPLOAD FETCH ERROR]:', fetchErr.message);
+        }
+
+        const uploadedUrl = (wcResult && wcResult.success && wcResult.image_url)
+            ? wcResult.image_url
+            : (imageUrl || '');
+
+        // 2. Actualizar Supabase (tabla dec_products)
+        let dbUpdated = false;
+        if (uploadedUrl) {
+            const { error: sbError } = await supabase
+                .from('dec_products')
+                .update({ image_url: uploadedUrl })
+                .eq('sku', sku);
+
+            if (!sbError) dbUpdated = true;
+        }
+
+        res.json({
+            success: true,
+            mensaje: `✅ Imagen asignada con éxito al producto SKU ${sku}.`,
+            sku: sku,
+            image_url: uploadedUrl,
+            woocommerce_synced: !!(wcResult && wcResult.success),
+            supabase_synced: dbUpdated,
+            wc_response: wcResult
+        });
+
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 app.listen(PORT, () => {
     console.log(`🚀 Química DEC CRM API escuchando en puerto ${PORT}`);
 });
+
