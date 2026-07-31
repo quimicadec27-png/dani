@@ -210,10 +210,20 @@ Devuelve JSON: {"items": ["busqueda1", "busqueda2"]}`
                     if (wcRes.ok) {
                         const wcData = await wcRes.json();
                         if (wcData && wcData.success && wcData.products && wcData.products.length > 0) {
-                            prods = wcData.products;
+                            prods = wcData.products.filter(p => {
+                                const pSku = (p.sku || '').toUpperCase();
+                                const pName = (p.name || '').toUpperCase();
+                                const price = parseFloat(p.regular_price || p.price || 0);
+                                // Excluir productos obsoletos/desactualizados como QD-DTRG-1320 (Magistral Azul $785)
+                                if (pSku.includes('QD-DTRG-1320') || (pName.includes('MAGISTRAL AZUL') && price < 1000)) {
+                                    return false;
+                                }
+                                return true;
+                            });
                         }
                     }
                 } catch(e) {}
+
 
                 // 2. Fallback a Supabase dec_products ÚNICAMENTE si WooCommerce no devolvió NINGÚN resultado
                 if (prods.length === 0) {
