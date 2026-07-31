@@ -336,8 +336,48 @@
                             <span class="material-symbols-outlined text-[18px]">cloud_upload</span> Subir y Vincular Imagen (WooCommerce + Supabase)
                         </button>
                         <div id="img-upload-res" class="hidden text-xs font-bold p-3 rounded-xl border"></div>
+
+                        <!-- 🚀 SUB-MÓDULO: CARGA MASIVA DE MÚLTIPLES IMÁGENES POR LOTE -->
+                        <div class="pt-5 border-t border-white/10 space-y-4">
+                            <div class="flex items-center justify-between">
+                                <h4 class="font-title text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                                    <span class="material-symbols-outlined text-[18px]">collections</span> 🚀 Carga Masiva de Múltiples Imágenes (Hasta 10+ a la Vez)
+                                </h4>
+                                <span class="text-[10px] bg-amber-500/10 text-amber-300 px-2 py-0.5 rounded-full font-bold border border-amber-500/20">Por Lote</span>
+                            </div>
+
+                            <div class="p-4 bg-white/5 border border-dashed border-amber-500/40 rounded-xl space-y-2">
+                                <label class="text-[11px] font-bold text-amber-300 uppercase block">Seleccionar Múltiples Archivos de Fotos (Elegí 10 o más de una vez):</label>
+                                <input type="file" id="bulk-img-input" multiple accept="image/*" onchange="handleBulkFilesSelected(event)" class="w-full text-xs text-gray-400 file:mr-3 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-amber-500/20 file:text-amber-300 hover:file:bg-amber-500/30 cursor-pointer">
+                            </div>
+
+                            <!-- COLA DE SUBIDA MASIVA -->
+                            <div id="bulk-img-queue-container" class="hidden space-y-3 p-4 bg-black/30 border border-amber-500/30 rounded-xl">
+                                <div class="flex items-center justify-between text-xs font-bold text-gray-200">
+                                    <span>Fotos preparadas para subir (<span id="bulk-img-count" class="text-amber-400">0</span>):</span>
+                                    <button onclick="clearBulkQueue()" class="text-rose-400 hover:underline text-[11px]">Limpiar Lote</button>
+                                </div>
+
+                                <div id="bulk-img-queue-list" class="max-h-64 overflow-y-auto space-y-2 pr-1 divide-y divide-white/5"></div>
+
+                                <button id="bulk-upload-btn" onclick="startBulkImageUpload()" class="w-full py-3.5 rounded-xl bg-amber-500 text-primary-dark font-title text-xs font-bold uppercase tracking-wider hover:bg-amber-400 shadow-xl transition-all flex items-center justify-center gap-2">
+                                    <span class="material-symbols-outlined text-[18px]">publish</span> Subir Lote Completo y Purgar Caché
+                                </button>
+
+                                <div id="bulk-upload-progress" class="hidden space-y-2 p-3 bg-black/60 rounded-xl border border-amber-500/40">
+                                    <div class="flex justify-between text-xs text-amber-300 font-bold">
+                                        <span id="bulk-progress-text">Procesando 0/0...</span>
+                                        <span id="bulk-progress-percent">0%</span>
+                                    </div>
+                                    <div class="w-full bg-white/10 h-2.5 rounded-full overflow-hidden">
+                                        <div id="bulk-progress-bar" class="bg-amber-400 h-full w-0 transition-all duration-300"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
+
             </section>
 
 
@@ -961,13 +1001,190 @@
                     resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-red-500/40 bg-red-500/10 text-red-400';
                     resDiv.innerText = `❌ Error: ${data.error || 'No se pudo subir la imagen.'}`;
                 }
-            } catch (err) {
-                resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-red-500/40 bg-red-500/10 text-red-400';
-                resDiv.innerText = `❌ Error de red al comunicarse con el servidor CRM: ${err.message}`;
+        }
+
+        /* ==========================================
+           LÓGICA DE CARGA MASIVA DE IMÁGENES POR LOTE
+           ========================================== */
+        let bulkFilesQueue = [];
+        let allProductsCacheForBulk = [];
+
+        async function handleBulkFilesSelected(evt) {
+            const files = Array.from(evt.target.files);
+            if (!files.length) return;
+
+            // Intentar cargar la lista de productos si no está en caché
+            if (!allProductsCacheForBulk.length) {
+                try {
+                    const res = await fetch(`${API_URL}/products/search?q=a`);
+                    const data = await res.json();
+                    if (data.success && data.products) {
+                        allProductsCacheForBulk = data.products;
+                    }
+                } catch(e) {}
+            }
+
+            bulkFilesQueue = [];
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const base64 = await readFileAsBase64(file);
+                
+                // Intento de autodetección por SKU en el nombre del archivo
+                const fnameClean = file.name.toLowerCase();
+                let matchedSku = '';
+                const foundProd = allProductsCacheForBulk.find(p => p.sku && fnameClean.includes(p.sku.toLowerCase()));
+                if (foundProd) {
+                    matchedSku = foundProd.sku;
+                }
+
+                bulkFilesQueue.push({
+                    id: i,
+                    file: file,
+                    fileName: file.name,
+                    base64: base64,
+                    matchedSku: matchedSku,
+                    status: 'pending', // pending, uploading, success, error
+                    errorMsg: '',
+                    resultUrl: ''
+                });
+            }
+
+            renderBulkQueueUI();
+        }
+
+        function readFileAsBase64(file) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function renderBulkQueueUI() {
+            const container = document.getElementById('bulk-img-queue-container');
+            const list = document.getElementById('bulk-img-queue-list');
+            const countSpan = document.getElementById('bulk-img-count');
+
+            countSpan.innerText = bulkFilesQueue.length;
+            if (bulkFilesQueue.length === 0) {
+                container.classList.add('hidden');
+                return;
+            }
+            container.classList.remove('hidden');
+
+            list.innerHTML = bulkFilesQueue.map(item => `
+                <div class="py-2.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+                    <div class="flex items-center gap-3 flex-1 min-w-0">
+                        <img src="${item.base64}" class="w-10 h-10 object-cover rounded-lg border border-white/10 bg-black/40 flex-shrink-0">
+                        <div class="min-w-0 flex-1">
+                            <div class="font-bold text-white truncate text-xs" title="${item.fileName}">${item.fileName}</div>
+                            <div class="text-[10px] text-gray-400 font-mono">${(item.file.size / 1024).toFixed(1)} KB</div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2 w-full sm:w-auto">
+                        <select onchange="updateBulkSkuSelection(${item.id}, this.value)" class="bg-white/10 border border-white/20 text-white rounded-lg px-2.5 py-1.5 text-xs font-mono w-full sm:w-56 focus:outline-none focus:border-amber-400">
+                            <option value="" class="bg-slate-900 text-gray-400">-- Seleccionar SKU --</option>
+                            ${allProductsCacheForBulk.map(p => `
+                                <option value="${p.sku}" ${p.sku === item.matchedSku ? 'selected' : ''} class="bg-slate-900 text-white">
+                                    ${p.sku} - ${p.name.slice(0, 24)}
+                                </option>
+                            `).join('')}
+                        </select>
+
+                        <div class="flex-shrink-0">
+                            ${item.status === 'pending' ? '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-500/20 text-gray-300">Pendiente</span>' : ''}
+                            ${item.status === 'uploading' ? '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 animate-pulse">Subiendo...</span>' : ''}
+                            ${item.status === 'success' ? '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400">✅ Listo</span>' : ''}
+                            ${item.status === 'error' ? `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-400" title="${item.errorMsg}">❌ Error</span>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updateBulkSkuSelection(id, sku) {
+            const item = bulkFilesQueue.find(i => i.id === id);
+            if (item) {
+                item.matchedSku = sku;
             }
         }
 
+        function clearBulkQueue() {
+            bulkFilesQueue = [];
+            document.getElementById('bulk-img-input').value = '';
+            renderBulkQueueUI();
+        }
+
+        async function startBulkImageUpload() {
+            if (!bulkFilesQueue.length) return;
+
+            const unassigned = bulkFilesQueue.filter(i => !i.matchedSku);
+            if (unassigned.length > 0) {
+                alert(`⚠️ Hay ${unassigned.length} imagen(es) sin producto seleccionado. Por favor asignales un SKU antes de subir.`);
+                return;
+            }
+
+            const btn = document.getElementById('bulk-upload-btn');
+            const progressContainer = document.getElementById('bulk-upload-progress');
+            const progressText = document.getElementById('bulk-progress-text');
+            const progressPercent = document.getElementById('bulk-progress-percent');
+            const progressBar = document.getElementById('bulk-progress-bar');
+
+            btn.disabled = true;
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
+            progressContainer.classList.remove('hidden');
+
+            const total = bulkFilesQueue.length;
+            let completed = 0;
+
+            for (let i = 0; i < total; i++) {
+                const item = bulkFilesQueue[i];
+                item.status = 'uploading';
+                renderBulkQueueUI();
+
+                progressText.innerText = `Subiendo y purgando caché ${i + 1}/${total}: ${item.fileName}...`;
+                const pct = Math.round(((i) / total) * 100);
+                progressPercent.innerText = `${pct}%`;
+                progressBar.style.width = `${pct}%`;
+
+                try {
+                    const response = await fetch(`${API_URL}/products/upload-image`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            sku: item.matchedSku,
+                            imageBase64: item.base64,
+                            filename: item.fileName
+                        })
+                    });
+
+                    const data = await response.json();
+                    if (data.success) {
+                        item.status = 'success';
+                        item.resultUrl = data.image_url;
+                    } else {
+                        item.status = 'error';
+                        item.errorMsg = data.error || 'Error en servidor';
+                    }
+                } catch(e) {
+                    item.status = 'error';
+                    item.errorMsg = e.message;
+                }
+
+                completed++;
+                renderBulkQueueUI();
+            }
+
+            progressText.innerText = `🎉 ¡Lote completo! ${completed}/${total} procesados con purga automática de caché.`;
+            progressPercent.innerText = `100%`;
+            progressBar.style.width = `100%`;
+            btn.disabled = false;
+            btn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+
         window.onload = checkAuth;
+
     </script>
 </body>
 </html>
