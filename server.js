@@ -2,7 +2,7 @@
  * QUÍMICA DEC — Backend API del CRM B2B y Cerebro IA de "Dani"
  * ==========================================================
  * Servidor Express con Reglas Comerciales Exactas, Precios Corregidos desde WooCommerce,
- * Cotización por Presentaciones Reales, Voseo Rioplatense y Sync CRM Robusto.
+ * Cotización por Presentaciones Reales, Edición de Leads (Nombre, Tel, DNI), Auto-polling y Sync CRM.
  */
 
 require('dotenv').config();
@@ -48,6 +48,10 @@ Hablas en primera persona como representante oficial ("en Química DEC nos dedic
 ⚠️ REGLA DE COMUNICACIÓN COMERCIAL (PROHIBIDO MENCIONAR BASES DE DATOS):
 - ESTÁ PROHIBIDO MENCIONAR A UN CLIENTE PALABRAS TÉCNICAS COMO "base de datos", "dec_products", "nuestra DB" O "sistema".
 - Si el cliente te ofrece pasarte una lista de productos, responde de forma humana y comercial: "¡Claro que sí! Pasame la lista de productos que necesitás y te paso los precios actualizados al instante."
+
+⚠️ REGLA DE PRECIOS E INVENTARIO (CERO ALUCINACIONES):
+- USA ÚNICAMENTE Y EXCLUSIVAMENTE LOS PRECIOS Y PRESENTACIONES REALES INYECTADAS EN EL SECTOR [DATOS REALES Y PRECIOS EXACTOS DE NUESTRO CATÁLOGO].
+- ESTÁ PROHIBIDO INVENTAR O CALCULAR CUALQUIER PRECIO NO LISTADO (COMO $2.350 O CUALQUIER OTRO). SI UN PRODUCTO O PRESENTACIÓN NO CONSTA EN LOS DATOS REALES, MENCIONÁ LAS OPCIONES OFICIALES DISPONIBLES O INVITALOS A HABLAR CON UN REPRESENTANTE DE VENTAS POR WHATSAPP.
 
 ⚠️ REGLAS COMERCIALES EXACTAS DE CLIENTE MAYORISTA EN QUÍMICA DEC:
 1. REGISTRO E INICIO MAYORISTA: Para registrarse y activar la cuenta con precios mayoristas por primera vez, el cliente debe realizar una COMPRA MÍNIMA INICIAL de $80.000.
@@ -105,10 +109,17 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
 
         if (!textoProcesado) return res.status(400).json({ error: 'Mensaje vacío' });
 
+        // Generar nombre de Lead limpio para visitas web
+        let leadNombre = `Cliente Web (${clientePhone.substring(0, 12)})`;
+        if (clientePhone.startsWith('Web_')) {
+            const shortId = clientePhone.replace('Web_', '').substring(0, 6);
+            leadNombre = `Lead Web #${shortId}`;
+        }
+
         // Buscar o registrar cliente en Supabase para que APAREZCA EN EL CRM EN VIVO
         let { data: cliente } = await supabase.from('clientes').select('id, razon_social, whatsapp').eq('whatsapp', clientePhone).single();
         if (!cliente) {
-            const { data: newC } = await supabase.from('clientes').insert([{ razon_social: `Cliente Web (${clientePhone.substring(0, 15)})`, whatsapp: clientePhone }]).select().single();
+            const { data: newC } = await supabase.from('clientes').insert([{ razon_social: leadNombre, whatsapp: clientePhone }]).select().single();
             cliente = newC;
         }
 
@@ -149,7 +160,7 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
         try {
             const parserCompletion = await groq.chat.completions.create({
                 messages: [
-                    { role: "system", content: `Extrae JSON de productos de la consulta del usuario: {"items": [{"busqueda": "detergente magenta", "cantidad": 1}]}` },
+                    { role: "system", content: `Extrae JSON de palabras clave de productos buscados: {"items": ["detergente magenta", "alcohol etilico"]}` },
                     { role: "user", content: textoProcesado }
                 ],
                 model: "llama-3.3-70b-versatile",
@@ -163,37 +174,54 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
         let cotizacionCalculada = "";
         let desgloses = [];
 
-        if (itemsExtraidos.length > 0) {
-            for (const item of itemsExtraidos) {
-                const queryStr = (item.busqueda || '').toLowerCase();
+        if (itemsExtraidos.length > 0 || textoProcesado.length > 3) {
+            const busquedas = itemsExtraidos.length > 0 ? itemsExtraidos : [textoProcesado];
+            
+            for (const queryItem of busquedas) {
+                const queryStr = (typeof queryItem === 'string' ? queryItem : (queryItem.busqueda || '')).toLowerCase();
                 if (!queryStr) continue;
 
-                const words = queryStr.split(' ').filter(w => w.length > 2);
+                const stopWords = ['cuanto', 'sale', 'tenes', 'opciones', 'producto', 'precio', 'este', 'para', 'saber', 'quisiera'];
+                const words = queryStr.split(' ').filter(w => w.length > 2 && !stopWords.includes(w));
                 if (words.length === 0) continue;
 
-                // Buscar productos en Supabase excluyendo borrador y precios en $0
-                const firstWord = words[0];
-                const { data: prods } = await supabase
+                // Consulta flexible multi-palabra en Supabase
+                let queryBuilder = supabase
                     .from('dec_products')
                     .select('name, price, stock_status')
                     .gt('price', 0)
-                    .neq('status', 'borrador')
-                    .ilike('name', `%${firstWord}%`)
-                    .order('price', { ascending: true })
-                    .limit(50);
+                    .neq('status', 'borrador');
+
+                for (const w of words) {
+                    queryBuilder = queryBuilder.ilike('name', `%${w}%`);
+                }
+
+                let { data: prods } = await queryBuilder.order('price', { ascending: true }).limit(20);
+
+                // Fallback: si no matchea con todas las palabras juntas, probar con la palabra clave más larga
+                if (!prods || prods.length === 0) {
+                    const sortedWords = words.sort((a,b) => b.length - a.length);
+                    const longestWord = sortedWords[0];
+                    if (longestWord && longestWord.length > 3) {
+                        const { data: fallbackProds } = await supabase
+                            .from('dec_products')
+                            .select('name, price, stock_status')
+                            .gt('price', 0)
+                            .neq('status', 'borrador')
+                            .ilike('name', `%${longestWord}%`)
+                            .order('price', { ascending: true })
+                            .limit(15);
+                        prods = fallbackProds;
+                    }
+                }
 
                 if (prods && prods.length > 0) {
-                    // Filtrar por palabras secundarias si existen
-                    let candidatos = prods;
-                    for (let i = 1; i < words.length; i++) {
-                        const word = words[i];
-                        const filtrados = candidatos.filter(p => p.name.toLowerCase().includes(word));
-                        if (filtrados.length > 0) candidatos = filtrados;
-                    }
-
-                    candidatos.slice(0, 8).forEach(p => {
+                    prods.forEach(p => {
                         const price = parseFloat(p.price);
-                        desgloses.push(`- ${p.name}: $${price.toLocaleString('es-AR')} (Stock: ${p.stock_status === 'instock' ? 'Disponible' : 'Agotado'})`);
+                        const descLine = `- ${p.name}: $${price.toLocaleString('es-AR')} (Stock: ${p.stock_status === 'instock' ? 'Disponible' : 'Agotado'})`;
+                        if (!desgloses.includes(descLine)) {
+                            desgloses.push(descLine);
+                        }
                     });
                 }
             }
@@ -258,17 +286,60 @@ app.get('/api/crm/chat/conversaciones', async (req, res) => {
     try {
         const { data: clientes, error } = await supabase
             .from('clientes')
-            .select('id, razon_social, whatsapp, creado_el')
+            .select('id, razon_social, whatsapp, contacto_nombre, creado_el')
             .order('creado_el', { ascending: false });
 
         if (error) throw error;
         
-        const conversacionesFormatted = (clientes || []).map(c => ({
-            ...c,
-            bot_pausado: false
+        // Para cada cliente, obtener la fecha de su último mensaje y conteo
+        const conversacionesFormatted = await Promise.all((clientes || []).map(async (c) => {
+            let ultimoMsgFecha = c.creado_el;
+            let ultimoTexto = '';
+            try {
+                const { data: lastM } = await supabase
+                    .from('mensajes_chat')
+                    .select('texto, creado_el')
+                    .eq('cliente_id', c.id)
+                    .order('creado_el', { ascending: false })
+                    .limit(1);
+                
+                if (lastM && lastM.length > 0) {
+                    ultimoMsgFecha = lastM[0].creado_el;
+                    ultimoTexto = lastM[0].texto;
+                }
+            } catch (e) {}
+
+            return {
+                ...c,
+                bot_pausado: false,
+                ultimo_mensaje_el: ultimoMsgFecha,
+                ultimo_texto: ultimoTexto
+            };
         }));
 
+        // Ordenar por fecha del último mensaje descendente
+        conversacionesFormatted.sort((a, b) => new Date(b.ultimo_mensaje_el) - new Date(a.ultimo_mensaje_el));
+
         res.json({ success: true, conversaciones: conversacionesFormatted });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Actualizar Datos de Lead / Cliente desde el CRM
+app.post('/api/crm/clientes/actualizar', async (req, res) => {
+    try {
+        const { cliente_id, razon_social, whatsapp, dni_cuit, notas } = req.body;
+        if (!cliente_id) return res.status(400).json({ error: 'ID de cliente requerido' });
+
+        const updatePayload = {};
+        if (razon_social) updatePayload.razon_social = razon_social;
+        if (whatsapp) updatePayload.whatsapp = whatsapp;
+        if (dni_cuit) updatePayload.contacto_nombre = DNI: `${dni_cuit}`;
+        if (notas) updatePayload.observaciones = notas;
+
+        const { data, error } = await supabase.from('clientes').update(updatePayload).eq('id', cliente_id).select().single();
+        if (error) throw error;
+
+        res.json({ success: true, mensaje: '✅ Datos del cliente actualizados correctamente en el CRM.', cliente: data });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
