@@ -409,7 +409,7 @@
             }
 
             list.innerHTML = conversacionesData.map(c => `
-                <div onclick="selectChatClient(${c.id})" class="p-3 rounded-xl glass-card cursor-pointer border transition-all ${selectedClienteId === c.id ? 'border-brand-yellow bg-white/10' : 'border-white/5'}">
+                <div onclick="selectChatClient('${c.id}')" class="p-3 rounded-xl glass-card cursor-pointer border transition-all ${selectedClienteId === c.id ? 'border-brand-yellow bg-white/10' : 'border-white/5'}">
                     <div class="flex justify-between items-start">
                         <h4 class="font-bold text-xs text-white">${c.razon_social || 'Cliente'}</h4>
                         <span class="text-[9px] px-1.5 py-0.5 rounded font-bold ${c.bot_pausado ? 'bg-amber-500/20 text-amber-400' : 'bg-emerald-500/20 text-emerald-400'}">
