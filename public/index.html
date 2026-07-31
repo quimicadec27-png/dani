@@ -845,6 +845,7 @@
                 try {
                     const res = await fetch(`${API_URL}/products/search?q=${encodeURIComponent(cleanVal)}`);
                     const data = await res.json();
+                    if (data.success && data.products && data.products.length > 0) {
                         window.currentSearchProducts = data.products;
                         resultsContainer.innerHTML = data.products.map((p, idx) => `
                             <div onclick="selectProdFromCache(${idx})" class="p-3 hover:bg-blue-500/20 cursor-pointer flex items-center justify-between transition-colors">
@@ -867,6 +868,7 @@
                     console.error('Error buscando productos:', e);
                 }
             }, 300);
+
         }
 
         function selectProdFromCache(idx) {
