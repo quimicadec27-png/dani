@@ -648,31 +648,47 @@ app.post('/api/products/update-details', async (req, res) => {
             sale_price: sale_price || ''
         };
 
-        const wcRes = await fetch(targetUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        const wcData = await wcRes.json();
+        let wcData = { success: false };
+        try {
+            const wcRes = await fetch(targetUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const textResp = await wcRes.text();
+            try {
+                wcData = JSON.parse(textResp);
+            } catch(e) {
+                wcData = { success: false, error: 'WordPress devolvió HTML (snippet WPCode pendiente de actualizar).' };
+            }
+        } catch(e) {
+            wcData = { success: false, error: e.message };
+        }
 
         // 2. Actualizar Supabase
+        let sbUpdated = false;
         const updateDb = {};
         if (name) updateDb.name = name;
         if (regular_price) updateDb.regular_price = parseFloat(regular_price);
         if (sale_price || regular_price) updateDb.price = parseFloat(sale_price || regular_price);
 
         if (Object.keys(updateDb).length > 0) {
-            await supabase.from('dec_products').update(updateDb).eq('sku', sku);
+            const { error: sbErr } = await supabase.from('dec_products').update(updateDb).eq('sku', sku);
+            if (!sbErr) sbUpdated = true;
         }
 
         res.json({
             success: true,
-            mensaje: `🎉 Producto SKU ${sku} actualizado con éxito en WooCommerce y Supabase.`,
-            wc_response: wcData
+            mensaje: wcData.success 
+                ? `🎉 Producto SKU ${sku} actualizado con éxito en WooCommerce y Supabase.`
+                : `🎉 Producto SKU ${sku} actualizado en Supabase. (Nota: Para WooCommerce recordá copiar el script wpcode_upload_image_api.php en WPCode).`,
+            wc_response: wcData,
+            supabase_updated: sbUpdated
         });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
     }
+
 });
 
 // Endpoint de Carga e Integración Directa de Imagen a WooCommerce + Supabase
