@@ -190,7 +190,7 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
                     .from('dec_products')
                     .select('name, price, stock_status')
                     .gt('price', 0)
-                    .neq('status', 'borrador');
+                    .in('status', ['publicado', 'publish']);
 
                 for (const w of words) {
                     queryBuilder = queryBuilder.ilike('name', `%${w}%`);
@@ -207,7 +207,7 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
                             .from('dec_products')
                             .select('name, price, stock_status')
                             .gt('price', 0)
-                            .neq('status', 'borrador')
+                            .in('status', ['publicado', 'publish'])
                             .ilike('name', `%${longestWord}%`)
                             .order('price', { ascending: true })
                             .limit(15);
@@ -333,7 +333,7 @@ app.post('/api/crm/clientes/actualizar', async (req, res) => {
         const updatePayload = {};
         if (razon_social) updatePayload.razon_social = razon_social;
         if (whatsapp) updatePayload.whatsapp = whatsapp;
-        if (dni_cuit) updatePayload.contacto_nombre = DNI: `${dni_cuit}`;
+        if (dni_cuit) updatePayload.contacto_nombre = `DNI: ${dni_cuit}`;
         if (notas) updatePayload.observaciones = notas;
 
         const { data, error } = await supabase.from('clientes').update(updatePayload).eq('id', cliente_id).select().single();
