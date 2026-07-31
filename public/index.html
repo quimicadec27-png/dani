@@ -1179,7 +1179,13 @@
 
                 completed++;
                 renderBulkQueueUI();
+
+                // Pausa de seguridad de 800ms entre archivos para evitar saturación de base de datos / servidor
+                if (i < total - 1) {
+                    await new Promise(r => setTimeout(r, 800));
+                }
             }
+
 
             progressText.innerText = `🎉 ¡Lote completo! ${completed}/${total} procesados con purga automática de caché.`;
             progressPercent.innerText = `100%`;
