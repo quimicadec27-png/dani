@@ -227,7 +227,7 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
             }
 
             if (desgloses.length > 0) {
-                cotizacionCalculada = "\n[DATOS REALES Y PRECIOS EXACTOS DE NUESTRO CATÁLOGO]:\n" + desgloses.join('\n');
+                cotizacionCalculada = "\n[DATOS REALES DE PRODUCTOS PUBLICADOS Y PRECIOS OFICIALES EN NUESTRO CATÁLOGO]:\n" + desgloses.join('\n') + "\n⚠️ INSTRUCCIÓN OBLIGATORIA DE PRECIOS: Mencioná ÚNICAMENTE los productos y precios oficiales listados arriba. ESTÁ ABSOLUTAMENTE PROHIBIDO decir que no tenemos un producto si está en la lista anterior, y está prohibido inventar cualquier otro valor.";
             }
         }
 
