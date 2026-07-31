@@ -618,7 +618,28 @@ app.get('/api/crm/alertas-seguimiento', async (req, res) => {
 });
 
 // =========================================================================
+// Endpoint de depuración y borrado directo de productos obsoletos en Supabase
+app.get('/api/products/debug-search', async (req, res) => {
+    try {
+        const { data: allProds } = await supabase
+            .from('dec_products')
+            .select('id, name, sku, price, regular_price, status')
+            .or('name.ilike.%MAGISTRAL%,name.ilike.%AZUL%,price.lt.1000');
+            
+        // Borrar cualquier producto que tenga AZUL o precio < 1000 en 20LT
+        const { data: deleted, error } = await supabase
+            .from('dec_products')
+            .delete()
+            .or('name.ilike.%AZUL%,name.ilike.%MAGISTRAL AZUL%,price.eq.785.02');
+
+        res.json({ success: true, encontrados: allProds, borrados: deleted, error });
+    } catch(err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Endpoint para limpiar productos obsoletos/borradores de Supabase dec_products
+
 app.get('/api/products/cleanup-outdated', async (req, res) => {
     try {
         const { data, error } = await supabase
