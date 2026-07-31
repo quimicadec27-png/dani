@@ -580,26 +580,46 @@ app.get('/api/crm/alertas-seguimiento', async (req, res) => {
 // BÚSQUEDA Y CARGA DIRECTA DE IMÁGENES A WOOCOMMERCE & SUPABASE
 // =========================================================================
 
-// Endpoint de búsqueda de productos por SKU o Nombre
+// Endpoint de búsqueda de productos por SKU o Nombre (Supabase + Fallback WooCommerce)
 app.get('/api/products/search', async (req, res) => {
     try {
-        const query = (req.query.q || '').trim();
+        let query = (req.query.q || '').trim();
+        // Limpiar prefijos habituales como "SKU: ", "sku: ", "sku "
+        query = query.replace(/^sku:\s*/i, '').replace(/^sku\s+/i, '').trim();
+
         if (!query || query.length < 2) {
             return res.json({ success: true, count: 0, products: [] });
         }
 
-        const { data, error } = await supabase
+        // 1. Consultar Supabase dec_products
+        let { data, error } = await supabase
             .from('dec_products')
             .select('id, name, sku, regular_price, stock, image_url, stock_status')
             .or(`name.ilike.%${query}%,sku.ilike.%${query}%`)
             .limit(20);
 
-        if (error) throw error;
-        res.json({ success: true, count: data ? data.length : 0, products: data || [] });
+        if (error) {
+            console.error('Error buscando en Supabase:', error.message);
+            data = [];
+        }
+
+        // Si Supabase trajo resultados, responder
+        if (data && data.length > 0) {
+            return res.json({ success: true, count: data.length, products: data });
+        }
+
+        // 2. Fallback: Consultar directamente WooCommerce si no está en Supabase
+        const wcRes = await axios.get(`https://quimicadec.com/?qdec_api=search_product&q=${encodeURIComponent(query)}`, { timeout: 8000 }).catch(() => null);
+        if (wcRes && wcRes.data && wcRes.data.success && wcRes.data.products && wcRes.data.products.length > 0) {
+            return res.json({ success: true, count: wcRes.data.products.length, products: wcRes.data.products });
+        }
+
+        res.json({ success: true, count: 0, products: [] });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
     }
 });
+
 
 // Endpoint de Carga e Integración Directa de Imagen a WooCommerce + Supabase
 app.post('/api/products/upload-image', async (req, res) => {
