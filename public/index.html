@@ -1137,12 +1137,20 @@
             container.classList.remove('hidden');
 
             list.innerHTML = bulkFilesQueue.map(item => {
-                const q = (item.searchQuery || '').toLowerCase().trim();
+                const q = (item.searchQuery || '').replace(/^sku:\s*/i, '').replace(/^sku\s+/i, '').toLowerCase().trim();
                 const filteredProds = allProductsCacheForBulk.filter(p => 
                     !q || 
                     (p.sku && p.sku.toLowerCase().includes(q)) || 
                     (p.name && p.name.toLowerCase().includes(q))
                 );
+
+                // Auto-asignación si hay coincidencia exacta de SKU o una sola opción
+                if (!item.matchedSku && filteredProds.length === 1) {
+                    item.matchedSku = filteredProds[0].sku;
+                } else if (q && !item.matchedSku) {
+                    const exact = allProductsCacheForBulk.find(p => p.sku && p.sku.toLowerCase() === q);
+                    if (exact) item.matchedSku = exact.sku;
+                }
 
                 return `
                     <div class="py-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-xs border-b border-white/5">
@@ -1160,11 +1168,11 @@
                                 placeholder="🔍 Escribí SKU o Nombre..." 
                                 value="${item.searchQuery || ''}" 
                                 oninput="searchBulkRowProduct(${item.id}, this.value)" 
-                                class="bg-white/10 border border-white/20 text-white rounded-lg px-2.5 py-1.5 text-xs font-mono w-full sm:w-44 focus:outline-none focus:border-amber-400 placeholder-gray-400">
+                                class="bg-white/10 border border-white/20 text-white rounded-lg px-2.5 py-1.5 text-xs font-mono w-full sm:w-48 focus:outline-none focus:border-amber-400 placeholder-gray-400">
 
                             <select id="bulk-sku-select-${item.id}" 
                                 onchange="updateBulkSkuSelection(${item.id}, this.value)" 
-                                class="bg-white/10 border border-white/20 text-white rounded-lg px-2.5 py-1.5 text-xs font-mono w-full sm:w-56 focus:outline-none focus:border-amber-400">
+                                class="bg-white/10 border border-white/20 text-white rounded-lg px-2.5 py-1.5 text-xs font-mono w-full sm:w-60 focus:outline-none focus:border-amber-400">
                                 <option value="" class="bg-slate-900 text-gray-400">-- Seleccionar SKU (${filteredProds.length}) --</option>
                                 ${filteredProds.map(p => `
                                     <option value="${p.sku}" ${p.sku === item.matchedSku ? 'selected' : ''} class="bg-slate-900 text-white">
@@ -1190,12 +1198,20 @@
             if (!item) return;
             item.searchQuery = val;
 
-            const q = val.toLowerCase().trim();
+            const q = val.replace(/^sku:\s*/i, '').replace(/^sku\s+/i, '').toLowerCase().trim();
             const filtered = allProductsCacheForBulk.filter(p => 
                 !q || 
                 (p.sku && p.sku.toLowerCase().includes(q)) || 
                 (p.name && p.name.toLowerCase().includes(q))
             );
+
+            // Auto-asignar si hay coincidencia exacta de SKU
+            const exactMatch = allProductsCacheForBulk.find(p => p.sku && p.sku.toLowerCase() === q);
+            if (exactMatch) {
+                item.matchedSku = exactMatch.sku;
+            } else if (filtered.length === 1) {
+                item.matchedSku = filtered[0].sku;
+            }
 
             const selectElem = document.getElementById(`bulk-sku-select-${id}`);
             if (selectElem) {
@@ -1207,9 +1223,8 @@
                         </option>
                     `).join('')}
                 `;
-                if (filtered.length === 1) {
-                    item.matchedSku = filtered[0].sku;
-                    selectElem.value = filtered[0].sku;
+                if (item.matchedSku) {
+                    selectElem.value = item.matchedSku;
                 }
             }
         }
@@ -1221,6 +1236,7 @@
                 item.searchQuery = sku;
             }
         }
+
 
 
         function clearBulkQueue() {
