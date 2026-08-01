@@ -933,9 +933,17 @@ app.post('/api/categories/upload-banner', async (req, res) => {
                         'jabon-en-pan': /jabonenpan\.(jpeg|jpg|png|webp)/gi
                     };
 
-                    // Reemplazar la URL del banner específico o fallback por href de la categoría
+                    // Reemplazar la URL del banner específico por la URL HTTPS recién subida
                     if (categoryKey === 'combos-emprendedores') {
-                        html = html.replace(/src="[^"]*combos[^"]*"/i, `src="${data.image_url}"`);
+                        html = html.replace(/(href="[^"]*combos-emprendedores[^"]*"[\s\S]*?<img [^>]*src=")[^"]*(")/i, `$1${data.image_url}$2`);
+                    } else if (categoryKey === 'ofertas-semanales') {
+                        html = html.replace(/(href="[^"]*ofertas-semanales[^"]*"[\s\S]*?<img [^>]*src=")[^"]*(")/i, `$1${data.image_url}$2`);
+                    } else if (categoryKey === 'productos-liquidos') {
+                        html = html.replace(/(href="[^"]*productos-liquidos[^"]*"[\s\S]*?<img [^>]*src=")[^"]*(")/i, `$1${data.image_url}$2`);
+                    } else {
+                        const slugKey = categoryKey.replace(/-/g, '');
+                        const reg = new RegExp(`(src="[^"]*${slugKey}[^"]*")`, 'i');
+                        html = html.replace(reg, `src="${data.image_url}"`);
                     }
 
                     fs.writeFileSync(catalogPath, html, 'utf8');

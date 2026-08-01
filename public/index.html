@@ -267,311 +267,239 @@
             </section>
 
             <!-- TAB 4: GESTIÓN CATÁLOGO E IA -->
+            <!-- TAB 4: CATÁLOGO E IA CON MENÚ LATERAL DE SUB-PESTAÑAS -->
             <section id="view-catalogo" class="hidden space-y-6">
-                <div class="glass-panel p-6 rounded-2xl space-y-6 max-w-4xl mx-auto">
-                    <div class="flex items-center gap-3 border-b border-white/10 pb-4">
-                        <span class="material-symbols-outlined text-3xl text-blue-400">edit_calendar</span>
-                        <div>
-                            <h2 class="font-title text-lg font-bold uppercase text-white tracking-wider">Gestor de Precios, Carga Excel e IA</h2>
+                <div class="glass-panel p-6 rounded-2xl space-y-6 max-w-6xl mx-auto">
+                    <div class="flex items-center justify-between border-b border-white/10 pb-4">
+                        <div class="flex items-center gap-3">
+                            <span class="material-symbols-outlined text-3xl text-purple-400">edit_calendar</span>
+                            <div>
+                                <h2 class="font-title text-lg font-bold uppercase text-white tracking-wider">Gestor de Catálogo, Combos, Precios e IA</h2>
+                                <p class="text-xs text-gray-400">Elegí una herramienta del menú lateral para administrar la tienda sin scrolls infinitos.</p>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- 🌐 BOTÓN DE SINCRONIZACIÓN DE GRILLA EN LA WEB -->
-                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 p-4 rounded-2xl bg-cyan-500/10 border border-cyan-500/30">
-                        <div>
-                            <h3 class="font-title text-xs font-bold uppercase text-cyan-300 tracking-wider flex items-center gap-1">
-                                <span class="material-symbols-outlined text-[16px]">grid_view</span> Sincronización Directa de Grilla de Categorías
-                            </h3>
-                            <p class="text-[11px] text-gray-300 mt-0.5">Actualizá la grilla del catálogo web (Combos Emprendedores, 4+3+2 tarjetas) en WordPress con 1 solo clic sin tocar código.</p>
-                        </div>
-                        <button onclick="sincronizarGrillaCatalogoWeb()" class="px-5 py-2.5 rounded-xl bg-cyan-500 text-primary-dark font-bold text-xs uppercase hover:bg-cyan-400 flex items-center gap-1.5 shadow-lg flex-shrink-0 cursor-pointer">
-                            <span class="material-symbols-outlined text-[16px]">sync</span> Actualizar Grilla Web
-                        </button>
-                    </div>
-                    <div id="sync-grid-res" class="hidden text-xs font-bold p-3 rounded-xl border"></div>
+                    <!-- LAYOUT 2 COLUMNAS: MENÚ LATERAL IZQUIERDO + CONTENIDO -->
+                    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                        
+                        <!-- MENÚ LATERAL IZQUIERDO (DIBUJADO POR EL USUARIO) -->
+                        <div class="lg:col-span-1 space-y-2 bg-slate-900/80 p-3 rounded-2xl border border-white/10 h-fit sticky top-20">
+                            <span class="text-[10px] font-black uppercase text-gray-400 tracking-wider block px-2 py-1 border-b border-white/5 mb-2">Herramientas</span>
+                            
+                            <button id="btn-subtab-combos" onclick="switchCatSubTab('combos')" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all bg-white/15 border border-white/30 text-white shadow-md">
+                                <span class="material-symbols-outlined text-sm text-purple-400">view_carousel</span> 🎁 Combos Emprendedores
+                            </button>
 
-                    <div class="space-y-4 p-5 rounded-2xl bg-white/5 border border-emerald-500/30">
-                        <h3 class="font-title text-xs font-bold uppercase text-emerald-400 tracking-wider">1. Carga o Pegado Masivo de Excel / CSV</h3>
-                        <textarea id="excel-paste-input" rows="4" placeholder="DETERGENTE MAGENTA CONCENTRADO 1+4 - 5 LT ; 24065 ; 50" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-xs text-white font-mono"></textarea>
-                        <button onclick="subirListaExcel()" class="px-6 py-2.5 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold uppercase hover:bg-emerald-500/30">
-                            Aplicar Lista Excel en Supabase y Web
-                        </button>
-                        <div id="excel-res-msg" class="hidden text-xs font-bold p-3 rounded-xl"></div>
-                    </div>
+                            <button id="btn-subtab-ofertas" onclick="switchCatSubTab('ofertas')" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all text-gray-400 hover:bg-white/5">
+                                <span class="material-symbols-outlined text-sm text-amber-400">local_offer</span> 🏷️ Ofertas Semanales
+                            </button>
 
-                    <div class="space-y-4 p-5 rounded-2xl bg-white/5 border border-white/10">
-                        <h3 class="font-title text-xs font-bold uppercase text-brand-yellow tracking-wider">2. Actualizar por Voz o Instrucción IA</h3>
-                        <textarea id="ia-admin-prompt" rows="3" placeholder="Ej: Aumentá un 10% todos los detergentes..." class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-xs text-white"></textarea>
-                        <button onclick="ejecutarInstruccionIA()" class="px-6 py-2.5 rounded-xl bg-brand-yellow text-primary-dark text-xs font-bold uppercase hover:bg-yellow-400">
-                            Procesar Cambios con IA
-                        </button>
-                        <div id="ia-admin-res" class="hidden text-xs text-emerald-400 font-bold p-3 bg-emerald-500/10 rounded-xl"></div>
-                    </div>
+                            <button id="btn-subtab-banners" onclick="switchCatSubTab('banners')" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all text-gray-400 hover:bg-white/5">
+                                <span class="material-symbols-outlined text-sm text-cyan-400">collections_bookmark</span> 🖼️ Banners de Secciones
+                            </button>
 
-                    <!-- MÓDULO 3: CARGA Y VINCULACIÓN DIRECTA DE IMÁGENES -->
-                    <div class="space-y-5 p-5 rounded-2xl bg-white/5 border border-blue-500/30">
-                        <div class="flex items-center gap-2">
-                            <span class="material-symbols-outlined text-blue-400">add_photo_alternate</span>
-                            <h3 class="font-title text-xs font-bold uppercase text-blue-400 tracking-wider">3. Carga y Vinculación Directa de Imágenes (WooCommerce + Supabase)</h3>
+                            <button id="btn-subtab-single" onclick="switchCatSubTab('single')" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all text-gray-400 hover:bg-white/5">
+                                <span class="material-symbols-outlined text-sm text-blue-400">add_photo_alternate</span> 🔍 Buscar Producto / Imagen
+                            </button>
+
+                            <button id="btn-subtab-excel" onclick="switchCatSubTab('excel')" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all text-gray-400 hover:bg-white/5">
+                                <span class="material-symbols-outlined text-sm text-emerald-400">description</span> 📝 Carga Masiva Excel
+                            </button>
+
+                            <button id="btn-subtab-ia" onclick="switchCatSubTab('ia')" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all text-gray-400 hover:bg-white/5">
+                                <span class="material-symbols-outlined text-sm text-brand-yellow">psychology</span> 🤖 Instrucción IA / Voz
+                            </button>
+
+                            <button id="btn-subtab-sync" onclick="switchCatSubTab('sync')" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all text-gray-400 hover:bg-white/5">
+                                <span class="material-symbols-outlined text-sm text-teal-400">sync</span> 🔄 Sincronizar Web
+                            </button>
                         </div>
 
-                        <!-- BUSCADOR DE PRODUCTOS CON PREVIEW -->
-                        <div class="relative space-y-2">
-                            <label class="text-[11px] font-bold text-gray-300 uppercase">Buscar Producto por Nombre o SKU (QD-):</label>
-                            <input type="text" id="img-prod-search" oninput="buscarProductoImagen(this.value)" placeholder="Ej: QD-DTRG-1322 o Detergente Magistral..." class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-blue-400 font-mono">
-                            <div id="img-search-results" class="hidden absolute left-0 right-0 top-full mt-1 z-50 bg-primary-dark/95 border border-blue-500/30 rounded-xl max-h-56 overflow-y-auto shadow-2xl divide-y divide-white/5 backdrop-blur-xl"></div>
-                        </div>
+                        <!-- CONTENIDO DERECHO (SE MUESTRA SOLO LA PESTAÑA SELECCIONADA EN EL MENÚ LATERAL) -->
+                        <div class="lg:col-span-3 space-y-6">
 
-                        <!-- TARJETA DEL PRODUCTO SELECCIONADO -->
-                        <div id="selected-prod-card" class="hidden space-y-3 p-4 rounded-xl glass-card border border-blue-400/40">
-                            <div class="flex items-center justify-between gap-4">
-                                <div class="flex items-center gap-3">
-                                    <img id="selected-prod-thumb" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 24 24' fill='none' stroke='%2338bdf8' stroke-width='1.5'><rect x='3' y='3' width='18' height='18' rx='2'/><circle cx='8.5' cy='8.5' r='1.5'/><polyline points='21 15 16 10 5 21'/></svg>" alt="Preview" class="w-14 h-14 object-cover rounded-lg border border-white/10 bg-black/40">
-                                    <div>
-                                        <h4 id="selected-prod-name" class="font-bold text-xs text-white">---</h4>
-                                        <p class="text-[10px] text-blue-300 font-mono">SKU: <span id="selected-prod-sku">---</span> | Precio: $<span id="selected-prod-price">0</span></p>
-                                    </div>
-                                </div>
-                                <span class="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-bold">Seleccionado</span>
-                            </div>
-
-                            <!-- EDICIÓN RÁPIDA DE TÍTULO Y PRECIO -->
-                            <div class="pt-3 border-t border-white/10 space-y-3">
-                                <label class="text-[10px] font-bold text-amber-300 uppercase block">✏️ Editar Nombre Oficial en la Web:</label>
-                                <div class="flex flex-col sm:flex-row gap-2">
-                                    <input type="text" id="edit-prod-name-input" placeholder="Nuevo nombre del producto..." class="flex-1 bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400">
-                                    <button onclick="guardarNuevoNombreProducto()" class="px-4 py-2 rounded-xl bg-amber-500 text-primary-dark font-bold text-xs hover:bg-amber-400 flex items-center justify-center gap-1">
-                                        <span class="material-symbols-outlined text-[16px]">edit</span> Guardar Nombre
-                                    </button>
-                                </div>
-
-                                <label class="text-[10px] font-bold text-emerald-300 uppercase block">💲 Editar Precio Regular:</label>
-                                <div class="flex flex-col sm:flex-row gap-2">
-                                    <input type="number" id="edit-prod-price-input" placeholder="Nuevo precio (sin $)..." step="0.01" min="0" class="flex-1 bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-400">
-                                    <button onclick="guardarNuevoPrecioProducto()" class="px-4 py-2 rounded-xl bg-emerald-500 text-primary-dark font-bold text-xs hover:bg-emerald-400 flex items-center justify-center gap-1">
-                                        <span class="material-symbols-outlined text-[16px]">payments</span> Guardar Precio
-                                    </button>
-                                </div>
-                                <div id="edit-prod-res" class="hidden text-[11px] font-bold p-2 rounded-lg border"></div>
-                            </div>
-                        </div>
-
-
-                        <!-- ENTRADA DE IMAGEN (ARCHIVO O URL) -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-white/10">
-                            <div class="space-y-1.5">
-                                <label class="text-[10px] font-bold text-gray-300 uppercase">Opción A: Subir Archivo Local (JPG, PNG, WEBP)</label>
-                                <input type="file" id="img-file-input" accept="image/*" onchange="previewSelectedFile(event)" class="w-full text-xs text-gray-400 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-500/20 file:text-blue-400 hover:file:bg-blue-500/30 cursor-pointer">
-                            </div>
-                            <div class="space-y-1.5">
-                                <label class="text-[10px] font-bold text-gray-300 uppercase">Opción B: Pegar URL Directa de Imagen</label>
-                                <input type="url" id="img-url-input" placeholder="https://..." class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-500">
-                            </div>
-                        </div>
-
-                        <button onclick="subirImagenProducto()" class="w-full py-3 rounded-xl bg-blue-500 text-white font-title text-xs font-bold uppercase tracking-wider hover:bg-blue-600 shadow-lg transition-all flex items-center justify-center gap-2">
-                            <span class="material-symbols-outlined text-[18px]">cloud_upload</span> Subir y Vincular Imagen (WooCommerce + Supabase)
-                        </button>
-                        <div id="img-upload-res" class="hidden text-xs font-bold p-3 rounded-xl border"></div>
-
-                        <!-- 🚀 SUB-MÓDULO: CARGA MASIVA DE MÚLTIPLES IMÁGENES POR LOTE -->
-                        <div class="pt-5 border-t border-white/10 space-y-4">
-                            <div class="flex items-center justify-between">
-                                <h4 class="font-title text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
-                                    <span class="material-symbols-outlined text-[18px]">collections</span> 🚀 Carga Masiva de Múltiples Imágenes (Hasta 10+ a la Vez)
-                                </h4>
-                                <span class="text-[10px] bg-amber-500/10 text-amber-300 px-2 py-0.5 rounded-full font-bold border border-amber-500/20">Por Lote</span>
-                            </div>
-
-                            <div class="p-4 bg-white/5 border border-dashed border-amber-500/40 rounded-xl space-y-2">
-                                <label class="text-[11px] font-bold text-amber-300 uppercase block">Seleccionar Múltiples Archivos de Fotos (Elegí 10 o más de una vez):</label>
-                                <input type="file" id="bulk-img-input" multiple accept="image/*" onchange="handleBulkFilesSelected(event)" class="w-full text-xs text-gray-400 file:mr-3 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-amber-500/20 file:text-amber-300 hover:file:bg-amber-500/30 cursor-pointer">
-                            </div>
-
-                            <!-- COLA DE SUBIDA MASIVA -->
-                            <div id="bulk-img-queue-container" class="hidden space-y-3 p-4 bg-black/30 border border-amber-500/30 rounded-xl">
-                                <div class="flex items-center justify-between text-xs font-bold text-gray-200">
-                                    <span>Fotos preparadas para subir (<span id="bulk-img-count" class="text-amber-400">0</span>):</span>
-                                    <button onclick="clearBulkQueue()" class="text-rose-400 hover:underline text-[11px]">Limpiar Lote</button>
-                                </div>
-
-                                <button id="bulk-upload-btn" onclick="startBulkImageUpload()" class="w-full py-3.5 rounded-xl bg-amber-500 text-primary-dark font-title text-xs font-bold uppercase tracking-wider hover:bg-amber-400 shadow-xl transition-all flex items-center justify-center gap-2">
-                                    <span class="material-symbols-outlined text-[18px]">publish</span> Subir Lote Completo y Purgar Caché
-                                </button>
-
-                                <div id="bulk-upload-progress" class="hidden space-y-2 p-3 bg-black/60 rounded-xl border border-amber-500/40">
-                                    <div class="flex justify-between text-xs text-amber-300 font-bold">
-                                        <span id="bulk-progress-text">Procesando 0/0...</span>
-                                        <span id="bulk-progress-percent">0%</span>
-                                    </div>
-                                    <div class="w-full bg-white/10 h-2.5 rounded-full overflow-hidden">
-                                        <div id="bulk-progress-bar" class="bg-amber-400 h-full w-0 transition-all duration-300"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- 🎁 VISOR Y GESTOR INTERACTIVO DE COMBOS EN VIVO -->
-                        <div class="pt-6 border-t border-purple-500/30 space-y-4">
-                            <div class="flex items-center justify-between">
-                                <div>
-                                    <h4 class="font-title text-xs font-bold text-purple-400 uppercase tracking-wider flex items-center gap-1.5">
-                                        <span class="material-symbols-outlined text-[18px]">view_carousel</span> 🎁 Visor y Gestor de Combos (En Vivo)
-                                    </h4>
-                                    <p class="text-[11px] text-gray-400 mt-0.5">Visualizá el estado actual de los 6 combos, editá títulos, precios, pausá/activá o cargá fotos.</p>
-                                </div>
-                                <button onclick="cargarVisorCombos()" class="px-3 py-1.5 bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/40 text-purple-200 text-[11px] font-bold rounded-xl flex items-center gap-1 transition-all shadow">
-                                    <span class="material-symbols-outlined text-sm">refresh</span> Actualizar Visor
-                                </button>
-                            </div>
-
-                            <div id="visor-combos-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                <div class="col-span-full text-center py-6 text-purple-300/60 text-xs font-bold">
-                                    ⏳ Cargando combos desde WooCommerce...
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- 🎁 SECTOR DEDICADO: CARGA DE COMBOS Y GALERÍAS COMPLETAS -->
-                        <div class="pt-6 border-t border-purple-500/30 space-y-4">
-                            <div class="flex items-center justify-between">
-                                <h4 class="font-title text-xs font-bold text-purple-400 uppercase tracking-wider flex items-center gap-1.5">
-                                    <span class="material-symbols-outlined text-[18px]">collections</span> 📸 Cargar Fotos de Portada y Galería para Combo
-                                </h4>
-                                <span class="text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full font-bold border border-purple-500/30">Multi-Imagen</span>
-                            </div>
-
-                            <div class="p-4 bg-purple-950/20 border border-purple-500/30 rounded-xl space-y-4">
-                                <p class="text-xs text-purple-200">Subí la <strong>Portada Principal</strong> del combo y todas las <strong>Imágenes de la Galería</strong> de un solo viaje sin mezclar ni sobrescribir.</p>
-
-                                <div>
-                                    <label class="text-[10px] font-bold text-purple-300 uppercase block mb-1">SKU del Combo o Producto:</label>
-                                    <input type="text" id="combo-sku-input" placeholder="Ej: QD-CMB-PST-001" class="w-full bg-white/10 border border-purple-500/40 text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-purple-400 placeholder-gray-400 font-mono">
-                                </div>
-
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <!-- PORTADA -->
-                                    <div class="p-3 bg-black/40 border border-amber-500/40 rounded-xl space-y-2">
-                                        <label class="text-[10px] font-bold text-amber-300 uppercase block flex items-center gap-1">
-                                            <span class="material-symbols-outlined text-[14px]">star</span> 1. Foto de Portada (Imagen Principal)
-                                        </label>
-                                        <input type="file" id="combo-cover-input" accept="image/*" class="w-full text-xs text-gray-300 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-amber-500/20 file:text-amber-300 hover:file:bg-amber-500/30 cursor-pointer">
-                                    </div>
-
-                                    <!-- GALERÍA -->
-                                    <div class="p-3 bg-black/40 border border-emerald-500/40 rounded-xl space-y-2">
-                                        <label class="text-[10px] font-bold text-emerald-300 uppercase block flex items-center gap-1">
-                                            <span class="material-symbols-outlined text-[14px]">collections</span> 2. Fotos de la Galería (Múltiples)
-                                        </label>
-                                        <input type="file" id="combo-gallery-input" multiple accept="image/*" class="w-full text-xs text-gray-300 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-emerald-500/20 file:text-emerald-300 hover:file:bg-emerald-500/30 cursor-pointer">
-                                        <label class="flex items-center gap-1.5 pt-1 cursor-pointer">
-                                            <input type="checkbox" id="combo-clean-gallery-chk" class="rounded bg-black/50 border-purple-500/50 text-purple-500 focus:ring-0">
-                                            <span class="text-[10px] font-bold text-amber-300">Reemplazar fotos viejas de galería por las nuevas</span>
-                                        </label>
-                                    </div>
-                                </div>
-
-                                <button onclick="subirComboCompleto()" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-purple-600 to-amber-500 text-white font-title text-xs font-bold uppercase tracking-wider hover:opacity-90 shadow-xl transition-all flex items-center justify-center gap-2">
-                                    <span class="material-symbols-outlined text-[18px]">rocket_launch</span> Subir Combo Completo (Portada + Galería + Purgar Caché)
-                                </button>
-
-                                <div id="combo-upload-res" class="hidden text-xs font-bold p-3 rounded-xl border"></div>
-
-                                <!-- ⚡ VINCULACIÓN AUTOMÁTICA DE FOTOS POR SKUS (EXCEL / INPUT) -->
-                                <div class="p-4 bg-indigo-950/30 border border-indigo-500/40 rounded-xl space-y-3 mt-4">
+                            <!-- SUB-TAB 1: COMBOS EMPRENDEDORES -->
+                            <div id="subtab-content-combos" class="space-y-6">
+                                <!-- 🎁 VISOR Y GESTOR INTERACTIVO DE COMBOS EN VIVO -->
+                                <div class="space-y-4">
                                     <div class="flex items-center justify-between">
-                                        <h5 class="text-xs font-bold text-indigo-300 uppercase flex items-center gap-1.5">
-                                            <span class="material-symbols-outlined text-[16px]">link</span> ⚡ Vincular Fotos Existentes por SKUs (Ahorro de Carga / Excel)
-                                        </h5>
-                                        <span class="text-[9px] bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded font-bold">Auto-Link</span>
-                                    </div>
-                                    <p class="text-[11px] text-gray-300">Ingresá los SKUs de los productos del combo (o cargá un Excel/CSV). El sistema enlazará automáticamente las fotos que YA existen en el catálogo a la galería del combo.</p>
-                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                                         <div>
-                                            <label class="text-[10px] font-bold text-gray-400 block mb-1">SKU del Combo:</label>
-                                            <input type="text" id="autolink-combo-sku" placeholder="Ej: QD-CMB-PST-001" class="w-full bg-slate-950/80 border border-indigo-500/40 text-white rounded-lg px-3 py-1.5 text-xs font-mono">
+                                            <h4 class="font-title text-xs font-bold text-purple-400 uppercase tracking-wider flex items-center gap-1.5">
+                                                <span class="material-symbols-outlined text-[18px]">view_carousel</span> 🎁 Visor y Gestor de Combos (En Vivo)
+                                            </h4>
+                                            <p class="text-[11px] text-gray-400 mt-0.5">Visualizá el estado actual de los 6 combos, editá títulos, precios, pausá/activá o cargá fotos.</p>
                                         </div>
-                                        <div class="md:col-span-2">
-                                            <label class="text-[10px] font-bold text-gray-400 block mb-1">SKUs Incluidos (separados por coma):</label>
-                                            <input type="text" id="autolink-skus-input" placeholder="Ej: QD-DTRG-1001, QD-DES-2002, QD-JAB-3003" class="w-full bg-slate-950/80 border border-indigo-500/40 text-white rounded-lg px-3 py-1.5 text-xs font-mono">
-                                        </div>
-                                    </div>
-                                    <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
-                                        <div class="flex items-center gap-3">
-                                            <input type="file" id="autolink-excel-file" accept=".xlsx, .xls, .csv, .txt" onchange="leerExcelSKUs(event)" class="text-[11px] text-gray-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-bold file:bg-indigo-500/20 file:text-indigo-300 cursor-pointer">
-                                            <label class="flex items-center gap-1 cursor-pointer">
-                                                <input type="checkbox" id="autolink-clear-chk" class="rounded bg-black/50 border-indigo-500/50 text-indigo-400 focus:ring-0">
-                                                <span class="text-[10px] text-amber-300 font-bold">Limpiar fotos viejas antes de vincular</span>
-                                            </label>
-                                        </div>
-                                        <button onclick="vincularFotosPorSKUs()" class="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-bold shadow-lg transition-all flex items-center gap-1.5">
-                                            <span class="material-symbols-outlined text-sm">bolt</span> Vincular Fotos por SKUs
+                                        <button onclick="cargarVisorCombos()" class="px-3 py-1.5 bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/40 text-purple-200 text-[11px] font-bold rounded-xl flex items-center gap-1 transition-all shadow">
+                                            <span class="material-symbols-outlined text-sm">refresh</span> Actualizar Visor
                                         </button>
                                     </div>
-                                    <div id="autolink-res" class="hidden text-xs font-bold p-2.5 rounded-lg border"></div>
+
+                                    <div id="visor-combos-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        <div class="col-span-full text-center py-6 text-purple-300/60 text-xs font-bold">
+                                            ⏳ Cargando combos desde WooCommerce...
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 🎁 CARGA DE COMBOS Y GALERÍAS COMPLETAS -->
+                                <div class="pt-6 border-t border-purple-500/30 space-y-4">
+                                    <div class="flex items-center justify-between">
+                                        <h4 class="font-title text-xs font-bold text-purple-400 uppercase tracking-wider flex items-center gap-1.5">
+                                            <span class="material-symbols-outlined text-[18px]">collections</span> 📸 Cargar Fotos de Portada y Galería para Combo
+                                        </h4>
+                                        <span class="text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full font-bold border border-purple-500/30">Multi-Imagen</span>
+                                    </div>
+
+                                    <div class="p-4 bg-purple-950/20 border border-purple-500/30 rounded-xl space-y-4">
+                                        <p class="text-xs text-purple-200">Subí la <strong>Portada Principal</strong> del combo y todas las <strong>Imágenes de la Galería</strong> de un solo viaje sin mezclar ni sobrescribir.</p>
+
+                                        <div>
+                                            <label class="text-[10px] font-bold text-purple-300 uppercase block mb-1">SKU del Combo o Producto:</label>
+                                            <input type="text" id="combo-sku-input" placeholder="Ej: QD-CMB-PST-001" class="w-full bg-white/10 border border-purple-500/40 text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-purple-400 placeholder-gray-400 font-mono">
+                                        </div>
+
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <!-- PORTADA -->
+                                            <div class="p-3 bg-black/40 border border-amber-500/40 rounded-xl space-y-2">
+                                                <label class="text-[10px] font-bold text-amber-300 uppercase block flex items-center gap-1">
+                                                    <span class="material-symbols-outlined text-[14px]">star</span> 1. Foto de Portada (Imagen Principal)
+                                                </label>
+                                                <input type="file" id="combo-cover-input" accept="image/*" class="w-full text-xs text-gray-300 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-amber-500/20 file:text-amber-300 hover:file:bg-amber-500/30 cursor-pointer">
+                                            </div>
+
+                                            <!-- GALERÍA -->
+                                            <div class="p-3 bg-black/40 border border-emerald-500/40 rounded-xl space-y-2">
+                                                <label class="text-[10px] font-bold text-emerald-300 uppercase block flex items-center gap-1">
+                                                    <span class="material-symbols-outlined text-[14px]">collections</span> 2. Fotos de la Galería (Múltiples)
+                                                </label>
+                                                <input type="file" id="combo-gallery-input" multiple accept="image/*" class="w-full text-xs text-gray-300 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-emerald-500/20 file:text-emerald-300 hover:file:bg-emerald-500/30 cursor-pointer">
+                                                <label class="flex items-center gap-1.5 pt-1 cursor-pointer">
+                                                    <input type="checkbox" id="combo-clean-gallery-chk" class="rounded bg-black/50 border-purple-500/50 text-purple-500 focus:ring-0">
+                                                    <span class="text-[10px] font-bold text-amber-300">Reemplazar fotos viejas de galería por las nuevas</span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <button onclick="subirComboCompleto()" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-purple-600 to-amber-500 text-white font-title text-xs font-bold uppercase tracking-wider hover:opacity-90 shadow-xl transition-all flex items-center justify-center gap-2">
+                                            <span class="material-symbols-outlined text-[18px]">rocket_launch</span> Subir Combo Completo (Portada + Galería + Purgar Caché)
+                                        </button>
+
+                                        <div id="combo-upload-res" class="hidden text-xs font-bold p-3 rounded-xl border"></div>
+
+                                        <!-- ⚡ VINCULACIÓN AUTOMÁTICA DE FOTOS POR SKUS (EXCEL / INPUT) -->
+                                        <div class="p-4 bg-indigo-950/30 border border-indigo-500/40 rounded-xl space-y-3 mt-4">
+                                            <div class="flex items-center justify-between">
+                                                <h5 class="text-xs font-bold text-indigo-300 uppercase flex items-center gap-1.5">
+                                                    <span class="material-symbols-outlined text-[16px]">link</span> ⚡ Vincular Fotos Existentes por SKUs (Ahorro de Carga / Excel)
+                                                </h5>
+                                                <span class="text-[9px] bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded font-bold">Auto-Link</span>
+                                            </div>
+                                            <p class="text-[11px] text-gray-300">Ingresá los SKUs de los productos del combo (o cargá un Excel/CSV). El sistema enlazará automáticamente las fotos que YA existen en el catálogo a la galería del combo.</p>
+                                            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                                <div>
+                                                    <label class="text-[10px] font-bold text-gray-400 block mb-1">SKU del Combo:</label>
+                                                    <input type="text" id="autolink-combo-sku" placeholder="Ej: QD-CMB-PST-001" class="w-full bg-slate-950/80 border border-indigo-500/40 text-white rounded-lg px-3 py-1.5 text-xs font-mono">
+                                                </div>
+                                                <div class="md:col-span-2">
+                                                    <label class="text-[10px] font-bold text-gray-400 block mb-1">SKUs Incluidos (separados por coma):</label>
+                                                    <input type="text" id="autolink-skus-input" placeholder="Ej: QD-DTRG-1001, QD-DES-2002, QD-JAB-3003" class="w-full bg-slate-950/80 border border-indigo-500/40 text-white rounded-lg px-3 py-1.5 text-xs font-mono">
+                                                </div>
+                                            </div>
+                                            <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+                                                <div class="flex items-center gap-3">
+                                                    <input type="file" id="autolink-excel-file" accept=".xlsx, .xls, .csv, .txt" onchange="leerExcelSKUs(event)" class="text-[11px] text-gray-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-bold file:bg-indigo-500/20 file:text-indigo-300 cursor-pointer">
+                                                    <label class="flex items-center gap-1 cursor-pointer">
+                                                        <input type="checkbox" id="autolink-clear-chk" class="rounded bg-black/50 border-indigo-500/50 text-indigo-400 focus:ring-0">
+                                                        <span class="text-[10px] text-amber-300 font-bold">Limpiar fotos viejas antes de vincular</span>
+                                                    </label>
+                                                </div>
+                                                <button onclick="vincularFotosPorSKUs()" class="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-bold shadow-lg transition-all flex items-center gap-1.5">
+                                                    <span class="material-symbols-outlined text-sm">bolt</span> Vincular Fotos por SKUs
+                                                </button>
+                                            </div>
+                                            <div id="autolink-res" class="hidden text-xs font-bold p-2.5 rounded-lg border"></div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <!-- 🖼️ GESTOR DE BANNERS DE SECCIONES (CATEGORÍAS DE LA HOME) -->
-                        <div class="pt-6 border-t border-cyan-500/30 space-y-4">
-                            <div class="flex items-center justify-between">
-                                <div>
-                                    <h4 class="font-title text-xs font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
-                                        <span class="material-symbols-outlined text-[18px]">collections_bookmark</span> 🖼️ Gestor de Banners de Secciones (Categorías de la Home)
-                                    </h4>
-                                    <p class="text-[11px] text-gray-400 mt-0.5">Cambiá la foto de portada (banner 4:3) de las secciones principales de la tienda web con 1 clic.</p>
-                                </div>
-                            </div>
-
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div class="p-3 bg-slate-900/90 border border-purple-500/40 rounded-xl space-y-2">
-                                    <span class="text-[10px] font-bold text-purple-300 uppercase block">🚀 Combos Emprendedores</span>
-                                    <input type="file" id="banner-file-combos-emprendedores" accept="image/*" class="w-full text-[11px] text-gray-300 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-bold file:bg-purple-500/20 file:text-purple-300">
-                                    <button onclick="subirBannerSeccion('combos-emprendedores')" class="w-full py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold shadow">
-                                        📸 Actualizar Banner Combos
+                            <!-- SUB-TAB 2: OFERTAS SEMANALES -->
+                            <div id="subtab-content-ofertas" class="hidden space-y-4">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <h4 class="font-title text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                                            <span class="material-symbols-outlined text-[18px]">local_offer</span> 🏷️ Visor y Gestor de Ofertas Semanales (En Vivo)
+                                        </h4>
+                                        <p class="text-[11px] text-gray-400 mt-0.5">Administrá productos en oferta, precios promocionales, estado activo/pausado y fotos.</p>
+                                    </div>
+                                    <button onclick="cargarVisorOfertas()" class="px-3 py-1.5 bg-amber-600/30 hover:bg-amber-600/50 border border-amber-500/40 text-amber-200 text-[11px] font-bold rounded-xl flex items-center gap-1 transition-all shadow">
+                                        <span class="material-symbols-outlined text-sm">refresh</span> Actualizar Ofertas
                                     </button>
                                 </div>
-                                <div class="p-3 bg-slate-900/90 border border-amber-500/40 rounded-xl space-y-2">
-                                    <span class="text-[10px] font-bold text-amber-300 uppercase block">🏷️ Ofertas Semanales</span>
-                                    <input type="file" id="banner-file-ofertas-semanales" accept="image/*" class="w-full text-[11px] text-gray-300 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-bold file:bg-amber-500/20 file:text-amber-300">
-                                    <button onclick="subirBannerSeccion('ofertas-semanales')" class="w-full py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold shadow">
-                                        📸 Actualizar Banner Ofertas
-                                    </button>
-                                </div>
-                                <div class="p-3 bg-slate-900/90 border border-blue-500/40 rounded-xl space-y-2">
-                                    <span class="text-[10px] font-bold text-blue-300 uppercase block">💧 Productos Líquidos</span>
-                                    <input type="file" id="banner-file-productos-liquidos" accept="image/*" class="w-full text-[11px] text-gray-300 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-bold file:bg-blue-500/20 file:text-blue-300">
-                                    <button onclick="subirBannerSeccion('productos-liquidos')" class="w-full py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow">
-                                        📸 Actualizar Banner Líquidos
-                                    </button>
-                                </div>
-                            </div>
-                            <div id="banner-upload-res" class="hidden text-xs font-bold p-2.5 rounded-xl border"></div>
-                        </div>
 
-                        <!-- 🏷️ VISOR Y GESTOR DE OFERTAS SEMANALES -->
-                        <div class="pt-6 border-t border-amber-500/30 space-y-4">
-                            <div class="flex items-center justify-between">
-                                <div>
-                                    <h4 class="font-title text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
-                                        <span class="material-symbols-outlined text-[18px]">local_offer</span> 🏷️ Visor y Gestor de Ofertas Semanales (En Vivo)
-                                    </h4>
-                                    <p class="text-[11px] text-gray-400 mt-0.5">Administrá productos en oferta, precios promocionales, estado activo/pausado y fotos.</p>
+                                <div id="visor-ofertas-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    <div class="col-span-full text-center py-6 text-amber-300/60 text-xs font-bold">
+                                        ⏳ Cargando ofertas semanales desde WooCommerce...
+                                    </div>
                                 </div>
-                                <button onclick="cargarVisorOfertas()" class="px-3 py-1.5 bg-amber-600/30 hover:bg-amber-600/50 border border-amber-500/40 text-amber-200 text-[11px] font-bold rounded-xl flex items-center gap-1 transition-all shadow">
-                                    <span class="material-symbols-outlined text-sm">refresh</span> Actualizar Ofertas
-                                </button>
                             </div>
 
-                            <div id="visor-ofertas-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                <div class="col-span-full text-center py-6 text-amber-300/60 text-xs font-bold">
-                                    ⏳ Cargando ofertas semanales desde WooCommerce...
+                            <!-- SUB-TAB 3: BANNERS DE SECCIONES -->
+                            <div id="subtab-content-banners" class="hidden space-y-4">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <h4 class="font-title text-xs font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
+                                            <span class="material-symbols-outlined text-[18px]">collections_bookmark</span> 🖼️ Gestor de Banners de Secciones (Categorías de la Home)
+                                        </h4>
+                                        <p class="text-[11px] text-gray-400 mt-0.5">Cambiá la foto de portada (banner 4:3) de las secciones principales de la tienda web con 1 clic.</p>
+                                    </div>
                                 </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div class="p-3 bg-slate-900/90 border border-purple-500/40 rounded-xl space-y-2">
+                                        <span class="text-[10px] font-bold text-purple-300 uppercase block">🚀 Combos Emprendedores</span>
+                                        <input type="file" id="banner-file-combos-emprendedores" accept="image/*" class="w-full text-[11px] text-gray-300 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-bold file:bg-purple-500/20 file:text-purple-300">
+                                        <button onclick="subirBannerSeccion('combos-emprendedores')" class="w-full py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold shadow">
+                                            📸 Actualizar Banner Combos
+                                        </button>
+                                    </div>
+                                    <div class="p-3 bg-slate-900/90 border border-amber-500/40 rounded-xl space-y-2">
+                                        <span class="text-[10px] font-bold text-amber-300 uppercase block">🏷️ Ofertas Semanales</span>
+                                        <input type="file" id="banner-file-ofertas-semanales" accept="image/*" class="w-full text-[11px] text-gray-300 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-bold file:bg-amber-500/20 file:text-amber-300">
+                                        <button onclick="subirBannerSeccion('ofertas-semanales')" class="w-full py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold shadow">
+                                            📸 Actualizar Banner Ofertas
+                                        </button>
+                                    </div>
+                                    <div class="p-3 bg-slate-900/90 border border-blue-500/40 rounded-xl space-y-2">
+                                        <span class="text-[10px] font-bold text-blue-300 uppercase block">💧 Productos Líquidos</span>
+                                        <input type="file" id="banner-file-productos-liquidos" accept="image/*" class="w-full text-[11px] text-gray-300 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-bold file:bg-blue-500/20 file:text-blue-300">
+                                        <button onclick="subirBannerSeccion('productos-liquidos')" class="w-full py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow">
+                                            📸 Actualizar Banner Líquidos
+                                        </button>
+                                    </div>
+                                </div>
+                                <div id="banner-upload-res" class="hidden text-xs font-bold p-2.5 rounded-xl border"></div>
                             </div>
-                        </div>
-                    </div>
-                </div>
+
+                            <!-- SUB-TAB 4: BÚSQUEDA Y FOTO PRODUCTO INDIVIDUAL / LOTE -->
+                            <div id="subtab-content-single" class="hidden space-y-5 p-5 rounded-2xl bg-white/5 border border-blue-500/30">
+                                <div class="flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-blue-400">add_photo_alternate</span>
+                                    <h3 class="font-title text-xs font-bold uppercase text-blue-400 tracking-wider">Carga y Vinculación Directa de Imágenes (WooCommerce + Supabase)</h3>
+                                </div>
+
+                                <!-- BUSCADOR DE PRODUCTOS CON PREVIEW -->
+                                <div class="relative space-y-2">
+                                    <label class="text-[11px] font-bold text-gray-300 uppercase">Buscar Producto por Nombre o SKU (QD-):</label>
+                                    <input type="text" id="img-prod-search" oninput="buscarProductoImagen(this.value)" placeholder="Ej: QD-DTRG-1322 o Detergente Magistral..." class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-blue-400 font-mono">
+                                    <div id="img-search-results" class="hidden absolute left-0 right-0 top-full mt-1 z-50 bg-primary-dark/95 border border-blue-500/30 rounded-xl max-h-56 overflow-y-auto shadow-2xl divide-y divide-white/5 backdrop-blur-xl"></div>
+                                </div>
+
+                                <!-- TARJETA DEL PRODUCTO SELECCIONADO -->
+                                <div id="selected-prod-card" class="hidden space-y-3 p-4 rounded-xl glass-card border border-blue-400/40">
+                                    <div class="flex items-center justify-between gap-4">
+                                        <div class="flex items-center gap-3">
 
             </section>
 
@@ -2071,6 +1999,26 @@
                 resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-red-500/40 bg-red-500/10 text-red-400';
                 resDiv.innerText = `❌ Error: ${e.message}`;
             }
+        function switchCatSubTab(subtab) {
+            const subtabs = ['combos', 'ofertas', 'banners', 'single', 'excel', 'ia', 'sync'];
+            subtabs.forEach(s => {
+                const content = document.getElementById(`subtab-content-${s}`);
+                const btn = document.getElementById(`btn-subtab-${s}`);
+                if (content) content.classList.add('hidden');
+                if (btn) {
+                    btn.className = "w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all text-gray-400 hover:bg-white/5";
+                }
+            });
+
+            const activeContent = document.getElementById(`subtab-content-${subtab}`);
+            const activeBtn = document.getElementById(`btn-subtab-${subtab}`);
+            if (activeContent) activeContent.classList.remove('hidden');
+            if (activeBtn) {
+                activeBtn.className = "w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all bg-white/15 border border-white/30 text-white shadow-md";
+            }
+
+            if (subtab === 'combos') cargarVisorCombos();
+            if (subtab === 'ofertas') cargarVisorOfertas();
         }
 
         window.onload = checkAuth;
