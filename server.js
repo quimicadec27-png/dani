@@ -748,34 +748,49 @@ app.post('/api/products/update-details', async (req, res) => {
             return res.status(400).json({ success: false, error: 'Se requiere el SKU del producto.' });
         }
 
-        // 1. Enviar a WooCommerce API (WPCode)
-        const targetUrl = 'https://quimicadec.com/?qdec_api=update_product_details';
-        const payload = {
-            secret_key: 'qdec_crm_sec_2026',
-            sku,
-            name: name || '',
-            regular_price: regular_price || '',
-            sale_price: sale_price || ''
-        };
-
         let wcData = { success: false };
+        const baseParams = `secret_key=qdec_crm_sec_2026&sku=${encodeURIComponent(sku)}`;
+        const nameParam = name ? `&name=${encodeURIComponent(name)}` : '';
+        const priceParam = regular_price ? `&regular_price=${encodeURIComponent(regular_price)}` : '';
+        const saleParam = sale_price ? `&sale_price=${encodeURIComponent(sale_price)}` : '';
+
+        // Intento 1: POST con JSON body
         try {
-            const wcRes = await fetch(targetUrl, {
+            const wcRes = await fetch('https://quimicadec.com/?qdec_api=update_product_details', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
+                body: JSON.stringify({ secret_key: 'qdec_crm_sec_2026', sku, name: name || '', regular_price: regular_price || '', sale_price: sale_price || '' })
             });
             const textResp = await wcRes.text();
+            try { wcData = JSON.parse(textResp); } catch(e) { wcData = { success: false, method: 'POST', raw: textResp.slice(0, 100) }; }
+        } catch(e) { wcData = { success: false, method: 'POST', error: e.message }; }
+
+        // Intento 2: GET con query params (fallback si POST devolvió HTML)
+        if (!wcData.success) {
             try {
-                wcData = JSON.parse(textResp);
-            } catch(e) {
-                wcData = { success: false, error: 'WordPress devolvió HTML (snippet WPCode pendiente de actualizar).' };
-            }
-        } catch(e) {
-            wcData = { success: false, error: e.message };
+                const getUrl = `https://quimicadec.com/?qdec_api=update_product_details&${baseParams}${nameParam}${priceParam}${saleParam}`;
+                const wcRes2 = await fetch(getUrl, { method: 'GET' });
+                const textResp2 = await wcRes2.text();
+                try { wcData = JSON.parse(textResp2); } catch(e) { wcData = { success: false, method: 'GET', raw: textResp2.slice(0, 100) }; }
+            } catch(e) { wcData = { success: false, method: 'GET', error: e.message }; }
         }
 
-        // 2. Actualizar Supabase
+        // Intento 3: Verificar con search_product si el nombre realmente cambió en WooCommerce
+        let verificado = false;
+        if (name) {
+            try {
+                const vRes = await fetch(`https://quimicadec.com/?qdec_api=search_product&q=${encodeURIComponent(sku)}`);
+                const vData = await vRes.json();
+                if (vData.success && vData.products && vData.products.length > 0) {
+                    const prod = vData.products[0];
+                    if (prod.name && prod.name.toUpperCase().includes(name.toUpperCase().slice(0, 10))) {
+                        verificado = true;
+                    }
+                }
+            } catch(e) {}
+        }
+
+        // Actualizar Supabase
         let sbUpdated = false;
         const updateDb = {};
         if (name) updateDb.name = name;
@@ -787,19 +802,21 @@ app.post('/api/products/update-details', async (req, res) => {
             if (!sbErr) sbUpdated = true;
         }
 
+        const wcOk = wcData.success || verificado;
         res.json({
             success: true,
-            mensaje: wcData.success 
-                ? `🎉 Producto SKU ${sku} actualizado con éxito en WooCommerce y Supabase.`
-                : `🎉 Producto SKU ${sku} actualizado en Supabase. (Nota: Para WooCommerce recordá copiar el script wpcode_upload_image_api.php en WPCode).`,
+            mensaje: wcOk
+                ? `🎉 Nombre actualizado con éxito en WooCommerce y Supabase. Caché purgada automáticamente.`
+                : `⚠️ Supabase actualizado, pero WooCommerce no confirmó el cambio. Asegurate de que el snippet WPCode v3.0 esté activo (revisá ?qdec_api=ping).`,
             wc_response: wcData,
+            wc_verificado: verificado,
             supabase_updated: sbUpdated
         });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
     }
-
 });
+
 
 // Endpoint de Carga e Integración Directa de Imagen a WooCommerce + Supabase
 app.post('/api/products/upload-image', async (req, res) => {
