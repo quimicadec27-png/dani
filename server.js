@@ -857,6 +857,26 @@ app.get('/api/combos', async (req, res) => {
     }
 });
 
+app.post('/api/combos/delete-image', async (req, res) => {
+    try {
+        const { sku, attachment_id, image_url } = req.body;
+        const resp = await fetch('https://quimicadec.com/?qdec_api=delete_gallery_image', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                secret_key: 'qdec_crm_sec_2026',
+                sku,
+                attachment_id,
+                image_url
+            })
+        });
+        const data = await resp.json();
+        res.json(data);
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
 // Endpoint de Carga e Integración Directa de Imagen a WooCommerce + Supabase
 app.post('/api/products/upload-image', async (req, res) => {
 
