@@ -847,6 +847,16 @@ app.post('/api/crm/update-homepage-html', async (req, res) => {
     }
 });
 
+app.get('/api/combos', async (req, res) => {
+    try {
+        const resp = await fetch('https://quimicadec.com/?qdec_api=get_combos');
+        const data = await resp.json();
+        res.json(data);
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
 // Endpoint de Carga e Integración Directa de Imagen a WooCommerce + Supabase
 app.post('/api/products/upload-image', async (req, res) => {
 
