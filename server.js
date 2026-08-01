@@ -818,6 +818,35 @@ app.post('/api/products/update-details', async (req, res) => {
 });
 
 
+// Endpoint para Sincronizar el HTML del Catálogo (Homepage) con WordPress
+app.post('/api/crm/update-homepage-html', async (req, res) => {
+    try {
+        const fs = require('fs');
+        const path = require('path');
+        const htmlPath = path.join(__dirname, '../catalogo_final.html');
+        let htmlContent = req.body.html_content;
+        if (!htmlContent && fs.existsSync(htmlPath)) {
+            htmlContent = fs.readFileSync(htmlPath, 'utf8');
+        }
+        if (!htmlContent) {
+            return res.status(400).json({ success: false, error: 'No se proporcionó contenido HTML.' });
+        }
+
+        const resp = await fetch('https://quimicadec.com/?qdec_api=update_homepage_content', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                secret_key: 'qdec_crm_sec_2026',
+                html_content: htmlContent
+            })
+        });
+        const data = await resp.json();
+        res.json(data);
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 // Endpoint de Carga e Integración Directa de Imagen a WooCommerce + Supabase
 app.post('/api/products/upload-image', async (req, res) => {
 

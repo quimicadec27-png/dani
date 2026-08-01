@@ -276,6 +276,20 @@
                         </div>
                     </div>
 
+                    <!-- 🌐 BOTÓN DE SINCRONIZACIÓN DE GRILLA EN LA WEB -->
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 p-4 rounded-2xl bg-cyan-500/10 border border-cyan-500/30">
+                        <div>
+                            <h3 class="font-title text-xs font-bold uppercase text-cyan-300 tracking-wider flex items-center gap-1">
+                                <span class="material-symbols-outlined text-[16px]">grid_view</span> Sincronización Directa de Grilla de Categorías
+                            </h3>
+                            <p class="text-[11px] text-gray-300 mt-0.5">Actualizá la grilla del catálogo web (Combos Emprendedores, 4+3+2 tarjetas) en WordPress con 1 solo clic sin tocar código.</p>
+                        </div>
+                        <button onclick="sincronizarGrillaCatalogoWeb()" class="px-5 py-2.5 rounded-xl bg-cyan-500 text-primary-dark font-bold text-xs uppercase hover:bg-cyan-400 flex items-center gap-1.5 shadow-lg flex-shrink-0 cursor-pointer">
+                            <span class="material-symbols-outlined text-[16px]">sync</span> Actualizar Grilla Web
+                        </button>
+                    </div>
+                    <div id="sync-grid-res" class="hidden text-xs font-bold p-3 rounded-xl border"></div>
+
                     <div class="space-y-4 p-5 rounded-2xl bg-white/5 border border-emerald-500/30">
                         <h3 class="font-title text-xs font-bold uppercase text-emerald-400 tracking-wider">1. Carga o Pegado Masivo de Excel / CSV</h3>
                         <textarea id="excel-paste-input" rows="4" placeholder="DETERGENTE MAGENTA CONCENTRADO 1+4 - 5 LT ; 24065 ; 50" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-xs text-white font-mono"></textarea>
@@ -1558,6 +1572,31 @@
                 reader.onerror = e => reject(e);
                 reader.readAsDataURL(file);
             });
+        }
+
+        async function sincronizarGrillaCatalogoWeb() {
+            const resDiv = document.getElementById('sync-grid-res');
+            resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-cyan-500/40 bg-cyan-500/10 text-cyan-300';
+            resDiv.innerText = '⏳ Sincronizando la grilla del catálogo (Combos Emprendedores 4+3+2) con WordPress...';
+            resDiv.classList.remove('hidden');
+
+            try {
+                const resp = await fetch(`${API_URL}/crm/update-homepage-html`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await resp.json();
+                if (data.success) {
+                    resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-300';
+                    resDiv.innerText = `🎉 ¡Grilla del Catálogo sincronizada con éxito en WordPress! La web ya refleja la sección Combos Emprendedores y el nuevo diseño.`;
+                } else {
+                    resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-red-500/40 bg-red-500/10 text-red-400';
+                    resDiv.innerText = `❌ Error: ${data.error || 'No se pudo sincronizar la grilla.'}`;
+                }
+            } catch(e) {
+                resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-red-500/40 bg-red-500/10 text-red-400';
+                resDiv.innerText = `❌ Error: ${e.message}`;
+            }
         }
 
         window.onload = checkAuth;
