@@ -1491,7 +1491,8 @@
         }
 
         async function subirComboCompleto() {
-            const sku = document.getElementById('combo-sku-input').value.trim();
+            let sku = document.getElementById('combo-sku-input').value.trim();
+            sku = sku.replace(/^sku:\s*/i, '').trim();
             const coverFile = document.getElementById('combo-cover-input').files[0];
             const galleryFiles = Array.from(document.getElementById('combo-gallery-input').files || []);
 
