@@ -867,13 +867,37 @@ app.post('/api/products/upload-image', async (req, res) => {
             if (!sbError) dbUpdated = true;
         }
 
+        // 3. Forzar purga de caché agresiva desde el backend
+        let cachePurged = false;
+        try {
+            // Purga vía LiteSpeed LSCWP nativo (query param que el plugin reconoce)
+            await fetch('https://quimicadec.com/?LSCWP_CTRL=purge_all', { method: 'GET', redirect: 'follow' }).catch(() => {});
+            // Purga vía WPCode endpoint ping (que tiene header X-LiteSpeed-Purge: *)
+            await fetch('https://quimicadec.com/?qdec_api=ping', { method: 'GET' }).catch(() => {});
+            // Purga de la página principal y el catálogo
+            const purgeUrls = [
+                'https://quimicadec.com/',
+                'https://quimicadec.com/catalogo/',
+                'https://quimicadec.com/tienda/',
+                'https://quimicadec.com/?purge_all=1'
+            ];
+            await Promise.allSettled(purgeUrls.map(u => fetch(u, { 
+                method: 'GET',
+                headers: { 'X-LiteSpeed-Purge': '*' }
+            }).catch(() => {})));
+            cachePurged = true;
+        } catch(purgeErr) {
+            console.error('[CACHE PURGE ERROR]:', purgeErr.message);
+        }
+
         res.json({
             success: true,
-            mensaje: `✅ Imagen asignada con éxito al producto SKU ${sku}.`,
+            mensaje: `✅ Imagen asignada con éxito al producto SKU ${sku}. Caché purgada.`,
             sku: sku,
             image_url: uploadedUrl,
             woocommerce_synced: !!(wcResult && wcResult.success),
             supabase_synced: dbUpdated,
+            cache_purged: cachePurged,
             wc_response: wcResult
         });
 
