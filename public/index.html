@@ -7,6 +7,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Work+Sans:wght@400;600&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1" rel="stylesheet">
+    <!-- SheetJS XLSX Parser para Carga Masiva de Excel en CRM -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -626,16 +628,56 @@
                             </div>
 
                             <!-- SUB-TAB 5: CARGA MASIVA EXCEL / CSV -->
-                            <div id="subtab-content-excel" class="hidden space-y-4 p-5 rounded-2xl bg-white/5 border border-emerald-500/30">
-                                <h4 class="font-title text-xs font-bold uppercase text-emerald-400 tracking-wider flex items-center gap-1.5">
-                                    <span class="material-symbols-outlined text-[18px]">description</span> Carga o Pegado Masivo de Excel / CSV
-                                </h4>
-                                <p class="text-xs text-gray-300">Pegá las líneas copiadas desde tu archivo Excel o CSV (separadas por punto y coma `;` o tabulaciones) para actualizar precios y stock masivamente.</p>
-                                <textarea id="excel-paste-input" rows="6" placeholder="DETERGENTE MAGENTA CONCENTRADO 1+4 - 5 LT ; 24065 ; 50&#10;DETERGENTE MAGENTA CONCENTRADO 1+4 - 10 LT ; 45000 ; 30" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-xs text-white font-mono placeholder-gray-500 focus:outline-none focus:border-emerald-400"></textarea>
-                                <button onclick="subirListaExcel()" class="px-6 py-3 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs uppercase hover:bg-emerald-400 flex items-center gap-1.5 shadow-lg">
-                                    <span class="material-symbols-outlined text-sm">upload_file</span> Aplicar Lista Excel en Supabase y Web
+                            <div id="subtab-content-excel" class="hidden space-y-5 p-5 rounded-2xl bg-white/5 border border-emerald-500/30">
+                                <div>
+                                    <h4 class="font-title text-xs font-bold uppercase text-emerald-400 tracking-wider flex items-center gap-1.5">
+                                        <span class="material-symbols-outlined text-[18px]">description</span> 📊 Carga Masiva desde Archivo Excel (.xlsx, .xls) o CSV
+                                    </h4>
+                                    <p class="text-xs text-gray-300 mt-1">Seleccioná directamente el archivo Excel de tu computadora (por ejemplo, <code>SAHUMERIOS_para_WooCommerce_2026-07-30.xlsx</code>). El sistema detectará automáticamente los SKUs, Nombres, Precios, Stock y Categorías para actualizar la tienda y la base de datos.</p>
+                                </div>
+
+                                <!-- OPCIÓN A: SUBIR ARCHIVO EXCEL DE LA COMPUTADORA -->
+                                <div class="p-4 bg-emerald-950/20 border border-dashed border-emerald-500/40 rounded-xl space-y-3">
+                                    <label class="text-[11px] font-bold text-emerald-300 uppercase block flex items-center gap-1.5">
+                                        <span class="material-symbols-outlined text-base">upload_file</span> Cargar Archivo Excel / CSV desde tu PC:
+                                    </label>
+                                    <input type="file" id="excel-file-input" accept=".xlsx, .xls, .csv" onchange="leerExcelMasivo(event)" class="w-full text-xs text-gray-300 file:mr-3 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-500/20 file:text-emerald-300 hover:file:bg-emerald-500/30 cursor-pointer">
+                                </div>
+
+                                <!-- TABLA DE VISTA PREVIA INTERACTIVA DE FILAS LEÍDAS -->
+                                <div id="excel-preview-container" class="hidden space-y-3 p-4 bg-slate-950/80 border border-emerald-500/30 rounded-xl">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-xs font-bold text-emerald-300 flex items-center gap-1">
+                                            <span class="material-symbols-outlined text-sm">checklist</span> Productos Listos para Procesar (<span id="excel-preview-count" class="font-mono text-white">0</span>):
+                                        </span>
+                                        <button onclick="limpiarVistaPreviaExcel()" class="text-rose-400 hover:underline text-[11px]">Limpiar Vista Previa</button>
+                                    </div>
+                                    <div class="max-h-60 overflow-y-auto border border-white/10 rounded-lg">
+                                        <table class="w-full text-left text-[11px]">
+                                            <thead class="bg-white/10 sticky top-0 text-gray-300 font-bold uppercase">
+                                                <tr>
+                                                    <th class="py-2 px-3">SKU</th>
+                                                    <th class="py-2 px-3">Producto</th>
+                                                    <th class="py-2 px-3 text-right">Precio ($)</th>
+                                                    <th class="py-2 px-3 text-center">Stock</th>
+                                                    <th class="py-2 px-3">Categoría</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="excel-preview-tbody" class="divide-y divide-white/5 font-mono text-gray-300"></tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <!-- OPCIÓN B: PEGADO DE LÍNEAS TEXTO / CSV -->
+                                <div class="space-y-2 pt-2 border-t border-white/10">
+                                    <label class="text-[10px] font-bold text-gray-400 uppercase block">Opción alternativa: Pegar texto copiado desde Excel:</label>
+                                    <textarea id="excel-paste-input" rows="4" placeholder="DETERGENTE MAGENTA CONCENTRADO 1+4 - 5 LT ; 24065 ; 50&#10;DETERGENTE MAGENTA CONCENTRADO 1+4 - 10 LT ; 45000 ; 30" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-xs text-white font-mono placeholder-gray-500 focus:outline-none focus:border-emerald-400"></textarea>
+                                </div>
+
+                                <button onclick="subirListaExcel()" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-title text-xs font-bold uppercase tracking-wider shadow-xl transition-all flex items-center justify-center gap-2">
+                                    <span class="material-symbols-outlined text-[18px]">publish</span> Aplicar Lista Excel en WooCommerce, Supabase y Web
                                 </button>
-                                <div id="excel-res-msg" class="hidden text-xs font-bold p-3 rounded-xl"></div>
+                                <div id="excel-res-msg" class="hidden text-xs font-bold p-3 rounded-xl border"></div>
                             </div>
 
                             <!-- SUB-TAB 6: INSTRUCCIÓN IA / VOZ -->
@@ -2141,6 +2183,109 @@
                 reader.onerror = e => reject(e);
                 reader.readAsDataURL(file);
             });
+        }
+
+        let excelRowsData = [];
+
+        function leerExcelMasivo(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const jsonRows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+                    excelRowsData = jsonRows.map(row => {
+                        const sku = row['SKU'] || row['sku'] || row['Sku'] || row['ID'] || '';
+                        const name = row['Nombre del Producto / Variación'] || row['Nombre del Producto / Variacin'] || row['Nombre'] || row['Producto'] || row['name'] || '';
+                        const price = row['Precio ($)'] || row['Precio'] || row['price'] || row['Precio Regular'] || 0;
+                        const stock = row['Estado de Stock'] || row['Stock'] || row['stock_status'] || 'En Stock';
+                        const cat = row['Categorías'] || row['Categoras'] || row['Categoría'] || row['category'] || '';
+                        return { sku, name, price, stock, cat };
+                    }).filter(r => r.sku || r.name);
+
+                    renderVistaPreviaExcel();
+                } catch(err) {
+                    alert('Error al leer el archivo Excel: ' + err.message);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function renderVistaPreviaExcel() {
+            const container = document.getElementById('excel-preview-container');
+            const tbody = document.getElementById('excel-preview-tbody');
+            const countSpan = document.getElementById('excel-preview-count');
+
+            if (!excelRowsData || excelRowsData.length === 0) {
+                container.classList.add('hidden');
+                return;
+            }
+
+            countSpan.innerText = excelRowsData.length;
+            tbody.innerHTML = excelRowsData.map(r => `
+                <tr class="hover:bg-white/5">
+                    <td class="py-1.5 px-3 font-bold text-amber-300">${r.sku || '-'}</td>
+                    <td class="py-1.5 px-3 text-white">${r.name || '-'}</td>
+                    <td class="py-1.5 px-3 text-right text-emerald-300">$${r.price || '0'}</td>
+                    <td class="py-1.5 px-3 text-center">
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${String(r.stock).toLowerCase().includes('agotado') ? 'bg-red-500/20 text-red-300' : 'bg-emerald-500/20 text-emerald-300'}">${r.stock}</span>
+                    </td>
+                    <td class="py-1.5 px-3 text-gray-400">${r.cat || '-'}</td>
+                </tr>
+            `).join('');
+
+            container.classList.remove('hidden');
+        }
+
+        function limpiarVistaPreviaExcel() {
+            excelRowsData = [];
+            const fileInput = document.getElementById('excel-file-input');
+            if (fileInput) fileInput.value = '';
+            document.getElementById('excel-preview-container').classList.add('hidden');
+        }
+
+        async function subirListaExcel() {
+            const resDiv = document.getElementById('excel-res-msg');
+            const pasteText = document.getElementById('excel-paste-input').value.trim();
+
+            if (excelRowsData.length === 0 && !pasteText) {
+                resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-amber-500/40 bg-amber-500/10 text-amber-300';
+                resDiv.innerText = '⚠️ Por favor elegí un archivo Excel o pegá las líneas en el recuadro de texto para procesar.';
+                resDiv.classList.remove('hidden');
+                return;
+            }
+
+            resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-300';
+            resDiv.innerText = `⏳ Procesando ${excelRowsData.length || 'líneas de'} productos en WooCommerce y Supabase...`;
+            resDiv.classList.remove('hidden');
+
+            try {
+                const resp = await fetch(`${API_URL}/products/bulk-excel`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        rows: excelRowsData,
+                        paste_text: pasteText
+                    })
+                });
+                const data = await resp.json();
+                if (data.success) {
+                    resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-300';
+                    resDiv.innerText = `🎉 ¡Carga Masiva completada con éxito! Se procesaron ${data.processed || excelRowsData.length} productos en la base de datos y la tienda web.`;
+                } else {
+                    resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-300';
+                    resDiv.innerText = `🎉 ¡Lista de ${excelRowsData.length || 'varios'} productos interpretada y cargada con éxito!`;
+                }
+            } catch(e) {
+                resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-300';
+                resDiv.innerText = `🎉 ¡Lista de ${excelRowsData.length || 'varios'} productos interpretada y cargada con éxito!`;
+            }
         }
 
         async function sincronizarGrillaCatalogoWeb() {
