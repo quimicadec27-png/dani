@@ -322,12 +322,20 @@
                             </div>
 
                             <!-- EDICIÓN RÁPIDA DE TÍTULO Y PRECIO -->
-                            <div class="pt-3 border-t border-white/10 space-y-2">
+                            <div class="pt-3 border-t border-white/10 space-y-3">
                                 <label class="text-[10px] font-bold text-amber-300 uppercase block">✏️ Editar Nombre Oficial en la Web:</label>
                                 <div class="flex flex-col sm:flex-row gap-2">
                                     <input type="text" id="edit-prod-name-input" placeholder="Nuevo nombre del producto..." class="flex-1 bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400">
                                     <button onclick="guardarNuevoNombreProducto()" class="px-4 py-2 rounded-xl bg-amber-500 text-primary-dark font-bold text-xs hover:bg-amber-400 flex items-center justify-center gap-1">
                                         <span class="material-symbols-outlined text-[16px]">edit</span> Guardar Nombre
+                                    </button>
+                                </div>
+
+                                <label class="text-[10px] font-bold text-emerald-300 uppercase block">💲 Editar Precio Regular:</label>
+                                <div class="flex flex-col sm:flex-row gap-2">
+                                    <input type="number" id="edit-prod-price-input" placeholder="Nuevo precio (sin $)..." step="0.01" min="0" class="flex-1 bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-400">
+                                    <button onclick="guardarNuevoPrecioProducto()" class="px-4 py-2 rounded-xl bg-emerald-500 text-primary-dark font-bold text-xs hover:bg-emerald-400 flex items-center justify-center gap-1">
+                                        <span class="material-symbols-outlined text-[16px]">payments</span> Guardar Precio
                                     </button>
                                 </div>
                                 <div id="edit-prod-res" class="hidden text-[11px] font-bold p-2 rounded-lg border"></div>
@@ -992,6 +1000,46 @@
             }
         }
 
+        async function guardarNuevoPrecioProducto() {
+            if (!selectedProductForImage || !selectedProductForImage.sku) {
+                alert('⚠️ Por favor seleccioná un producto primero.');
+                return;
+            }
+            const newPrice = document.getElementById('edit-prod-price-input').value.trim();
+            if (!newPrice || isNaN(newPrice) || parseFloat(newPrice) <= 0) {
+                alert('⚠️ Ingresá un precio válido (número mayor a 0).');
+                return;
+            }
+
+            const resDiv = document.getElementById('edit-prod-res');
+            resDiv.className = 'text-[11px] font-bold p-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 text-emerald-300';
+            resDiv.innerText = '⏳ Guardando nuevo precio en WooCommerce y Supabase...';
+            resDiv.classList.remove('hidden');
+
+            try {
+                const response = await fetch(`${API_URL}/products/update-details`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sku: selectedProductForImage.sku,
+                        regular_price: newPrice
+                    })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    resDiv.className = 'text-[11px] font-bold p-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 text-emerald-400';
+                    resDiv.innerText = `🎉 Precio actualizado a: $${parseFloat(newPrice).toLocaleString('es-AR')} en WooCommerce y Supabase.`;
+                    document.getElementById('selected-prod-price').innerText = parseFloat(newPrice).toLocaleString('es-AR');
+                    selectedProductForImage.price = newPrice;
+                } else {
+                    resDiv.className = 'text-[11px] font-bold p-2 rounded-lg border border-red-500/40 bg-red-500/10 text-red-400';
+                    resDiv.innerText = `❌ Error: ${data.error || 'No se pudo guardar el precio.'}`;
+                }
+            } catch(e) {
+                resDiv.className = 'text-[11px] font-bold p-2 rounded-lg border border-red-500/40 bg-red-500/10 text-red-400';
+                resDiv.innerText = `❌ Error: ${e.message}`;
+            }
+        }
 
         function previewSelectedFile(evt) {
             const file = evt.target.files[0];
@@ -1200,14 +1248,27 @@
                         <!-- ✏️ EDICIÓN DE NOMBRE (OPCIONAL) -->
                         <div class="flex flex-col sm:flex-row items-center gap-2 mt-1">
                             <div class="flex items-center gap-1.5 text-[10px] text-amber-300 font-bold uppercase flex-shrink-0">
-                                <span class="material-symbols-outlined text-[14px]">edit</span> Nuevo Nombre (opcional):
+                                <span class="material-symbols-outlined text-[14px]">edit</span> Nombre:
                             </div>
                             <input type="text" 
                                 id="bulk-name-input-${item.id}"
-                                placeholder="${currentName || 'Dejá vacío para mantener el nombre actual...'}"
+                                placeholder="${currentName || 'Dejá vacío para mantener...'}"
                                 value="${item.newName || ''}"
                                 oninput="updateBulkItemName(${item.id}, this.value)"
                                 class="flex-1 w-full bg-white/10 border border-amber-500/30 text-white rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-amber-400 placeholder-gray-500">
+                        </div>
+                        <!-- 💲 EDICIÓN DE PRECIO (OPCIONAL) -->
+                        <div class="flex flex-col sm:flex-row items-center gap-2 mt-1">
+                            <div class="flex items-center gap-1.5 text-[10px] text-emerald-300 font-bold uppercase flex-shrink-0">
+                                <span class="material-symbols-outlined text-[14px]">payments</span> Precio:
+                            </div>
+                            <input type="number" 
+                                id="bulk-price-input-${item.id}"
+                                placeholder="Dejá vacío para mantener..."
+                                value="${item.newPrice || ''}"
+                                step="0.01" min="0"
+                                oninput="updateBulkItemPrice(${item.id}, this.value)"
+                                class="flex-1 w-full bg-white/10 border border-emerald-500/30 text-white rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-emerald-400 placeholder-gray-500">
                         </div>
                     </div>
                 `;
@@ -1262,6 +1323,13 @@
             const item = bulkFilesQueue.find(i => i.id === id);
             if (item) {
                 item.newName = name.trim();
+            }
+        }
+
+        function updateBulkItemPrice(id, price) {
+            const item = bulkFilesQueue.find(i => i.id === id);
+            if (item) {
+                item.newPrice = price.trim();
             }
         }
 
@@ -1328,15 +1396,18 @@
                         item.status = 'success';
                         item.resultUrl = data.image_url;
 
-                        // Si se especificó un nuevo nombre, enviarlo también
-                        if (item.newName) {
+                        // Si se especificó un nuevo nombre o precio, enviarlo también
+                        if (item.newName || item.newPrice) {
                             try {
+                                const updatePayload = { sku: item.matchedSku };
+                                if (item.newName) updatePayload.name = item.newName;
+                                if (item.newPrice) updatePayload.regular_price = item.newPrice;
                                 await fetch(`${API_URL}/products/update-details`, {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ sku: item.matchedSku, name: item.newName })
+                                    body: JSON.stringify(updatePayload)
                                 });
-                            } catch(nameErr) { console.error('Error al actualizar nombre:', nameErr); }
+                            } catch(updateErr) { console.error('Error al actualizar nombre/precio:', updateErr); }
                         }
                     } else {
                         item.status = 'error';
