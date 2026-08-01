@@ -396,6 +396,46 @@
                                         <div id="bulk-progress-bar" class="bg-amber-400 h-full w-0 transition-all duration-300"></div>
                                     </div>
                                 </div>
+                        <!-- 🎁 SECTOR DEDICADO: CARGA DE COMBOS Y GALERÍAS COMPLETAS -->
+                        <div class="pt-6 border-t border-purple-500/30 space-y-4">
+                            <div class="flex items-center justify-between">
+                                <h4 class="font-title text-xs font-bold text-purple-400 uppercase tracking-wider flex items-center gap-1.5">
+                                    <span class="material-symbols-outlined text-[18px]">view_carousel</span> 🎁 Sector Dedicado: Carga de Combos (Portada + Galería Completa)
+                                </h4>
+                                <span class="text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full font-bold border border-purple-500/30">Multi-Imagen</span>
+                            </div>
+
+                            <div class="p-4 bg-purple-950/20 border border-purple-500/30 rounded-xl space-y-4">
+                                <p class="text-xs text-purple-200">Subí la <strong>Portada Principal</strong> del combo y todas las <strong>Imágenes de la Galería</strong> de un solo viaje sin mezclar ni sobrescribir.</p>
+
+                                <div>
+                                    <label class="text-[10px] font-bold text-purple-300 uppercase block mb-1">SKU del Combo o Producto:</label>
+                                    <input type="text" id="combo-sku-input" placeholder="Ej: QD-CMB-PST-001" class="w-full bg-white/10 border border-purple-500/40 text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-purple-400 placeholder-gray-400 font-mono">
+                                </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <!-- PORTADA -->
+                                    <div class="p-3 bg-black/40 border border-amber-500/40 rounded-xl space-y-2">
+                                        <label class="text-[10px] font-bold text-amber-300 uppercase block flex items-center gap-1">
+                                            <span class="material-symbols-outlined text-[14px]">star</span> 1. Foto de Portada (Imagen Principal)
+                                        </label>
+                                        <input type="file" id="combo-cover-input" accept="image/*" class="w-full text-xs text-gray-300 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-amber-500/20 file:text-amber-300 hover:file:bg-amber-500/30 cursor-pointer">
+                                    </div>
+
+                                    <!-- GALERÍA -->
+                                    <div class="p-3 bg-black/40 border border-emerald-500/40 rounded-xl space-y-2">
+                                        <label class="text-[10px] font-bold text-emerald-300 uppercase block flex items-center gap-1">
+                                            <span class="material-symbols-outlined text-[14px]">collections</span> 2. Fotos de la Galería (Múltiples)
+                                        </label>
+                                        <input type="file" id="combo-gallery-input" multiple accept="image/*" class="w-full text-xs text-gray-300 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-emerald-500/20 file:text-emerald-300 hover:file:bg-emerald-500/30 cursor-pointer">
+                                    </div>
+                                </div>
+
+                                <button onclick="subirComboCompleto()" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-purple-600 to-amber-500 text-white font-title text-xs font-bold uppercase tracking-wider hover:opacity-90 shadow-xl transition-all flex items-center justify-center gap-2">
+                                    <span class="material-symbols-outlined text-[18px]">rocket_launch</span> Subir Combo Completo (Portada + Galería + Purgar Caché)
+                                </button>
+
+                                <div id="combo-upload-res" class="hidden text-xs font-bold p-3 rounded-xl border"></div>
                             </div>
                         </div>
                     </div>
@@ -1433,6 +1473,91 @@
             progressBar.style.width = `100%`;
             btn.disabled = false;
             btn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+
+        async function subirComboCompleto() {
+            const sku = document.getElementById('combo-sku-input').value.trim();
+            const coverFile = document.getElementById('combo-cover-input').files[0];
+            const galleryFiles = Array.from(document.getElementById('combo-gallery-input').files || []);
+
+            if (!sku) {
+                alert('⚠️ Ingresá el SKU del combo (ej: QD-CMB-PST-001).');
+                return;
+            }
+            if (!coverFile && galleryFiles.length === 0) {
+                alert('⚠️ Seleccioná al menos la foto de portada o fotos para la galería.');
+                return;
+            }
+
+            const resDiv = document.getElementById('combo-upload-res');
+            resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-purple-500/40 bg-purple-500/10 text-purple-200';
+            resDiv.innerText = '⏳ Subiendo combo y configurando portada + galería...';
+            resDiv.classList.remove('hidden');
+
+            try {
+                let successCount = 0;
+
+                // 1. Subir Foto de Portada (mode = 'featured')
+                if (coverFile) {
+                    resDiv.innerText = '⏳ Subiendo Foto de Portada (Principal)...';
+                    const base64Cover = await readFileAsBase64(coverFile);
+                    const resp = await fetch(`${API_URL}/products/upload-image`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            sku: sku,
+                            imageBase64: base64Cover,
+                            filename: `portada_${sku}_${Date.now()}.${coverFile.name.split('.').pop()}`,
+                            mode: 'featured'
+                        })
+                    });
+                    const data = await resp.json();
+                    if (data.success) successCount++;
+                }
+
+                // 2. Subir Fotos de Galería (mode = 'gallery')
+                if (galleryFiles.length > 0) {
+                    for (let i = 0; i < galleryFiles.length; i++) {
+                        const gFile = galleryFiles[i];
+                        resDiv.innerText = `⏳ Subiendo foto ${i+1} de ${galleryFiles.length} a la Galería...`;
+                        const base64G = await readFileAsBase64(gFile);
+                        const resp = await fetch(`${API_URL}/products/upload-image`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                sku: sku,
+                                imageBase64: base64G,
+                                filename: `galeria_${i+1}_${sku}_${Date.now()}.${gFile.name.split('.').pop()}`,
+                                mode: 'gallery'
+                            })
+                        });
+                        const data = await resp.json();
+                        if (data.success) successCount++;
+
+                        if (i < galleryFiles.length - 1) {
+                            await new Promise(r => setTimeout(r, 600));
+                        }
+                    }
+                }
+
+                resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-300';
+                resDiv.innerText = `🎉 ¡Combo SKU ${sku} cargado con éxito! (${successCount} imágenes procesadas: Portada + Galería). Caché purgada.`;
+
+                document.getElementById('combo-cover-input').value = '';
+                document.getElementById('combo-gallery-input').value = '';
+            } catch(e) {
+                resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-red-500/40 bg-red-500/10 text-red-400';
+                resDiv.innerText = `❌ Error: ${e.message}`;
+            }
+        }
+
+        function readFileAsBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = e => resolve(e.target.result);
+                reader.onerror = e => reject(e);
+                reader.readAsDataURL(file);
+            });
         }
 
         window.onload = checkAuth;
