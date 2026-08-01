@@ -476,6 +476,98 @@
                                 </button>
 
                                 <div id="combo-upload-res" class="hidden text-xs font-bold p-3 rounded-xl border"></div>
+
+                                <!-- ⚡ VINCULACIÓN AUTOMÁTICA DE FOTOS POR SKUS (EXCEL / INPUT) -->
+                                <div class="p-4 bg-indigo-950/30 border border-indigo-500/40 rounded-xl space-y-3 mt-4">
+                                    <div class="flex items-center justify-between">
+                                        <h5 class="text-xs font-bold text-indigo-300 uppercase flex items-center gap-1.5">
+                                            <span class="material-symbols-outlined text-[16px]">link</span> ⚡ Vincular Fotos Existentes por SKUs (Ahorro de Carga / Excel)
+                                        </h5>
+                                        <span class="text-[9px] bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded font-bold">Auto-Link</span>
+                                    </div>
+                                    <p class="text-[11px] text-gray-300">Ingresá los SKUs de los productos del combo (o cargá un Excel/CSV). El sistema enlazará automáticamente las fotos que YA existen en el catálogo a la galería del combo.</p>
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                        <div>
+                                            <label class="text-[10px] font-bold text-gray-400 block mb-1">SKU del Combo:</label>
+                                            <input type="text" id="autolink-combo-sku" placeholder="Ej: QD-CMB-PST-001" class="w-full bg-slate-950/80 border border-indigo-500/40 text-white rounded-lg px-3 py-1.5 text-xs font-mono">
+                                        </div>
+                                        <div class="md:col-span-2">
+                                            <label class="text-[10px] font-bold text-gray-400 block mb-1">SKUs Incluidos (separados por coma):</label>
+                                            <input type="text" id="autolink-skus-input" placeholder="Ej: QD-DTRG-1001, QD-DES-2002, QD-JAB-3003" class="w-full bg-slate-950/80 border border-indigo-500/40 text-white rounded-lg px-3 py-1.5 text-xs font-mono">
+                                        </div>
+                                    </div>
+                                    <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+                                        <div class="flex items-center gap-3">
+                                            <input type="file" id="autolink-excel-file" accept=".xlsx, .xls, .csv, .txt" onchange="leerExcelSKUs(event)" class="text-[11px] text-gray-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-bold file:bg-indigo-500/20 file:text-indigo-300 cursor-pointer">
+                                            <label class="flex items-center gap-1 cursor-pointer">
+                                                <input type="checkbox" id="autolink-clear-chk" class="rounded bg-black/50 border-indigo-500/50 text-indigo-400 focus:ring-0">
+                                                <span class="text-[10px] text-amber-300 font-bold">Limpiar fotos viejas antes de vincular</span>
+                                            </label>
+                                        </div>
+                                        <button onclick="vincularFotosPorSKUs()" class="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-bold shadow-lg transition-all flex items-center gap-1.5">
+                                            <span class="material-symbols-outlined text-sm">bolt</span> Vincular Fotos por SKUs
+                                        </button>
+                                    </div>
+                                    <div id="autolink-res" class="hidden text-xs font-bold p-2.5 rounded-lg border"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 🖼️ GESTOR DE BANNERS DE SECCIONES (CATEGORÍAS DE LA HOME) -->
+                        <div class="pt-6 border-t border-cyan-500/30 space-y-4">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <h4 class="font-title text-xs font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
+                                        <span class="material-symbols-outlined text-[18px]">collections_bookmark</span> 🖼️ Gestor de Banners de Secciones (Categorías de la Home)
+                                    </h4>
+                                    <p class="text-[11px] text-gray-400 mt-0.5">Cambiá la foto de portada (banner 4:3) de las secciones principales de la tienda web con 1 clic.</p>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div class="p-3 bg-slate-900/90 border border-purple-500/40 rounded-xl space-y-2">
+                                    <span class="text-[10px] font-bold text-purple-300 uppercase block">🚀 Combos Emprendedores</span>
+                                    <input type="file" id="banner-file-combos-emprendedores" accept="image/*" class="w-full text-[11px] text-gray-300 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-bold file:bg-purple-500/20 file:text-purple-300">
+                                    <button onclick="subirBannerSeccion('combos-emprendedores')" class="w-full py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold shadow">
+                                        📸 Actualizar Banner Combos
+                                    </button>
+                                </div>
+                                <div class="p-3 bg-slate-900/90 border border-amber-500/40 rounded-xl space-y-2">
+                                    <span class="text-[10px] font-bold text-amber-300 uppercase block">🏷️ Ofertas Semanales</span>
+                                    <input type="file" id="banner-file-ofertas-semanales" accept="image/*" class="w-full text-[11px] text-gray-300 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-bold file:bg-amber-500/20 file:text-amber-300">
+                                    <button onclick="subirBannerSeccion('ofertas-semanales')" class="w-full py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold shadow">
+                                        📸 Actualizar Banner Ofertas
+                                    </button>
+                                </div>
+                                <div class="p-3 bg-slate-900/90 border border-blue-500/40 rounded-xl space-y-2">
+                                    <span class="text-[10px] font-bold text-blue-300 uppercase block">💧 Productos Líquidos</span>
+                                    <input type="file" id="banner-file-productos-liquidos" accept="image/*" class="w-full text-[11px] text-gray-300 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-bold file:bg-blue-500/20 file:text-blue-300">
+                                    <button onclick="subirBannerSeccion('productos-liquidos')" class="w-full py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow">
+                                        📸 Actualizar Banner Líquidos
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="banner-upload-res" class="hidden text-xs font-bold p-2.5 rounded-xl border"></div>
+                        </div>
+
+                        <!-- 🏷️ VISOR Y GESTOR DE OFERTAS SEMANALES -->
+                        <div class="pt-6 border-t border-amber-500/30 space-y-4">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <h4 class="font-title text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                                        <span class="material-symbols-outlined text-[18px]">local_offer</span> 🏷️ Visor y Gestor de Ofertas Semanales (En Vivo)
+                                    </h4>
+                                    <p class="text-[11px] text-gray-400 mt-0.5">Administrá productos en oferta, precios promocionales, estado activo/pausado y fotos.</p>
+                                </div>
+                                <button onclick="cargarVisorOfertas()" class="px-3 py-1.5 bg-amber-600/30 hover:bg-amber-600/50 border border-amber-500/40 text-amber-200 text-[11px] font-bold rounded-xl flex items-center gap-1 transition-all shadow">
+                                    <span class="material-symbols-outlined text-sm">refresh</span> Actualizar Ofertas
+                                </button>
+                            </div>
+
+                            <div id="visor-ofertas-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <div class="col-span-full text-center py-6 text-amber-300/60 text-xs font-bold">
+                                    ⏳ Cargando ofertas semanales desde WooCommerce...
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1658,27 +1750,211 @@
             }
         }
 
-        async function eliminarImagenCombo(sku, attachId, imgUrl) {
-            if (!confirm('¿Estás seguro de eliminar esta imagen del combo?')) return;
+        async function vincularFotosPorSKUs() {
+            let comboSku = document.getElementById('autolink-combo-sku').value.trim();
+            comboSku = comboSku.replace(/^sku:\s*/i, '').trim();
+            const skusInput = document.getElementById('autolink-skus-input').value.trim();
+            const clearFirst = document.getElementById('autolink-clear-chk')?.checked;
+            const resDiv = document.getElementById('autolink-res');
+
+            if (!comboSku) {
+                alert('⚠️ Ingresá el SKU del combo.');
+                return;
+            }
+            if (!skusInput) {
+                alert('⚠️ Ingresá al menos un SKU de producto o cargá un Excel.');
+                return;
+            }
+
+            resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-indigo-500/40 bg-indigo-500/10 text-indigo-300';
+            resDiv.innerText = '⏳ Buscando productos y vinculando fotos existentes...';
+            resDiv.classList.remove('hidden');
 
             try {
-                const resp = await fetch(`${API_URL}/combos/delete-image`, {
+                const resp = await fetch(`${API_URL}/combos/auto-link-skus`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        sku: sku,
-                        attachment_id: attachId,
-                        image_url: imgUrl
+                        comboSku: comboSku,
+                        productSkus: skusInput,
+                        clearFirst: clearFirst
                     })
                 });
                 const data = await resp.json();
                 if (data.success) {
-                    cargarVisorCombos();
+                    resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-300';
+                    resDiv.innerText = `🎉 ¡${data.linked_count} imágenes de productos enlazadas a ${comboSku} con éxito! Sin duplicar archivos.`;
+                    setTimeout(() => cargarVisorCombos(), 1200);
                 } else {
-                    alert(`❌ Error: ${data.error || 'No se pudo eliminar la imagen.'}`);
+                    resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-red-500/40 bg-red-500/10 text-red-400';
+                    resDiv.innerText = `❌ Error: ${data.error || 'No se pudieron vincular las fotos.'}`;
                 }
             } catch(e) {
-                alert(`❌ Error: ${e.message}`);
+                resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-red-500/40 bg-red-500/10 text-red-400';
+                resDiv.innerText = `❌ Error: ${e.message}`;
+            }
+        }
+
+        function leerExcelSKUs(evt) {
+            const file = evt.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const content = e.target.result;
+                // Extraer SKUs o textos que parezcan SKUs (ej: QD-DTRG-001)
+                const skus = content.match(/QD-[A-Z0-9]+-[0-9]+/gi) || content.split(/[\r\n\t,;]+/);
+                const cleanSkus = Array.from(new Set(skus.map(s => s.trim()).filter(s => s.length > 3)));
+                if (cleanSkus.length > 0) {
+                    document.getElementById('autolink-skus-input').value = cleanSkus.join(', ');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        async function subirBannerSeccion(categoryKey) {
+            const fileInput = document.getElementById(`banner-file-${categoryKey}`);
+            const file = fileInput?.files[0];
+            const resDiv = document.getElementById('banner-upload-res');
+
+            if (!file) {
+                alert('⚠️ Seleccioná una imagen para el banner primero.');
+                return;
+            }
+
+            resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-cyan-500/40 bg-cyan-500/10 text-cyan-300';
+            resDiv.innerText = `⏳ Subiendo banner para ${categoryKey} y actualizando la web...`;
+            resDiv.classList.remove('hidden');
+
+            try {
+                const base64 = await readFileAsBase64(file);
+                const resp = await fetch(`${API_URL}/categories/upload-banner`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        categoryKey: categoryKey,
+                        imageBase64: base64,
+                        filename: `banner_${categoryKey}_${Date.now()}.${file.name.split('.').pop()}`
+                    })
+                });
+                const data = await resp.json();
+                if (data.success) {
+                    resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-300';
+                    resDiv.innerText = `🎉 ¡Banner de ${categoryKey} actualizado con éxito en WordPress y en el catálogo web!`;
+                } else {
+                    resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-red-500/40 bg-red-500/10 text-red-400';
+                    resDiv.innerText = `❌ Error: ${data.error || 'No se pudo actualizar el banner.'}`;
+                }
+            } catch(e) {
+                resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-red-500/40 bg-red-500/10 text-red-400';
+                resDiv.innerText = `❌ Error: ${e.message}`;
+            }
+        }
+
+        async function cargarVisorOfertas() {
+            const container = document.getElementById('visor-ofertas-container');
+            if (!container) return;
+            container.innerHTML = `<div class="col-span-full text-center py-6 text-amber-300/60 text-xs font-bold animate-pulse">⏳ Cargando ofertas semanales desde WooCommerce...</div>`;
+
+            try {
+                const resp = await fetch(`${API_URL}/ofertas`);
+                const data = await resp.json();
+                if (!data.success || !data.ofertas) {
+                    container.innerHTML = `<div class="col-span-full text-center py-6 text-red-400 text-xs font-bold">❌ Error al obtener ofertas: ${data.error || 'Respuesta inválida'}</div>`;
+                    return;
+                }
+
+                if (data.ofertas.length === 0) {
+                    container.innerHTML = `<div class="col-span-full text-center py-6 text-amber-300/80 text-xs font-bold">Sin ofertas activas actualmente. Podés poner cualquier producto en oferta editando su Precio Promocional.</div>`;
+                    return;
+                }
+
+                container.innerHTML = data.ofertas.map(o => {
+                    const esActivo = o.status === 'publish';
+                    const imgUrl = o.featured_url || 'https://via.placeholder.com/300x300?text=Sin+Foto';
+                    const items = o.gallery_items || [];
+
+                    return `
+                        <div class="bg-slate-900/80 rounded-2xl border ${esActivo ? 'border-amber-500/40' : 'border-slate-700'} p-4 flex flex-col justify-between shadow-lg">
+                            <div>
+                                <div class="relative w-full aspect-[4/3] rounded-xl overflow-hidden mb-3 bg-black/40 border border-white/10">
+                                    <img src="${imgUrl}" class="w-full h-full object-cover">
+                                    <div class="absolute top-2 left-2 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase bg-amber-500 text-black shadow">
+                                        🏷️ OFERTA
+                                    </div>
+                                </div>
+
+                                <div class="space-y-3">
+                                    <div>
+                                        <span class="text-[10px] font-mono text-amber-400 font-bold">SKU: ${o.sku}</span>
+                                        <input type="text" id="oferta-name-${o.sku}" value="${o.name}" class="w-full mt-1 bg-slate-950/80 border border-white/15 rounded-lg px-3 py-1.5 text-xs text-white font-bold">
+                                    </div>
+
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <label class="text-[10px] text-gray-400 font-bold block mb-1">Precio Reg. ($):</label>
+                                            <input type="number" step="0.01" id="oferta-regprice-${o.sku}" value="${o.regular_price}" class="w-full bg-slate-950/80 border border-white/15 rounded-lg px-2.5 py-1.5 text-xs text-gray-300 font-bold">
+                                        </div>
+                                        <div>
+                                            <label class="text-[10px] text-amber-400 font-bold block mb-1">Precio Oferta ($):</label>
+                                            <input type="number" step="0.01" id="oferta-saleprice-${o.sku}" value="${o.sale_price}" class="w-full bg-slate-950/80 border border-amber-500/40 text-xs text-brand-yellow font-bold">
+                                        </div>
+                                    </div>
+
+                                    <div id="oferta-msg-${o.sku}" class="hidden text-[10px] font-bold p-2 rounded-lg text-center"></div>
+                                </div>
+                            </div>
+
+                            <div class="flex gap-2 pt-3 border-t border-white/5 mt-3">
+                                <button onclick="guardarEdicionOferta('${o.sku}')" class="flex-1 py-2 bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 text-slate-950 font-black text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-1">
+                                    <span class="material-symbols-outlined text-sm">save</span> Guardar Oferta
+                                </button>
+                                <a href="${o.permalink || '#'}" target="_blank" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-gray-300 font-bold text-xs rounded-xl border border-white/10 flex items-center justify-center">
+                                    🔗
+                                </a>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } catch(e) {
+                container.innerHTML = `<div class="col-span-full text-center py-6 text-red-400 text-xs font-bold">❌ Error: ${e.message}</div>`;
+            }
+        }
+
+        async function guardarEdicionOferta(sku) {
+            const name = document.getElementById(`oferta-name-${sku}`).value.trim();
+            const regPrice = document.getElementById(`oferta-regprice-${sku}`).value.trim();
+            const salePrice = document.getElementById(`oferta-saleprice-${sku}`).value.trim();
+            const msgDiv = document.getElementById(`oferta-msg-${sku}`);
+
+            msgDiv.className = 'text-[10px] font-bold p-2 rounded-lg text-center bg-amber-500/20 text-amber-300 border border-amber-500/40';
+            msgDiv.innerText = '⏳ Guardando oferta...';
+            msgDiv.classList.remove('hidden');
+
+            try {
+                const resp = await fetch('https://quimicadec.com/?qdec_api=update_product_details', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        secret_key: 'qdec_crm_sec_2026',
+                        sku: sku,
+                        name: name,
+                        regular_price: regPrice,
+                        sale_price: salePrice
+                    })
+                });
+                const data = await resp.json();
+                if (data.success) {
+                    msgDiv.className = 'text-[10px] font-bold p-2 rounded-lg text-center bg-emerald-500/20 text-emerald-300 border border-emerald-500/40';
+                    msgDiv.innerText = '🎉 Oferta guardada con éxito.';
+                    setTimeout(() => cargarVisorOfertas(), 1200);
+                } else {
+                    msgDiv.className = 'text-[10px] font-bold p-2 rounded-lg text-center bg-red-500/20 text-red-400 border border-red-500/40';
+                    msgDiv.innerText = `❌ Error: ${data.error || 'No se pudo guardar.'}`;
+                }
+            } catch(e) {
+                msgDiv.className = 'text-[10px] font-bold p-2 rounded-lg text-center bg-red-500/20 text-red-400 border border-red-500/40';
+                msgDiv.innerText = `❌ Error: ${e.message}`;
             }
         }
 

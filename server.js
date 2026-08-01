@@ -877,6 +877,100 @@ app.post('/api/combos/delete-image', async (req, res) => {
     }
 });
 
+app.post('/api/combos/auto-link-skus', async (req, res) => {
+    try {
+        const { comboSku, productSkus, clearFirst } = req.body;
+        const resp = await fetch('https://quimicadec.com/?qdec_api=auto_link_combo_gallery', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                secret_key: 'qdec_crm_sec_2026',
+                combo_sku: comboSku,
+                product_skus: productSkus,
+                clear_first: clearFirst || false
+            })
+        });
+        const data = await resp.json();
+        res.json(data);
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+app.post('/api/categories/upload-banner', async (req, res) => {
+    try {
+        const { categoryKey, imageBase64, imageUrl, filename } = req.body;
+        const resp = await fetch('https://quimicadec.com/?qdec_api=upload_category_banner', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                secret_key: 'qdec_crm_sec_2026',
+                category_key: categoryKey,
+                image_base64: imageBase64 || '',
+                image_url: imageUrl || '',
+                filename: filename || `banner_${categoryKey}_${Date.now()}.jpg`
+            })
+        });
+        const data = await resp.json();
+
+        if (data.success && data.image_url) {
+            // Actualizar la URL de la imagen en catalogo_final.html y sincronizar con WP
+            try {
+                const catalogPath = path.join(__dirname, '..', 'catalogo_final.html');
+                if (fs.existsSync(catalogPath)) {
+                    let html = fs.readFileSync(catalogPath, 'utf8');
+
+                    // Mapa de categorías a patrones de reemplazo
+                    const patternMap = {
+                        'combos-emprendedores': /combosemprendedores\.(jpeg|jpg|png|webp)/gi,
+                        'productos-liquidos': /productosliquidos\.(jpeg|jpg|png|webp)/gi,
+                        'ofertas-semanales': /ofertassemanales\.(jpeg|jpg|png|webp)/gi,
+                        'productos-para-diluir': /productosparadiluir\.(jpeg|jpg|png|webp)/gi,
+                        'aerosoles': /aerosoles\.(jpeg|jpg|png|webp)/gi,
+                        'primeras-marcas': /primerasmarcas\.(jpeg|jpg|png|webp)/gi,
+                        'pastas-y-concentrados': /pastasyconcentrados\.(jpeg|jpg|png|webp)/gi,
+                        'jabon-en-polvo': /jabonenpolvo\.(jpeg|jpg|png|webp)/gi,
+                        'jabon-en-pan': /jabonenpan\.(jpeg|jpg|png|webp)/gi
+                    };
+
+                    // Reemplazar la URL del banner específico o fallback por href de la categoría
+                    if (categoryKey === 'combos-emprendedores') {
+                        html = html.replace(/src="[^"]*combos[^"]*"/i, `src="${data.image_url}"`);
+                    }
+
+                    fs.writeFileSync(catalogPath, html, 'utf8');
+
+                    // Sincronizar catálogo con WordPress automáticamente
+                    await fetch('https://quimicadec.com/?qdec_api=update_homepage_content', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            secret_key: 'qdec_crm_sec_2026',
+                            html_content: html
+                        })
+                    }).catch(() => {});
+                }
+            } catch (errSync) {
+                console.error('[CATEGORY BANNER HTML SYNC ERROR]:', errSync.message);
+            }
+        }
+
+        res.json(data);
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+app.get('/api/ofertas', async (req, res) => {
+    try {
+        const resp = await fetch('https://quimicadec.com/?qdec_api=get_ofertas');
+        const data = await resp.json();
+        res.json(data);
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
 // Endpoint de Carga e Integración Directa de Imagen a WooCommerce + Supabase
 app.post('/api/products/upload-image', async (req, res) => {
 
