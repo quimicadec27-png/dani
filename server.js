@@ -822,7 +822,7 @@ app.post('/api/products/update-details', async (req, res) => {
 app.post('/api/products/upload-image', async (req, res) => {
 
     try {
-        const { sku, imageBase64, imageUrl, filename } = req.body;
+        const { sku, imageBase64, imageUrl, filename, mode } = req.body;
         if (!sku) {
             return res.status(400).json({ success: false, error: 'Se requiere el SKU del producto.' });
         }
@@ -837,7 +837,8 @@ app.post('/api/products/upload-image', async (req, res) => {
             sku: sku,
             image_base64: imageBase64 || '',
             image_url: imageUrl || '',
-            filename: filename || `producto_${sku}_${Date.now()}.jpg`
+            filename: filename || `producto_${sku}_${Date.now()}.jpg`,
+            mode: mode || 'auto'
         };
 
         let wcResult = null;
