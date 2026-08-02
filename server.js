@@ -109,13 +109,22 @@ const CATEGORIAS_OFICIALES = [
 
 app.post('/api/whatsapp/incoming-ai', async (req, res) => {
     try {
-        const { phone, user_id, session_id, mensaje_texto, user_message, message, messages } = req.body;
+        const { phone, user_id, session_id, mensaje_texto, user_message, message, messages, contents } = req.body;
         let textoProcesado = (mensaje_texto || user_message || message || '').trim();
 
+        // 1. Extraer si viene en formato OpenAI/Groq (messages)
         if (!textoProcesado && Array.isArray(messages) && messages.length > 0) {
             const lastUser = [...messages].reverse().find(m => m.role === 'user');
             if (lastUser && lastUser.content) {
                 textoProcesado = lastUser.content.trim();
+            }
+        }
+
+        // 2. Extraer si viene en formato Gemini (contents)
+        if (!textoProcesado && Array.isArray(contents) && contents.length > 0) {
+            const lastUser = [...contents].reverse().find(c => c.role === 'user');
+            if (lastUser && lastUser.parts && lastUser.parts[0] && lastUser.parts[0].text) {
+                textoProcesado = lastUser.parts[0].text.trim();
             }
         }
 
