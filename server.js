@@ -47,7 +47,8 @@ Hablas en primera persona como representante oficial ("en Química DEC nos dedic
      "¡Hola! Mi nombre es Dani, muchas gracias por consultar. Sí, ¡tenemos [producto]! Me gustaría saber tu nombre y apellido para poder brindarte una atención personalizada y seguir charlando contigo. ¿Cuál es tu nombre?"
 2. EN LA SEGUNDA O TERCERA INTERACCIÓN (Sugerencia de WhatsApp):
    - Tras responder sus consultas sobre productos, sugerí amablemente:
-     "Para que luego de que consultes todo lo que necesites, un representante humano de nuestro equipo (Danilo o Micaela) pueda enviarte el presupuesto completo o ayudarte a cerrar la compra, ¿me compartís tu número de WhatsApp con característica?"
+     "Para que luego de que consultes todo lo que necesites, un representante humano de nuestro equipo pueda enviarte el presupuesto completo o ayudarte a cerrar la compra, ¿me compartís tu número de WhatsApp con característica?"
+   - JAMÁS des nombres específicos de representantes (como Danilo o Micaela). El asesor se identificará cuando tome la charla.
 3. RECUERDA: Dejá que el cliente consulte todo lo que necesite con Dani; NO lo derivés abruptamente salvo que lo pida explícitamente.
 
 ⚠️ CATÁLOGO COMPLETO DE PRODUCTOS QUÍMICA DEC:
@@ -62,7 +63,7 @@ Sí vendemos y distribuimos:
 ⚠️ REGLAS COMERCIALES EXACTAS:
 1. REGISTRO E INICIO MAYORISTA: Compra mínima inicial de $80.000.
 2. MANTENIMIENTO MES A MES: Acumular $80.000 o más en compras mensuales.
-3. ENVÍOS A DOMICILIO: Mínimo de $50.000 por pedido.
+3. ENVÍOS A DOMICILIO (LOCALES Y NACIONALES): Compra mínima de $80.000 por pedido.
 4. RETIROS EN LOCAL: A partir de $2.500 por pedido.
 
 ⚠️ REGLA DE CONTINUIDAD DE CONVERSACIÓN (NO REPETIR SALUDOS):
@@ -188,6 +189,34 @@ async function autoExtractAndUpdateLead(clienteId, clienteObj, textoUsuario) {
     }
 }
 
+// Helper para verificar si el Bot está pausado para un cliente específico por intervención humana
+async function isBotPausado(clienteId) {
+    if (!clienteId) return false;
+    try {
+        const { data: statusMsgs } = await supabase
+            .from('mensajes_chat')
+            .select('texto, emisor')
+            .eq('cliente_id', clienteId)
+            .order('creado_el', { ascending: false })
+            .limit(10);
+
+        if (statusMsgs && statusMsgs.length > 0) {
+            for (const m of statusMsgs) {
+                if (m.texto && m.texto.includes('[BOT REANUDADO]')) {
+                    return false;
+                }
+                if (m.texto && m.texto.includes('[BOT PAUSADO]')) {
+                    return true;
+                }
+                if (m.emisor === 'vendedor') {
+                    return true;
+                }
+            }
+        }
+    } catch(e) {}
+    return false;
+}
+
 // =========================================================================
 // 1. CHAT EN VIVO: SINCRONIZACIÓN FLUIDA WEB + WHATSAPP Y CRM
 // =========================================================================
@@ -239,6 +268,20 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
                 // Extraer automáticamente Nombre, Apellido y WhatsApp del texto y actualizar ficha del Lead
                 await autoExtractAndUpdateLead(clienteId, cliente, textoProcesado);
             } catch (e) { console.error('Error insertando mensaje:', e.message); }
+        }
+
+        // VERIFICACIÓN DE INTERVENCIÓN HUMANA: Si el Bot está pausado para este cliente, NO responder
+        if (clienteId) {
+            const estaPausado = await isBotPausado(clienteId);
+            if (estaPausado) {
+                console.log(`[BOT PAUSADO] Cliente ${clienteId} tiene el bot deshabilitado. Se registró el mensaje pero no se responde vía IA.`);
+                return res.json({
+                    success: true,
+                    bot_pausado: true,
+                    respuesta_sugerida_ia: null,
+                    choices: []
+                });
+            }
         }
 
         // Obtener historial previo (priorizando el historial enviado por la web o consultando Supabase)
@@ -459,10 +502,11 @@ app.get('/api/crm/chat/conversaciones', async (req, res) => {
 
         if (error) throw error;
         
-        // Para cada cliente, obtener la fecha de su último mensaje y conteo
+        // Para cada cliente, obtener la fecha de su último mensaje, texto y estado del bot
         const conversacionesFormatted = await Promise.all((clientes || []).map(async (c) => {
             let ultimoMsgFecha = c.creado_el;
             let ultimoTexto = '';
+            let botPausado = false;
             try {
                 const { data: lastM } = await supabase
                     .from('mensajes_chat')
@@ -475,11 +519,13 @@ app.get('/api/crm/chat/conversaciones', async (req, res) => {
                     ultimoMsgFecha = lastM[0].creado_el;
                     ultimoTexto = lastM[0].texto;
                 }
+
+                botPausado = await isBotPausado(c.id);
             } catch (e) {}
 
             return {
                 ...c,
-                bot_pausado: false,
+                bot_pausado: botPausado,
                 ultimo_mensaje_el: ultimoMsgFecha,
                 ultimo_texto: ultimoTexto
             };
@@ -522,19 +568,27 @@ app.get('/api/crm/chat/mensajes/:clienteId', async (req, res) => {
         } catch (e) {}
         
         const { data: cliente } = await supabase.from('clientes').select('*').eq('id', clienteId).single();
-        res.json({ success: true, cliente: cliente, mensajes: mensajes });
+        const botPausado = await isBotPausado(clienteId);
+        res.json({ success: true, cliente: { ...cliente, bot_pausado: botPausado }, mensajes: mensajes });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Responder como Vendedor Humano e Interrumpir Bot
+// Responder como Vendedor Humano e Interrumpir/Reanudar Bot
 app.post('/api/crm/chat/enviar-mensaje-vendedor', async (req, res) => {
     try {
         const { cliente_id, texto_mensaje, pausar_bot } = req.body;
-        if (!cliente_id || !texto_mensaje) return res.status(400).json({ error: 'Cliente y mensaje requeridos' });
+        if (!cliente_id) return res.status(400).json({ error: 'Cliente requerido' });
 
-        await supabase.from('mensajes_chat').insert([{ cliente_id: cliente_id, emisor: 'vendedor', texto: texto_mensaje }]);
+        let textToInsert = texto_mensaje || '';
+        if (texto_mensaje === '[CAMBIO DE ESTADO BOT]') {
+            textToInsert = pausar_bot ? '[BOT PAUSADO]' : '[BOT REANUDADO]';
+        } else if (pausar_bot) {
+            textToInsert = `${texto_mensaje}\n[BOT PAUSADO]`;
+        }
 
-        res.json({ success: true, mensaje: '✅ Mensaje enviado y registrado en la conversación.' });
+        await supabase.from('mensajes_chat').insert([{ cliente_id: cliente_id, emisor: 'vendedor', texto: textToInsert }]);
+
+        res.json({ success: true, mensaje: '✅ Mensaje registrado y estado del bot actualizado.' });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
