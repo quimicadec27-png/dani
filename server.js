@@ -197,7 +197,8 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
             }
         }
 
-        const clientePhone = (phone || user_id || session_id || 'Cliente Web').toString();
+        const rawPhone = (phone || user_id || session_id || 'Cliente Web').toString();
+        const clientePhone = rawPhone.substring(0, 20);
 
         if (!textoProcesado) return res.status(400).json({ error: 'Mensaje vacío' });
 
