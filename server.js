@@ -103,6 +103,75 @@ const CATEGORIAS_OFICIALES = [
     { key: 'ESPECIALIDADES Y VARIOS', icon: 'grid_view', terms: [] }
 ];
 
+// Detección e IA Extractor Automático de Datos de Lead (Nombre, Apellido, WhatsApp, DNI, Comercio)
+async function autoExtractAndUpdateLead(clienteId, clienteObj, textoUsuario) {
+    if (!clienteId || !textoUsuario) return;
+
+    try {
+        let extractedNombre = null;
+        let extractedWhatsapp = null;
+
+        // 1. Extraer Número de WhatsApp / Teléfono si el usuario lo escribe (ej. 3442 586974 o 5493442...)
+        const cleanNums = textoUsuario.replace(/[^0-9]/g, '');
+        if (cleanNums.length >= 8 && cleanNums.length <= 13) {
+            if (!clienteObj.whatsapp || clienteObj.whatsapp.startsWith('Web_') || clienteObj.whatsapp.includes('Cliente Web')) {
+                let cleanPhone = cleanNums;
+                if (cleanPhone.length === 10 && (cleanPhone.startsWith('3') || cleanPhone.startsWith('11') || cleanPhone.startsWith('2'))) {
+                    cleanPhone = '549' + cleanPhone;
+                }
+                extractedWhatsapp = cleanPhone;
+            }
+        }
+
+        // 2. Extraer Nombre y Apellido desde el texto
+        const nameRegexes = [
+            /(?:me llamo|mi nombre es|soy|me dicen)\s+([a-záéíóúñÁÉÍÓÚÑ]{2,}(?:\s+[a-záéíóúñÁÉÍÓÚÑ]{2,})+)/i,
+            /^([a-záéíóúñÁÉÍÓÚÑ]{3,}\s+[a-záéíóúñÁÉÍÓÚÑ]{3,})/i
+        ];
+
+        for (const reg of nameRegexes) {
+            const m = textoUsuario.match(reg);
+            if (m && m[1]) {
+                const candidate = m[1].trim();
+                const low = candidate.toLowerCase();
+                const isStop = ['sahumerio', 'detergente', 'jabon', 'suavizante', 'lavandina', 'precio', 'hola', 'buenas', 'quisiera', 'cuanto'].some(s => low.includes(s));
+                if (!isStop) {
+                    // Capitalizar Nombre y Apellido
+                    extractedNombre = candidate.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+                    break;
+                }
+            }
+        }
+
+        // Fallback especial para capturas directas como "wilder de mello..."
+        if (!extractedNombre) {
+            const directNameMatch = textoUsuario.match(/^([a-záéíóúñÁÉÍÓÚÑ]{3,}\s+[a-záéíóúñÁÉÍÓÚÑ]{2,}\s+[a-záéíóúñÁÉÍÓÚÑ]{2,})/i);
+            if (directNameMatch && directNameMatch[1]) {
+                const cand = directNameMatch[1].trim();
+                if (!cand.toLowerCase().includes('precio') && !cand.toLowerCase().includes('sahumerio')) {
+                    extractedNombre = cand.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+                }
+            }
+        }
+
+        // 3. Si se detectó Nombre o WhatsApp, actualizar inmediatamente la ficha del cliente en Supabase
+        const updateData = {};
+        if (extractedNombre && (!clienteObj.razon_social || clienteObj.razon_social.startsWith('Lead Web') || clienteObj.razon_social.startsWith('Cliente Web'))) {
+            updateData.razon_social = extractedNombre;
+        }
+        if (extractedWhatsapp) {
+            updateData.whatsapp = extractedWhatsapp;
+        }
+
+        if (Object.keys(updateData).length > 0) {
+            await supabase.from('clientes').update(updateData).eq('id', clienteId);
+            console.log(`[AUTO LEAD EXTRACT] Ficha del Lead ${clienteId} actualizada en Supabase:`, updateData);
+        }
+    } catch(err) {
+        console.error('[AUTO LEAD EXTRACT ERROR]:', err.message);
+    }
+}
+
 // =========================================================================
 // 1. CHAT EN VIVO: SINCRONIZACIÓN FLUIDA WEB + WHATSAPP Y CRM
 // =========================================================================
@@ -150,6 +219,8 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
         if (clienteId) {
             try {
                 await supabase.from('mensajes_chat').insert([{ cliente_id: clienteId, emisor: 'cliente', texto: textoProcesado }]);
+                // Extraer automáticamente Nombre, Apellido y WhatsApp del texto y actualizar ficha del Lead
+                autoExtractAndUpdateLead(clienteId, cliente, textoProcesado);
             } catch (e) { console.error('Error insertando mensaje:', e.message); }
         }
 
