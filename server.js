@@ -350,7 +350,15 @@ Devuelve JSON: {"items": ["busqueda1", "busqueda2"]}`
                         const priceTxt = rawPrice > 0 
                             ? `$${rawPrice.toLocaleString('es-AR')}` 
                             : 'Opciones de Bidones disponibles: 5LT ($4.906,40), 10LT ($9.812,80), 20LT ($19.625,60), 40LT ($38.858,80), 120LT ($114.220,00)';
-                        const descLine = `- ${p.name} (SKU: ${p.sku || 'N/A'}): ${priceTxt} | Stock: ${p.stock_status === 'instock' || !p.stock_status ? 'Disponible' : 'Consultar'}`;
+                        
+                        let descLine = `- ${p.name} (SKU: ${p.sku || 'N/A'}): ${priceTxt} | Stock: ${p.stock_status === 'instock' || !p.stock_status ? 'Disponible' : 'Consultar'}`;
+
+                        if (rawPrice > 0) {
+                            const minQty80k = Math.ceil(80000 / rawPrice);
+                            const minTotal80k = minQty80k * rawPrice;
+                            descLine += `\n  * CÁLCULO DE COMPRA MÍNIMA DE $80.000: Para alcanzar o superar la compra mínima inicial de $80.000 se necesitan EXACTAMENTE ${minQty80k} unidades. La cuenta matemática exacta es: ${minQty80k} unidades x $${rawPrice.toLocaleString('es-AR')} = $${minTotal80k.toLocaleString('es-AR')}.`;
+                        }
+
                         if (!desgloses.includes(descLine)) {
                             desgloses.push(descLine);
                         }
@@ -359,12 +367,13 @@ Devuelve JSON: {"items": ["busqueda1", "busqueda2"]}`
             }
 
             if (desgloses.length > 0) {
-                cotizacionCalculada = "\n[DATOS REALES Y OFICIALES DE PRODUCTOS PUBLICADOS EN LA TIENDA QUÍMICA DEC]:\n" + desgloses.join('\n') + 
-                "\n⚠️ INSTRUCCIONES DE VENTA, JUEGO DE CINTURA Y PRECIOS ESTRUCTURALES:" +
-                "\n1. JUEGO DE CINTURA Y EMPATÍA COMERCIAL: Si el cliente busca 'Detergente Magistral' (sin la palabra 'tipo'), sé inteligente y proactivo. Explicá amablemente: 'No vendemos marca comercial Magistral, pero contamos con nuestro Detergente TIPO MAGISTRAL (Magenta y Azul) de calidad industrial superior que es nuestro producto estrella.' Y ofrecile las opciones." +
-                "\n2. RESPONDÉ CON LOS PRECIOS Y OPCIONES REALES: Presentá las presentaciones (5LT, 10LT, 20LT, 40LT, 120LT) con sus precios de la lista de arriba." +
-                "\n3. PRODUCTOS EN BORRADOR PROHIBIDOS: Usá ÚNICAMENTE los datos reales de la lista oficial de arriba. JAMÁS inventes precios de $785 ni muestres productos que no estén listados." +
-                "\n4. Si el cliente pide un producto que figura en la lista anterior, CONFIRMÁ DE INMEDIATO SU EXISTENCIA.";
+                cotizacionCalculada = "\n[DATOS REALES Y CÁLCULOS MATEMÁTICOS OFICIALES DE QUÍMICA DEC]:\n" + desgloses.join('\n') + 
+                "\n⚠️ INSTRUCCIONES DE VENTA, CALCULADORA MATEMÁTICA Y PRECIOS ESTRUCTURALES:" +
+                "\n1. CALCULADORA MATEMÁTICA OBLIGATORIA: Si el cliente pregunta cuánto necesita comprar para superar la compra mínima de $80.000 o pide la cuenta exacta de un producto, USA SIEMPRE EL CÁLCULO MATEMÁTICO INDICADO ARRIBA (* CÁLCULO DE COMPRA MÍNIMA). Decile la cantidad exacta de unidades necesarias multiplicada por el precio unitario exacto. JAMÁS digas que no tenés el precio." +
+                "\n2. JUEGO DE CINTURA Y EMPATÍA COMERCIAL: Si el cliente busca 'Detergente Magistral' (sin la palabra 'tipo'), sé inteligente y proactivo. Explicá amablemente: 'No vendemos marca comercial Magistral, pero contamos con nuestro Detergente TIPO MAGISTRAL (Magenta y Azul) de calidad industrial superior que es nuestro producto estrella.' Y ofrecile las opciones." +
+                "\n3. RESPONDÉ CON LOS PRECIOS Y OPCIONES REALES: Presentá las presentaciones con sus precios exactos." +
+                "\n4. PRODUCTOS EN BORRADOR PROHIBIDOS: Usá ÚNICAMENTE los datos reales de la lista oficial de arriba. JAMÁS inventes precios de $785 ni muestres productos que no estén listados." +
+                "\n5. Si el cliente pide un producto que figura en la lista anterior, CONFIRMÁ DE INMEDIATO SU EXISTENCIA.";
             } else {
                 cotizacionCalculada = "\n⚠️ INSTRUCCIÓN SI NO SE ENCONTRÓ EN BÚSQUEDA AUTOMÁTICA:\nInformá amablemente al cliente que puede revisar la categoría completa de Productos Líquidos en el catálogo oficial (quimicadec.com/catalogo). JAMÁS INVENTES PRECIOS FALSOS NI PRODUCTOS EN BORRADOR.";
             }
