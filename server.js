@@ -103,6 +103,18 @@ const CATEGORIAS_OFICIALES = [
     { key: 'ESPECIALIDADES Y VARIOS', icon: 'grid_view', terms: [] }
 ];
 
+const SPANISH_STOP_WORDS = [
+    'hola', 'buenas', 'tardes', 'dias', 'noches', 'saludos', 'quisiera', 'saber', 'cuanto', 'cuánto',
+    'sale', 'precio', 'precios', 'detergente', 'sahumerio', 'sahumerios', 'saumerio', 'saumerios',
+    'jabon', 'jabón', 'suavizante', 'lavandina', 'cloro', 'desinfectante', 'repelente', 'envio', 'envío',
+    'envios', 'envíos', 'stock', 'tenes', 'tenés', 'tienen', 'puedo', 'hacer', 'gracias', 'favor',
+    'mismo', 'minima', 'mínima', 'mayorista', 'retiro', 'local', 'transferencia', 'efectivo', 'medios',
+    'pago', 'forma', 'opciones', 'formatos', 'bidon', 'bidón', 'litros', 'unidad', 'unidades', 'combo',
+    'combos', 'descuento', 'oferta', 'quiero', 'comprar', 'donde', 'dónde', 'como', 'cómo', 'cuando',
+    'cuándo', 'ustedes', 'estoy', 'interesado', 'interesada', 'necesito', 'buscando', 'alguna', 'algun',
+    'algún', 'tengan', 'hablar', 'contacto', 'producto', 'productos'
+];
+
 // Detección e IA Extractor Automático de Datos de Lead (Nombre, Apellido, WhatsApp, DNI, Comercio)
 async function autoExtractAndUpdateLead(clienteId, clienteObj, textoUsuario) {
     if (!clienteId || !textoUsuario) return;
@@ -111,54 +123,58 @@ async function autoExtractAndUpdateLead(clienteId, clienteObj, textoUsuario) {
         let extractedNombre = null;
         let extractedWhatsapp = null;
 
-        // 1. Extraer Número de WhatsApp / Teléfono si el usuario lo escribe (ej. 3442 586974 o 5493442...)
+        // 1. Extraer WhatsApp / Teléfono si el usuario lo escribe (ej. 3442571100 o 5493442...)
         const cleanNums = textoUsuario.replace(/[^0-9]/g, '');
         if (cleanNums.length >= 8 && cleanNums.length <= 13) {
             if (!clienteObj.whatsapp || clienteObj.whatsapp.startsWith('Web_') || clienteObj.whatsapp.includes('Cliente Web')) {
                 let cleanPhone = cleanNums;
-                if (cleanPhone.length === 10 && (cleanPhone.startsWith('3') || cleanPhone.startsWith('11') || cleanPhone.startsWith('2'))) {
+                if (cleanPhone.length === 10 && (cleanPhone.startsWith('3') || cleanPhone.startsWith('11') || cleanPhone.startsWith('2') || cleanPhone.startsWith('9'))) {
                     cleanPhone = '549' + cleanPhone;
                 }
-                extractedWhatsapp = cleanPhone;
+                extractedWhatsapp = cleanPhone.substring(0, 20);
             }
         }
 
-        // 2. Extraer Nombre y Apellido desde el texto
-        const nameRegexes = [
-            /(?:me llamo|mi nombre es|soy|me dicen)\s+([a-záéíóúñÁÉÍÓÚÑ]{2,}(?:\s+[a-záéíóúñÁÉÍÓÚÑ]{2,})+)/i,
-            /^([a-záéíóúñÁÉÍÓÚÑ]{3,}\s+[a-záéíóúñÁÉÍÓÚÑ]{3,})/i
-        ];
-
-        for (const reg of nameRegexes) {
-            const m = textoUsuario.match(reg);
-            if (m && m[1]) {
-                const candidate = m[1].trim();
-                const low = candidate.toLowerCase();
-                const isStop = ['sahumerio', 'detergente', 'jabon', 'suavizante', 'lavandina', 'precio', 'hola', 'buenas', 'quisiera', 'cuanto'].some(s => low.includes(s));
-                if (!isStop) {
-                    // Capitalizar Nombre y Apellido
-                    extractedNombre = candidate.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
-                    break;
-                }
+        // 2. Extraer Nombre y Apellido real del texto
+        // A) Prefijo explícito: "me llamo X", "mi nombre es X", "soy X", "me dicen X", "habla X"
+        const prefixRegex = /(?:me llamo|mi nombre es|soy|me dicen|habla|saluda)\s+([a-záéíóúñÁÉÍÓÚÑ]{2,}(?:\s+[a-záéíóúñÁÉÍÓÚÑ]{2,}){0,3})/i;
+        const pm = textoUsuario.match(prefixRegex);
+        if (pm && pm[1]) {
+            const cand = pm[1].trim();
+            const candWords = cand.toLowerCase().split(/\s+/);
+            if (!candWords.some(w => SPANISH_STOP_WORDS.includes(w))) {
+                extractedNombre = cand.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
             }
         }
 
-        // Fallback especial para capturas directas como "wilder de mello..."
+        // B) Si no hay prefijo, buscar si las palabras al inicio (antes de una coma/punto) son un Nombre y Apellido legítimo
         if (!extractedNombre) {
-            const directNameMatch = textoUsuario.match(/^([a-záéíóúñÁÉÍÓÚÑ]{3,}\s+[a-záéíóúñÁÉÍÓÚÑ]{2,}\s+[a-záéíóúñÁÉÍÓÚÑ]{2,})/i);
-            if (directNameMatch && directNameMatch[1]) {
-                const cand = directNameMatch[1].trim();
-                if (!cand.toLowerCase().includes('precio') && !cand.toLowerCase().includes('sahumerio')) {
-                    extractedNombre = cand.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+            const firstChunk = textoUsuario.split(/[,;\n\.]/)[0].trim();
+            if (firstChunk) {
+                const words = firstChunk.split(/\s+/);
+                if (words.length >= 1 && words.length <= 4) {
+                    const isAllLetters = words.every(w => /^[a-záéíóúñÁÉÍÓÚÑ]+$/i.test(w));
+                    const hasStopWord = words.some(w => SPANISH_STOP_WORDS.includes(w.toLowerCase()));
+                    if (isAllLetters && !hasStopWord) {
+                        extractedNombre = words.map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+                    }
                 }
             }
         }
 
-        // 3. Si se detectó Nombre o WhatsApp, actualizar inmediatamente la ficha del cliente en Supabase
+        // 3. Actualizar en Supabase si se detectó un dato válido
         const updateData = {};
-        if (extractedNombre && (!clienteObj.razon_social || clienteObj.razon_social.startsWith('Lead Web') || clienteObj.razon_social.startsWith('Cliente Web'))) {
+        
+        // Sobrescribir razon_social si es nulo, generico (Lead Web...) o si contenia una frase falsa (Quiero Comprar, Hola Buenas...)
+        const esNombreGenericoOFalso = !clienteObj || !clienteObj.razon_social || 
+            clienteObj.razon_social.startsWith('Lead Web') || 
+            clienteObj.razon_social.startsWith('Cliente Web') ||
+            ['quiero', 'comprar', 'hola', 'buenas', 'cuanto', 'sale', 'precio'].some(sw => (clienteObj.razon_social || '').toLowerCase().includes(sw));
+
+        if (extractedNombre && esNombreGenericoOFalso) {
             updateData.razon_social = extractedNombre;
         }
+
         if (extractedWhatsapp) {
             updateData.whatsapp = extractedWhatsapp;
         }
@@ -221,7 +237,7 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
             try {
                 await supabase.from('mensajes_chat').insert([{ cliente_id: clienteId, emisor: 'cliente', texto: textoProcesado }]);
                 // Extraer automáticamente Nombre, Apellido y WhatsApp del texto y actualizar ficha del Lead
-                autoExtractAndUpdateLead(clienteId, cliente, textoProcesado);
+                await autoExtractAndUpdateLead(clienteId, cliente, textoProcesado);
             } catch (e) { console.error('Error insertando mensaje:', e.message); }
         }
 
@@ -369,8 +385,9 @@ Devuelve JSON: {"items": ["busqueda1", "busqueda2"]}`
 
             if (desgloses.length > 0) {
                 cotizacionCalculada = "\n[DATOS REALES Y CÁLCULOS MATEMÁTICOS OFICIALES DE QUÍMICA DEC]:\n" + desgloses.join('\n') + 
-                "\n⚠️ INSTRUCCIONES DE VENTA, CALCULADORA MATEMÁTICA Y PRECIOS ESTRUCTURALES:" +
-                "\n1. CALCULADORA MATEMÁTICA OBLIGATORIA: Si el cliente pregunta cuánto necesita comprar para superar la compra mínima de $80.000 o pide la cuenta exacta de un producto, USA SIEMPRE EL CÁLCULO MATEMÁTICO INDICADO ARRIBA (* CÁLCULO DE COMPRA MÍNIMA). Decile la cantidad exacta de unidades necesarias multiplicada por el precio unitario exacto. JAMÁS digas que no tenés el precio." +
+                "\n⚠️ INSTRUCCIONES DE VENTA, CALCULADORA MATEMÁTICA Y RESPUESTAS LIMPISIMAS:" +
+                "\n1. CALCULADORA MATEMÁTICA DIRECTA (PROHIBIDO DIVAGAR): Si el cliente consulta cuántas unidades necesita para superar la compra mínima de $80.000, responde ÚNICAMENTE con el resultado final calculado arriba (* CÁLCULO DE COMPRA MÍNIMA). Queda ABSOLUTAMENTE PROHIBIDO escribir pensamientos paso a paso, dudas o borradores de cuentas en tu respuesta (ej: 'no, porque el precio...', 'entonces no alcanza...', 'probemos con...'). Da la cifra final directa y limpia de una sola vez." +
+                "\nEjemplo obligatorio de respuesta limpia: 'Para alcanzar la compra mínima de $80.000 con el Detergente Magistral 5 LT ($4.906,40 c/u), necesitarías comprar 17 unidades ($83.408,80 en total).'" +
                 "\n2. JUEGO DE CINTURA Y EMPATÍA COMERCIAL: Si el cliente busca 'Detergente Magistral' (sin la palabra 'tipo'), sé inteligente y proactivo. Explicá amablemente: 'No vendemos marca comercial Magistral, pero contamos con nuestro Detergente TIPO MAGISTRAL (Magenta y Azul) de calidad industrial superior que es nuestro producto estrella.' Y ofrecile las opciones." +
                 "\n3. RESPONDÉ CON LOS PRECIOS Y OPCIONES REALES: Presentá las presentaciones con sus precios exactos." +
                 "\n4. PRODUCTOS EN BORRADOR PROHIBIDOS: Usá ÚNICAMENTE los datos reales de la lista oficial de arriba. JAMÁS inventes precios de $785 ni muestres productos que no estén listados." +
