@@ -427,22 +427,115 @@
                             </div>
 
                             <!-- SUB-TAB 2: OFERTAS SEMANALES -->
-                            <div id="subtab-content-ofertas" class="hidden space-y-4">
-                                <div class="flex items-center justify-between">
-                                    <div>
-                                        <h4 class="font-title text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
-                                            <span class="material-symbols-outlined text-[18px]">local_offer</span> 🏷️ Visor y Gestor de Ofertas Semanales (En Vivo)
-                                        </h4>
-                                        <p class="text-[11px] text-gray-400 mt-0.5">Administrá productos en oferta, precios promocionales, estado activo/pausado y fotos.</p>
+                            <div id="subtab-content-ofertas" class="hidden space-y-6">
+                                <!-- 🏷️ VISOR Y GESTOR INTERACTIVO DE OFERTAS EN VIVO -->
+                                <div class="space-y-4">
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <h4 class="font-title text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                                                <span class="material-symbols-outlined text-[18px]">local_offer</span> 🏷️ Visor y Gestor de Ofertas Semanales (En Vivo)
+                                            </h4>
+                                            <p class="text-[11px] text-gray-400 mt-0.5">Administrá productos en oferta, precios de lista y promocionales, estado activo/pausado y galerías deslizables.</p>
+                                        </div>
+                                        <button onclick="cargarVisorOfertas()" class="px-3 py-1.5 bg-amber-600/30 hover:bg-amber-600/50 border border-amber-500/40 text-amber-200 text-[11px] font-bold rounded-xl flex items-center gap-1 transition-all shadow">
+                                            <span class="material-symbols-outlined text-sm">refresh</span> Actualizar Ofertas
+                                        </button>
                                     </div>
-                                    <button onclick="cargarVisorOfertas()" class="px-3 py-1.5 bg-amber-600/30 hover:bg-amber-600/50 border border-amber-500/40 text-amber-200 text-[11px] font-bold rounded-xl flex items-center gap-1 transition-all shadow">
-                                        <span class="material-symbols-outlined text-sm">refresh</span> Actualizar Ofertas
-                                    </button>
+
+                                    <div id="visor-ofertas-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        <div class="col-span-full text-center py-6 text-amber-300/60 text-xs font-bold">
+                                            ⏳ Cargando ofertas semanales desde WooCommerce...
+                                        </div>
+                                    </div>
                                 </div>
 
-                                <div id="visor-ofertas-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    <div class="col-span-full text-center py-6 text-amber-300/60 text-xs font-bold">
-                                        ⏳ Cargando ofertas semanales desde WooCommerce...
+                                <!-- 🏷️ CARGA DE OFERTAS CON PRECIOS Y GALERÍAS COMPLETAS -->
+                                <div class="pt-6 border-t border-amber-500/30 space-y-4">
+                                    <div class="flex items-center justify-between">
+                                        <h4 class="font-title text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                                            <span class="material-symbols-outlined text-[18px]">collections</span> 📸 Cargar Fotos de Portada, Galería y Precios para Oferta Semanal
+                                        </h4>
+                                        <span class="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full font-bold border border-amber-500/30">Multi-Imagen + Precios</span>
+                                    </div>
+
+                                    <div class="p-4 bg-amber-950/20 border border-amber-500/30 rounded-xl space-y-4">
+                                        <p class="text-xs text-amber-200">Ingresá el SKU, ajustá el <strong>Precio Regular</strong> (precio sin descuento) y el <strong>Precio de Oferta</strong>, y subí la <strong>Foto de Portada</strong> y <strong>Fotos de Galería</strong> para que el cliente pueda deslizarlas en la tienda.</p>
+
+                                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                            <div>
+                                                <label class="text-[10px] font-bold text-amber-300 uppercase block mb-1">SKU del Producto en Oferta:</label>
+                                                <input type="text" id="oferta-sku-input" placeholder="Ej: QD-DTRG-1001" class="w-full bg-white/10 border border-amber-500/40 text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-amber-400 placeholder-gray-400 font-mono">
+                                            </div>
+                                            <div>
+                                                <label class="text-[10px] font-bold text-gray-300 uppercase block mb-1">Precio Normal / Lista ($):</label>
+                                                <input type="number" id="oferta-regular-price-input" placeholder="Ej: 25000" step="0.01" min="0" class="w-full bg-white/10 border border-white/20 text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-gray-400 font-mono">
+                                            </div>
+                                            <div>
+                                                <label class="text-[10px] font-bold text-emerald-300 uppercase block mb-1">Precio de Oferta ($):</label>
+                                                <input type="number" id="oferta-sale-price-input" placeholder="Ej: 19900" step="0.01" min="0" class="w-full bg-white/10 border border-emerald-500/40 text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-emerald-400 font-mono">
+                                            </div>
+                                        </div>
+
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <!-- PORTADA -->
+                                            <div class="p-3 bg-black/40 border border-amber-500/40 rounded-xl space-y-2">
+                                                <label class="text-[10px] font-bold text-amber-300 uppercase block flex items-center gap-1">
+                                                    <span class="material-symbols-outlined text-[14px]">star</span> 1. Foto de Portada (Imagen Principal)
+                                                </label>
+                                                <input type="file" id="oferta-cover-input" accept="image/*" class="w-full text-xs text-gray-300 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-amber-500/20 file:text-amber-300 hover:file:bg-amber-500/30 cursor-pointer">
+                                            </div>
+
+                                            <!-- GALERÍA -->
+                                            <div class="p-3 bg-black/40 border border-emerald-500/40 rounded-xl space-y-2">
+                                                <label class="text-[10px] font-bold text-emerald-300 uppercase block flex items-center gap-1">
+                                                    <span class="material-symbols-outlined text-[14px]">collections</span> 2. Fotos de la Galería (Múltiples para Deslizar)
+                                                </label>
+                                                <input type="file" id="oferta-gallery-input" multiple accept="image/*" class="w-full text-xs text-gray-300 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-emerald-500/20 file:text-emerald-300 hover:file:bg-emerald-500/30 cursor-pointer">
+                                                <label class="flex items-center gap-1.5 pt-1 cursor-pointer">
+                                                    <input type="checkbox" id="oferta-clean-gallery-chk" class="rounded bg-black/50 border-amber-500/50 text-amber-500 focus:ring-0">
+                                                    <span class="text-[10px] font-bold text-amber-300">Reemplazar fotos viejas de galería por las nuevas</span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <button onclick="subirOfertaCompleta()" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-amber-600 to-yellow-500 text-slate-950 font-title text-xs font-black uppercase tracking-wider hover:opacity-90 shadow-xl transition-all flex items-center justify-center gap-2">
+                                            <span class="material-symbols-outlined text-[18px]">local_offer</span> Publicar / Actualizar Oferta Semanal (Precios + Portada + Galería + Purgar Caché)
+                                        </button>
+
+                                        <div id="oferta-upload-res" class="hidden text-xs font-bold p-3 rounded-xl border"></div>
+
+                                        <!-- ⚡ VINCULACIÓN AUTOMÁTICA DE FOTOS POR SKUS PARA OFERTAS -->
+                                        <div class="p-4 bg-amber-950/30 border border-amber-500/40 rounded-xl space-y-3 mt-4">
+                                            <div class="flex items-center justify-between">
+                                                <h5 class="text-xs font-bold text-amber-300 uppercase flex items-center gap-1.5">
+                                                    <span class="material-symbols-outlined text-[16px]">link</span> ⚡ Vincular Fotos Existentes por SKUs para la Oferta
+                                                </h5>
+                                                <span class="text-[9px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded font-bold">Auto-Link Ofertas</span>
+                                            </div>
+                                            <p class="text-[11px] text-gray-300">Ingresá el SKU de la oferta y los SKUs de productos cuyas fotos quieras agregar a la galería deslizable de esta oferta.</p>
+                                            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                                <div>
+                                                    <label class="text-[10px] font-bold text-gray-400 block mb-1">SKU de la Oferta:</label>
+                                                    <input type="text" id="autolink-oferta-sku" placeholder="Ej: QD-DTRG-1001" class="w-full bg-slate-950/80 border border-amber-500/40 text-white rounded-lg px-3 py-1.5 text-xs font-mono">
+                                                </div>
+                                                <div class="md:col-span-2">
+                                                    <label class="text-[10px] font-bold text-gray-400 block mb-1">SKUs de Fotos a Enlazar (separados por coma):</label>
+                                                    <input type="text" id="autolink-oferta-skus-input" placeholder="Ej: QD-DTRG-1002, QD-DES-2002" class="w-full bg-slate-950/80 border border-amber-500/40 text-white rounded-lg px-3 py-1.5 text-xs font-mono">
+                                                </div>
+                                            </div>
+                                            <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+                                                <div class="flex items-center gap-3">
+                                                    <label class="flex items-center gap-1 cursor-pointer">
+                                                        <input type="checkbox" id="autolink-oferta-clear-chk" class="rounded bg-black/50 border-amber-500/50 text-amber-400 focus:ring-0">
+                                                        <span class="text-[10px] text-amber-300 font-bold">Limpiar fotos viejas antes de vincular</span>
+                                                    </label>
+                                                </div>
+                                                <button onclick="vincularFotosOfertaPorSKUs()" class="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 text-slate-950 font-bold text-xs shadow-lg transition-all flex items-center gap-1.5">
+                                                    <span class="material-symbols-outlined text-sm">bolt</span> Vincular Fotos a la Oferta
+                                                </button>
+                                            </div>
+                                            <div id="autolink-oferta-res" class="hidden text-xs font-bold p-2.5 rounded-lg border"></div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -2010,15 +2103,19 @@
                     const esActivo = o.status === 'publish';
                     const imgUrl = o.featured_url || 'https://via.placeholder.com/300x300?text=Sin+Foto';
                     const items = o.gallery_items || [];
+                    const reg = parseFloat(o.regular_price) || 0;
+                    const sale = parseFloat(o.sale_price) || 0;
+                    const pctOff = (reg > 0 && sale > 0 && reg > sale) ? Math.round(((reg - sale) / reg) * 100) : 0;
 
                     return `
                         <div class="bg-slate-900/80 rounded-2xl border ${esActivo ? 'border-amber-500/40' : 'border-slate-700'} p-4 flex flex-col justify-between shadow-lg">
                             <div>
                                 <div class="relative w-full aspect-[4/3] rounded-xl overflow-hidden mb-3 bg-black/40 border border-white/10">
                                     <img src="${imgUrl}" class="w-full h-full object-cover">
-                                    <div class="absolute top-2 left-2 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase bg-amber-500 text-black shadow">
-                                        🏷️ OFERTA
+                                    <div class="absolute top-2 left-2 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase bg-amber-500 text-black shadow flex items-center gap-1">
+                                        <span>🏷️ OFERTA</span>
                                     </div>
+                                    ${pctOff > 0 ? `<div class="absolute top-2 right-2 px-2 py-0.5 rounded-lg text-[10px] font-black bg-rose-500 text-white shadow">-${pctOff}% OFF</div>` : ''}
                                 </div>
 
                                 <div class="space-y-3">
@@ -2083,7 +2180,7 @@
                 const data = await resp.json();
                 if (data.success) {
                     msgDiv.className = 'text-[10px] font-bold p-2 rounded-lg text-center bg-emerald-500/20 text-emerald-300 border border-emerald-500/40';
-                    msgDiv.innerText = '🎉 Oferta guardada con éxito.';
+                    msgDiv.innerText = '🎉 ¡Oferta guardada!';
                     setTimeout(() => cargarVisorOfertas(), 1200);
                 } else {
                     msgDiv.className = 'text-[10px] font-bold p-2 rounded-lg text-center bg-red-500/20 text-red-400 border border-red-500/40';
@@ -2092,6 +2189,139 @@
             } catch(e) {
                 msgDiv.className = 'text-[10px] font-bold p-2 rounded-lg text-center bg-red-500/20 text-red-400 border border-red-500/40';
                 msgDiv.innerText = `❌ Error: ${e.message}`;
+            }
+        }
+
+        async function subirOfertaCompleta() {
+            let sku = document.getElementById('oferta-sku-input').value.trim();
+            sku = sku.replace(/^sku:\s*/i, '').trim();
+            const regPrice = document.getElementById('oferta-regular-price-input').value.trim();
+            const salePrice = document.getElementById('oferta-sale-price-input').value.trim();
+            const coverFile = document.getElementById('oferta-cover-input').files[0];
+            const galleryFiles = Array.from(document.getElementById('oferta-gallery-input').files || []);
+            const cleanGallery = document.getElementById('oferta-clean-gallery-chk').checked;
+            const resDiv = document.getElementById('oferta-upload-res');
+
+            if (!sku) {
+                alert('⚠️ Ingresá el SKU del producto en oferta (ej: QD-DTRG-1001).');
+                return;
+            }
+
+            resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-amber-500/40 bg-amber-500/10 text-amber-300';
+            resDiv.innerText = `⏳ Publicando Oferta para SKU ${sku}...`;
+            resDiv.classList.remove('hidden');
+
+            try {
+                // 1. Actualizar Precios si se ingresaron
+                if (regPrice || salePrice) {
+                    await fetch('https://quimicadec.com/?qdec_api=update_product_details', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            secret_key: 'qdec_crm_sec_2026',
+                            sku: sku,
+                            regular_price: regPrice || '',
+                            sale_price: salePrice || ''
+                        })
+                    });
+                }
+
+                let successCount = 0;
+
+                // 2. Subir Foto de Portada
+                if (coverFile) {
+                    resDiv.innerText = '⏳ Subiendo Foto de Portada de la Oferta...';
+                    const base64Cover = await readFileAsBase64(coverFile);
+                    const resp = await fetch(`${API_URL}/products/upload-image`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            sku: sku,
+                            imageBase64: base64Cover,
+                            filename: `portada_oferta_${sku}_${Date.now()}.${coverFile.name.split('.').pop()}`,
+                            mode: 'featured'
+                        })
+                    });
+                    const data = await resp.json();
+                    if (data.success) successCount++;
+                }
+
+                // 3. Subir Fotos de Galería
+                if (galleryFiles && galleryFiles.length > 0) {
+                    for (let i = 0; i < galleryFiles.length; i++) {
+                        const gFile = galleryFiles[i];
+                        resDiv.innerText = `⏳ Subiendo Foto de Galería de Oferta (${i+1}/${galleryFiles.length})...`;
+                        const base64G = await readFileAsBase64(gFile);
+                        const imgMode = (i === 0 && cleanGallery) ? 'gallery_replace' : 'gallery';
+
+                        const resp = await fetch(`${API_URL}/products/upload-image`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                sku: sku,
+                                imageBase64: base64G,
+                                filename: `galeria_oferta_${i+1}_${sku}_${Date.now()}.${gFile.name.split('.').pop()}`,
+                                mode: imgMode
+                            })
+                        });
+                        const data = await resp.json();
+                        if (data.success) successCount++;
+
+                        if (i < galleryFiles.length - 1) {
+                            await new Promise(r => setTimeout(r, 600));
+                        }
+                    }
+                }
+
+                resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-300';
+                resDiv.innerText = `🎉 ¡Oferta Semanal SKU ${sku} guardada con éxito! Precios actualizados y ${successCount} imágenes procesadas.`;
+
+                document.getElementById('oferta-cover-input').value = '';
+                document.getElementById('oferta-gallery-input').value = '';
+                cargarVisorOfertas();
+            } catch(e) {
+                resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-red-500/40 bg-red-500/10 text-red-400';
+                resDiv.innerText = `❌ Error: ${e.message}`;
+            }
+        }
+
+        async function vincularFotosOfertaPorSKUs() {
+            const ofertaSku = document.getElementById('autolink-oferta-sku').value.trim();
+            const skusInput = document.getElementById('autolink-oferta-skus-input').value.trim();
+            const clearOld = document.getElementById('autolink-oferta-clear-chk').checked;
+            const resDiv = document.getElementById('autolink-oferta-res');
+
+            if (!ofertaSku || !skusInput) {
+                alert('⚠️ Ingresá el SKU de la oferta y al menos un SKU de producto.');
+                return;
+            }
+
+            resDiv.className = 'text-xs font-bold p-2.5 rounded-lg border border-amber-500/40 bg-amber-500/10 text-amber-300';
+            resDiv.innerText = '⏳ Vinculando imágenes existentes a la galería de la oferta...';
+            resDiv.classList.remove('hidden');
+
+            try {
+                const resp = await fetch(`${API_URL}/combos/auto-link-skus`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        combo_sku: ofertaSku,
+                        sku_list: skusInput,
+                        clear_existing: clearOld
+                    })
+                });
+                const data = await resp.json();
+                if (data.success) {
+                    resDiv.className = 'text-xs font-bold p-2.5 rounded-lg border border-emerald-500/40 bg-emerald-500/10 text-emerald-300';
+                    resDiv.innerText = `🎉 ¡${data.linked_count || 0} imágenes vinculadas con éxito a la oferta ${ofertaSku}!`;
+                    cargarVisorOfertas();
+                } else {
+                    resDiv.className = 'text-xs font-bold p-2.5 rounded-lg border border-red-500/40 bg-red-500/10 text-red-400';
+                    resDiv.innerText = `❌ Error: ${data.error || 'No se pudo vincular.'}`;
+                }
+            } catch(e) {
+                resDiv.className = 'text-xs font-bold p-2.5 rounded-lg border border-red-500/40 bg-red-500/10 text-red-400';
+                resDiv.innerText = `❌ Error: ${e.message}`;
             }
         }
 
