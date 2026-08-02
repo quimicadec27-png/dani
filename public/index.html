@@ -1002,7 +1002,7 @@
                 if (data.success) {
                     selectedClienteObj = data.cliente;
                     renderClienteFicha(data.cliente);
-                    renderChatMessages(data.mensajes);
+                    renderChatMessages(data.mensajes, true);
                 }
             } catch (e) {}
         }
@@ -1087,8 +1087,13 @@
             }
         }
 
-        function renderChatMessages(mensajes) {
+        function renderChatMessages(mensajes, forceScroll = false) {
             const stream = document.getElementById('chat-messages-stream');
+            if (!stream) return;
+
+            // Verificar si el usuario ya estaba cerca del final (o si es el primer despliegue del chat)
+            const wasAtBottom = (stream.scrollHeight - stream.scrollTop - stream.clientHeight < 100);
+
             if (!mensajes || mensajes.length === 0) {
                 stream.innerHTML = `<div class="text-center py-12 text-gray-500 text-xs">Sin mensajes en esta conversación.</div>`;
                 return;
@@ -1107,7 +1112,11 @@
                     </div>
                 `;
             }).join('');
-            stream.scrollTop = stream.scrollHeight;
+
+            // Solo desplazar al final si el usuario estaba abajo o se forzó con un mensaje nuevo
+            if (forceScroll || wasAtBottom) {
+                stream.scrollTop = stream.scrollHeight;
+            }
         }
 
         async function enviarMensajeVendedor() {

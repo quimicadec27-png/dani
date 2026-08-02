@@ -109,8 +109,16 @@ const CATEGORIAS_OFICIALES = [
 
 app.post('/api/whatsapp/incoming-ai', async (req, res) => {
     try {
-        const { phone, user_id, session_id, mensaje_texto, user_message, message } = req.body;
-        const textoProcesado = (mensaje_texto || user_message || message || '').trim();
+        const { phone, user_id, session_id, mensaje_texto, user_message, message, messages } = req.body;
+        let textoProcesado = (mensaje_texto || user_message || message || '').trim();
+
+        if (!textoProcesado && Array.isArray(messages) && messages.length > 0) {
+            const lastUser = [...messages].reverse().find(m => m.role === 'user');
+            if (lastUser && lastUser.content) {
+                textoProcesado = lastUser.content.trim();
+            }
+        }
+
         const clientePhone = (phone || user_id || session_id || 'Cliente Web').toString();
 
         if (!textoProcesado) return res.status(400).json({ error: 'Mensaje vacío' });
