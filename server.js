@@ -561,18 +561,29 @@ app.post('/api/crm/clientes/actualizar', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Obtener mensajes de un chat específico
+// Obtener mensajes de un chat específico (acepta UUID de cliente o session_id de la web)
 app.get('/api/crm/chat/mensajes/:clienteId', async (req, res) => {
     try {
         const { clienteId } = req.params;
+        let targetUUID = clienteId;
+
+        // Si clienteId es un session_id web o teléfono, resolver al UUID correspondiente en clientes
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clienteId);
+        if (!isUUID) {
+            const { data: cData } = await supabase.from('clientes').select('id').eq('whatsapp', clienteId).single();
+            if (cData && cData.id) {
+                targetUUID = cData.id;
+            }
+        }
+
         let mensajes = [];
         try {
-            const { data: mData } = await supabase.from('mensajes_chat').select('*').eq('cliente_id', clienteId).order('creado_el', { ascending: true });
+            const { data: mData } = await supabase.from('mensajes_chat').select('*').eq('cliente_id', targetUUID).order('creado_el', { ascending: true });
             mensajes = mData || [];
         } catch (e) {}
         
-        const { data: cliente } = await supabase.from('clientes').select('*').eq('id', clienteId).single();
-        const botPausado = await isBotPausado(clienteId);
+        const { data: cliente } = await supabase.from('clientes').select('*').eq('id', targetUUID).single();
+        const botPausado = await isBotPausado(targetUUID);
         res.json({ success: true, cliente: { ...cliente, bot_pausado: botPausado }, mensajes: mensajes });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
