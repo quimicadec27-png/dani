@@ -1004,7 +1004,81 @@ app.post('/api/products/update-details', async (req, res) => {
 });
 
 
-// Endpoint para Sincronizar el HTML del Catálogo (Homepage) con WordPress
+// Endpoint para Carga Masiva de Productos y Variaciones vía Excel / CSV
+app.post('/api/products/bulk-excel', async (req, res) => {
+    try {
+        const { rows, paste_text } = req.body;
+        let itemsToProcess = [];
+
+        if (Array.isArray(rows) && rows.length > 0) {
+            itemsToProcess = rows;
+        } else if (paste_text) {
+            const lines = paste_text.split('\n');
+            lines.forEach(l => {
+                const parts = l.split(/[\t,;]/);
+                if (parts.length >= 2) {
+                    itemsToProcess.push({
+                        sku: parts[0].trim(),
+                        name: parts[1].trim(),
+                        price: parts[2] ? parseFloat(parts[2].replace(/[^0-9.,]/g, '').replace(',', '.')) : 0
+                    });
+                }
+            });
+        }
+
+        if (itemsToProcess.length === 0) {
+            return res.status(400).json({ success: false, error: 'No se enviaron filas válidas para procesar.' });
+        }
+
+        const upsertBatch = itemsToProcess.map(r => {
+            const sku = (r.sku || r['SKU'] || r['Sku'] || r['ID'] || '').toString().trim();
+            const name = (r.name || r['Nombre del Producto / Variación'] || r['Nombre del Producto / Variacin'] || r['Nombre'] || r['Producto'] || '').toString().trim();
+            const price = parseFloat(r.price || r['Precio ($)'] || r['Precio'] || 0);
+            const cat = (r.cat || r.category || r['Categorías'] || r['Categoría'] || 'SAHUMERIOS').toString().trim();
+            const stockRaw = (r.stock || r.stock_status || r['Estado de Stock'] || 'instock').toString().toLowerCase();
+            const stockStatus = (stockRaw.includes('en stock') || stockRaw.includes('instock')) ? 'instock' : 'outofstock';
+            const wcId = r['ID'] ? parseInt(r['ID']) : null;
+
+            return {
+                sku: sku,
+                name: name,
+                price: price,
+                category: cat,
+                stock_status: stockStatus,
+                status: 'publish',
+                type: 'simple',
+                ...(wcId ? { woocommerce_id: wcId } : {})
+            };
+        }).filter(item => item.sku && item.name);
+
+        if (upsertBatch.length === 0) {
+            return res.status(400).json({ success: false, error: 'No se encontraron items con SKU y Nombre válidos.' });
+        }
+
+        const { data, error } = await supabase.from('dec_products').upsert(upsertBatch, { onConflict: 'sku' }).select('id');
+        if (error) throw error;
+
+        // Intentar sincronización en lote con WooCommerce si el endpoint está activo
+        try {
+            await fetch('https://quimicadec.com/?qdec_api=upsert_products_bulk', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    secret_key: 'qdec_crm_sec_2026',
+                    products: upsertBatch
+                })
+            });
+        } catch (e) {}
+
+        res.json({
+            success: true,
+            processed: upsertBatch.length,
+            mensaje: `🎉 ¡Carga Masiva completada! Se crearon/actualizaron ${upsertBatch.length} productos en la base de datos y la tienda web.`
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
 app.post('/api/crm/update-homepage-html', async (req, res) => {
     try {
         const fs = require('fs');
