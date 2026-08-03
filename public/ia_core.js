@@ -682,6 +682,36 @@
     }
 
     // ---------------------------------------------------------
+    // Sincronización en Tiempo Real de Mensajes del Vendedor Humano
+    // ---------------------------------------------------------
+    var knownVendorMsgTexts = {};
+    function pollVendorMessages() {
+        var sessionId = localStorage.getItem('dani_session_id');
+        if (!sessionId) return;
+
+        fetch('https://crm.quimicadec.com/api/crm/chat/mensajes/' + encodeURIComponent(sessionId))
+            .then(function (r) { if (!r.ok) return null; return r.json(); })
+            .then(function (data) {
+                if (data && data.success && Array.isArray(data.mensajes)) {
+                    var msgs = data.mensajes;
+                    msgs.forEach(function(m) {
+                        if (m.emisor === 'vendedor') {
+                            var cleanTxt = (m.texto || '').replace(/\n?\[BOT PAUSADO\]/g, '').replace(/\n?\[BOT REANUDADO\]/g, '').trim();
+                            if (cleanTxt && cleanTxt !== '[CAMBIO DE ESTADO BOT]' && !knownVendorMsgTexts[m.id]) {
+                                knownVendorMsgTexts[m.id] = true;
+                                appendMsg('👤 **Asesor Comercial:**\n' + cleanTxt, 'ai');
+                            }
+                        }
+                    });
+                }
+            })
+            .catch(function (err) {});
+    }
+
+    // Iniciar sondeo periódico cada 3.5 segundos
+    setInterval(pollVendorMessages, 3500);
+
+    // ---------------------------------------------------------
     // 9. ARRANQUE
     // ---------------------------------------------------------
     if (document.readyState === 'loading') {

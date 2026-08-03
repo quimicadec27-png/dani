@@ -1116,12 +1116,25 @@
             stream.innerHTML = mensajes.map(m => {
                 const esCliente = (m.emisor === 'cliente');
                 const esBot = (m.emisor === 'bot');
+                const esSistema = (m.emisor === 'sistema' || m.texto === '[BOT PAUSADO]' || m.texto === '[BOT REANUDADO]');
+
+                if (esSistema) {
+                    return `
+                        <div class="flex justify-center my-2">
+                            <span class="text-[10px] px-3 py-1 rounded-full bg-white/5 border border-white/10 text-gray-400 font-mono flex items-center gap-1">
+                                ${m.texto.includes('[BOT PAUSADO]') ? '⏸️ Bot Pausado por Vendedor' : '▶️ Bot Reanudado'}
+                            </span>
+                        </div>
+                    `;
+                }
+
+                const cleanText = (m.texto || '').replace(/\n?\[BOT PAUSADO\]/g, '').replace(/\n?\[BOT REANUDADO\]/g, '');
 
                 return `
-                    <div class="flex flex-col ${esCliente ? 'items-start' : 'items-end'}">
+                    <div class="flex flex-col ${esCliente ? 'items-start' : 'items-end'} my-1">
                         <div class="max-w-[80%] p-3 rounded-2xl text-xs ${esCliente ? 'bg-white/10 text-white rounded-tl-none' : esBot ? 'bg-brand-yellow/15 text-brand-yellow border border-brand-yellow/30 rounded-tr-none' : 'bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded-tr-none'}">
-                            <span class="text-[9px] font-bold block opacity-60 uppercase mb-1">${m.emisor}</span>
-                            <p class="leading-relaxed">${m.texto}</p>
+                            <span class="text-[9px] font-bold block opacity-60 uppercase mb-1">${esCliente ? 'CLIENTE' : esBot ? 'BOT DANI' : '👤 VENDEDOR HUMANO'}</span>
+                            <p class="leading-relaxed whitespace-pre-wrap">${cleanText}</p>
                         </div>
                     </div>
                 `;

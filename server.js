@@ -270,41 +270,45 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
             } catch (e) { console.error('Error insertando mensaje:', e.message); }
         }
 
-        // VERIFICACIÓN DE INTERVENCIÓN HUMANA: Si el Bot está pausado para este cliente, NO responder
+        // VERIFICACIÓN DE INTERVENCIÓN HUMANA: Si el Bot está pausado para este cliente, NO responder vía IA
         if (clienteId) {
             const estaPausado = await isBotPausado(clienteId);
             if (estaPausado) {
-                console.log(`[BOT PAUSADO] Cliente ${clienteId} tiene el bot deshabilitado. Se registró el mensaje pero no se responde vía IA.`);
+                console.log(`[BOT PAUSADO] Cliente ${clienteId} tiene el bot deshabilitado. Se registró el mensaje para el vendedor humano.`);
+                const pauseMsg = "💬 Tu mensaje fue recibido por nuestro equipo comercial. Un asesor te responderá a la brevedad.";
                 return res.json({
                     success: true,
                     bot_pausado: true,
-                    respuesta_sugerida_ia: null,
-                    choices: []
+                    respuesta_sugerida_ia: pauseMsg,
+                    choices: [{ message: { content: pauseMsg } }]
                 });
             }
         }
 
-        // Obtener historial previo (priorizando el historial enviado por la web o consultando Supabase)
+        // Obtener historial previo desde Supabase (garantiza que si un Vendedor Humano intervino, la IA tenga el contexto completo)
         let historialPrevio = [];
-        if (req.body.messages && Array.isArray(req.body.messages) && req.body.messages.length > 0) {
-            historialPrevio = req.body.messages
-                .filter(m => m.role === 'user' || m.role === 'assistant')
-                .slice(-10)
-                .map(m => ({ role: m.role, content: m.content }));
-        } else if (clienteId) {
+        if (clienteId) {
             try {
                 const { data: ultimosMsgs } = await supabase
                     .from('mensajes_chat')
                     .select('emisor, texto')
                     .eq('cliente_id', clienteId)
                     .order('creado_el', { ascending: false })
-                    .limit(10);
+                    .limit(15);
 
                 if (ultimosMsgs && ultimosMsgs.length > 0) {
-                    historialPrevio = ultimosMsgs.reverse().map(m => ({
-                        role: m.emisor === 'cliente' ? 'user' : 'assistant',
-                        content: m.texto
-                    }));
+                    historialPrevio = ultimosMsgs
+                        .filter(m => !m.texto.includes('[BOT PAUSADO]') && !m.texto.includes('[BOT REANUDADO]'))
+                        .reverse()
+                        .map(m => {
+                            if (m.emisor === 'cliente') {
+                                return { role: 'user', content: m.texto };
+                            } else if (m.emisor === 'vendedor') {
+                                return { role: 'assistant', content: `[Intervención de Vendedor Humano]: ${m.texto}` };
+                            } else {
+                                return { role: 'assistant', content: m.texto };
+                            }
+                        });
                 }
             } catch (e) {}
         }
