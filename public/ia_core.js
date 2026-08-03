@@ -286,14 +286,33 @@
             }
         }
 
-        // Toggle
-        btn.addEventListener('click', function () {
-            win.classList.add('dani-active');
-            sessionStorage.setItem('dani_chat_open', 'true');
-            if (cta) cta.classList.remove('dani-cta-visible');
-            if (ctaTimeout) clearTimeout(ctaTimeout);
-            input.focus();
+        // Función global para abrir/conmutar el chat desde cualquier parte del sitio
+        function openDaniChat(e) {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            var isOpen = win.classList.contains('dani-active');
+            if (isOpen) {
+                win.classList.remove('dani-active');
+                sessionStorage.setItem('dani_chat_open', 'false');
+            } else {
+                win.classList.add('dani-active');
+                sessionStorage.setItem('dani_chat_open', 'true');
+                if (cta) cta.classList.remove('dani-cta-visible');
+                if (ctaTimeout) clearTimeout(ctaTimeout);
+                setTimeout(function() { input.focus(); }, 100);
+            }
+        }
+        window.openDaniChat = openDaniChat;
+        window.toggleDaniChat = openDaniChat;
+
+        // Listeners ultra responsivos para el botón flotante de Dani (click y touch)
+        btn.addEventListener('click', openDaniChat);
+        btn.addEventListener('touchend', function(e) {
+            openDaniChat(e);
         });
+
         close.addEventListener('click', function () {
             win.classList.remove('dani-active');
             sessionStorage.setItem('dani_chat_open', 'false');
@@ -307,7 +326,7 @@
                 sessionStorage.setItem('dani_chat_open', 'true');
                 cta.classList.remove('dani-cta-visible');
                 if (ctaTimeout) clearTimeout(ctaTimeout);
-                input.focus();
+                setTimeout(function() { input.focus(); }, 100);
             });
         }
         if (ctaClose) {
