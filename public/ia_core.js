@@ -186,6 +186,10 @@
         'iframe[src*="amocrm"],iframe[src*="kommo"],',
         'div[class*="crm-plugin"],div[id*="crm-plugin"]{',
             'display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important;',
+        '}',
+        /* Auto-expandir subcategorías en el filtro para eliminar el doble clic */
+        'div[class*="subcat"] ul, div[class*="subcat"] div, [class*="otras-subcat"] + div, details[class*="subcat"] > div {',
+            'display:block!important;visibility:visible!important;opacity:1!important;',
         '}'
     ].join('');
 
