@@ -7,6 +7,10 @@
 (function () {
     'use strict';
 
+    // Guard de ejecución duplicada
+    if (window.DANI_WIDGET_LOADED) return;
+    window.DANI_WIDGET_LOADED = true;
+
     // ---------------------------------------------------------
     // 1. CONFIGURACION DE APIS (Endpoint CRM directo en Render)
     // ---------------------------------------------------------
@@ -307,11 +311,17 @@
         window.openDaniChat = openDaniChat;
         window.toggleDaniChat = openDaniChat;
 
-        // Listeners ultra responsivos para el botón flotante de Dani (click y touch)
+        // Listeners ultra responsivos para el botón flotante de Dani (click, touch y captura global)
         btn.addEventListener('click', openDaniChat);
         btn.addEventListener('touchend', function(e) {
             openDaniChat(e);
         });
+        document.addEventListener('click', function (e) {
+            var targetBtn = e.target.closest('#ai-chatbot-btn');
+            if (targetBtn) {
+                openDaniChat(e);
+            }
+        }, true);
 
         close.addEventListener('click', function () {
             win.classList.remove('dani-active');
