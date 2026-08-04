@@ -753,6 +753,20 @@
                                             <button onclick="clearBulkQueue()" class="text-rose-400 hover:underline text-[11px]">Limpiar Lote</button>
                                         </div>
 
+                                        <!-- 📌 LISTA DE FOTOS EN COLA -->
+                                        <div id="bulk-img-queue-list" class="max-h-80 overflow-y-auto space-y-2 border border-white/10 rounded-xl p-2 bg-black/40"></div>
+
+                                        <!-- 📊 BARRA DE PROGRESO DE CARGA -->
+                                        <div id="bulk-upload-progress" class="hidden space-y-2 p-3 bg-amber-950/40 border border-amber-500/30 rounded-xl">
+                                            <div class="flex items-center justify-between text-xs font-bold text-amber-300">
+                                                <span id="bulk-progress-text">Subiendo imágenes...</span>
+                                                <span id="bulk-progress-percent">0%</span>
+                                            </div>
+                                            <div class="w-full bg-slate-900 rounded-full h-2 overflow-hidden border border-amber-500/30">
+                                                <div id="bulk-progress-bar" class="bg-amber-400 h-full w-0 transition-all duration-300"></div>
+                                            </div>
+                                        </div>
+
                                         <button id="bulk-upload-btn" onclick="startBulkImageUpload()" class="w-full py-3.5 rounded-xl bg-amber-500 text-primary-dark font-title text-xs font-bold uppercase tracking-wider hover:bg-amber-400 shadow-xl transition-all flex items-center justify-center gap-2">
                                             <span class="material-symbols-outlined text-[18px]">publish</span> Subir Lote Completo y Purgar Caché
                                         </button>
