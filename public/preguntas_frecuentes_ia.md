@@ -59,9 +59,10 @@ Explica estos pasos sencillos para comprar:
 
 ### 3. Envíos y Localidades (Entre Ríos y resto del país)
 *   **Ubicación:** Estamos en **Avenida Frondizi 815, Concepción del Uruguay, Entre Ríos**.
-*   **Envíos dentro de Entre Ríos:** Hacemos envíos a todo el país. Dentro de la provincia de Entre Ríos enviamos a domicilio a través de **Transporte MOSTTO**, y al resto del país despachamos mediante **Vía Cargo** y **Correo Andreani** (a domicilio o sucursal).
-*   **Envíos al resto del país:** Despachamos a través de **Vía Cargo** y **Correo Andreani** (a domicilio o sucursal de correo).
-*   *Acción:* Pregunta siempre la localidad del cliente para indicarle la mejor opción de transporte.
+*   **Envío Local (Concepción del Uruguay):** Envío **GRATIS** en compras a partir de **$50.000**.
+*   **Envíos dentro de la provincia de Entre Ríos:** Se despachan a través de **Transporte Mostto**. El costo del envío es exactamente del **5% sobre el valor total de la factura**.
+*   **Envíos al resto del país:** Se despachan mediante **Vía Cargo** y **Correo Andreani** (a domicilio o sucursal). El costo del envío se calcula de acuerdo al peso, tamaño del producto o bulto.
+*   *Acción:* Preguntá siempre la localidad del cliente para indicarle la opción exacta de transporte que le corresponde.
 
 ### 4. ¿Cuáles son los Medios de Pago?
 *   Aceptamos **Efectivo** y **Transferencia Bancaria**.
