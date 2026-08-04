@@ -1054,7 +1054,11 @@ app.post('/api/products/bulk-excel', async (req, res) => {
             const price = parseFloat(r.price || r['Precio ($)'] || r['Precio'] || 0);
             const cat = (r.cat || r.category || r['Categorías'] || r['Categoría'] || 'SAHUMERIOS').toString().trim();
             const stockRaw = (r.stock || r.stock_status || r['Estado de Stock'] || 'instock').toString().toLowerCase();
-            const stockStatus = (stockRaw.includes('en stock') || stockRaw.includes('instock')) ? 'instock' : 'outofstock';
+            const stockStatus = (stockRaw.includes('agotado') || stockRaw.includes('out of stock') || stockRaw.includes('outofstock')) ? 'outofstock' : 'instock';
+
+            const statusRaw = (r.status || r['Estado'] || r['estado'] || 'publish').toString().toLowerCase();
+            const status = (statusRaw.includes('borrador') || statusRaw.includes('draft')) ? 'draft' : 'publish';
+
             const wcId = r['ID'] ? parseInt(r['ID']) : null;
 
             return {
@@ -1063,7 +1067,7 @@ app.post('/api/products/bulk-excel', async (req, res) => {
                 price: price,
                 category: cat,
                 stock_status: stockStatus,
-                status: 'publish',
+                status: status,
                 type: 'simple',
                 ...(wcId ? { woocommerce_id: wcId } : {})
             };
