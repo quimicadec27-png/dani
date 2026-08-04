@@ -1341,6 +1341,58 @@ app.post('/api/products/upload-image', async (req, res) => {
     }
 });
 
+// Endpoint de Carga Masiva de Imágenes (Lotes automáticos)
+app.post('/api/products/bulk-upload-images', async (req, res) => {
+    try {
+        const { images } = req.body;
+        if (!Array.isArray(images) || images.length === 0) {
+            return res.status(400).json({ success: false, error: 'Se requiere una lista de imágenes.' });
+        }
+
+        const results = [];
+        for (const item of images) {
+            const { sku, imageBase64, filename } = item;
+            if (!sku || !imageBase64) continue;
+
+            const targetUrl = 'https://quimicadec.com/?qdec_api=upload_image';
+            const payload = {
+                secret_key: 'qdec_crm_sec_2026',
+                sku: sku,
+                image_base64: imageBase64,
+                filename: filename || `${sku}.webp`
+            };
+
+            let uploadedUrl = '';
+            try {
+                const resp = await fetch(targetUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const wcResult = await resp.json();
+                if (wcResult && wcResult.success && wcResult.image_url) {
+                    uploadedUrl = wcResult.image_url;
+                }
+            } catch (e) {}
+
+            if (uploadedUrl) {
+                await supabase.from('dec_products').update({ image_url: uploadedUrl }).eq('sku', sku);
+            }
+
+            results.push({ sku, success: !!uploadedUrl, image_url: uploadedUrl });
+        }
+
+        res.json({
+            success: true,
+            total: images.length,
+            processed: results.length,
+            results: results
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 app.listen(PORT, () => {
     console.log(`🚀 Química DEC CRM API escuchando en puerto ${PORT}`);
 });
