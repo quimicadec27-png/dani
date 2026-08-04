@@ -1624,10 +1624,13 @@
                 
                 // Intento de autodetección por SKU en el nombre del archivo
                 const fnameClean = file.name.toLowerCase();
+                const fnameNoExt = file.name.replace(/\.[^/.]+$/, "").trim();
                 let matchedSku = '';
                 const foundProd = allProductsCacheForBulk.find(p => p.sku && fnameClean.includes(p.sku.toLowerCase()));
                 if (foundProd) {
                     matchedSku = foundProd.sku;
+                } else if (fnameNoExt.toUpperCase().startsWith('QD-') || fnameNoExt.length >= 3) {
+                    matchedSku = fnameNoExt.toUpperCase();
                 }
 
                 bulkFilesQueue.push({
