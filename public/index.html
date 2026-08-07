@@ -1283,6 +1283,27 @@
         }
 
         async function init() {
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    cerrarModalNuevoPedido();
+                    cerrarModalImportarClientes();
+                    cerrarModalPromoverLead();
+                }
+            });
+
+            ['modal-nuevo-pedido', 'modal-importar-clientes', 'modal-promover-lead'].forEach(id => {
+                const modal = document.getElementById(id);
+                if (modal) {
+                    modal.onclick = (e) => {
+                        if (e.target === modal) {
+                            if (id === 'modal-nuevo-pedido') cerrarModalNuevoPedido();
+                            if (id === 'modal-importar-clientes') cerrarModalImportarClientes();
+                            if (id === 'modal-promover-lead') cerrarModalPromoverLead();
+                        }
+                    };
+                }
+            });
+
             await refreshData();
             // Auto-polling cada 3 segundos para sincronización en tiempo real sin recargar página
             setInterval(async () => {

@@ -575,10 +575,13 @@ app.post('/api/crm/clientes/actualizar', async (req, res) => {
         if (!cliente_id) return res.status(400).json({ error: 'ID de cliente requerido' });
 
         const updatePayload = {};
-        if (razon_social) updatePayload.razon_social = razon_social;
-        if (whatsapp) updatePayload.whatsapp = whatsapp;
-        if (dni_cuit) updatePayload.contacto_nombre = `DNI: ${dni_cuit}`;
-        if (notas) updatePayload.observaciones = notas;
+        if (razon_social) updatePayload.razon_social = String(razon_social).trim();
+        if (whatsapp) updatePayload.whatsapp = String(whatsapp).replace(/[^\d+]/g, '').trim().substring(0, 20);
+        
+        let contactoStr = '';
+        if (dni_cuit) contactoStr += `DNI: ${dni_cuit}`;
+        if (notas) contactoStr += (contactoStr ? ` | ${notas}` : notas);
+        if (contactoStr) updatePayload.contacto_nombre = contactoStr.substring(0, 150);
 
         const { data, error } = await supabase.from('clientes').update(updatePayload).eq('id', cliente_id).select().single();
         if (error) throw error;
@@ -797,7 +800,7 @@ app.post('/api/crm/subir-excel-catalogo', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Helper de deducción de stock en bulk para evitar N+1 queries
+// Helper de deducción de stock en bulk para evitar N+1 queries y acelerar respuesta
 async function descontarStockPedidoBulk(pedido_id) {
     try {
         const { data: items } = await supabase.from('items_pedido').select('*').eq('pedido_id', pedido_id);
@@ -806,6 +809,7 @@ async function descontarStockPedidoBulk(pedido_id) {
         const { data: prods } = await supabase.from('dec_products').select('id, name, stock').limit(1000);
         if (!prods || prods.length === 0) return;
 
+        const updatePromises = [];
         for (const item of items) {
             const cant = parseInt(item.cantidad || 1);
             const rawName = (item.producto_nombre || '').toLowerCase().trim();
@@ -814,11 +818,16 @@ async function descontarStockPedidoBulk(pedido_id) {
             const match = prods.find(p => p.name && (p.name.toLowerCase() === rawName || (firstWord && p.name.toLowerCase().includes(firstWord))));
             if (match) {
                 const nuevoStock = Math.max(0, parseInt(match.stock || 0) - cant);
-                await supabase.from('dec_products').update({
-                    stock: nuevoStock,
-                    stock_status: nuevoStock > 0 ? 'instock' : 'outofstock'
-                }).eq('id', match.id);
+                updatePromises.push(
+                    supabase.from('dec_products').update({
+                        stock: nuevoStock,
+                        stock_status: nuevoStock > 0 ? 'instock' : 'outofstock'
+                    }).eq('id', match.id)
+                );
             }
+        }
+        if (updatePromises.length > 0) {
+            await Promise.all(updatePromises);
         }
     } catch (e) {
         console.error('Error en descontarStockPedidoBulk:', e);
