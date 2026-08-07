@@ -453,16 +453,21 @@
                             <div id="subtab-content-combos" class="space-y-6">
                                 <!-- 🎁 VISOR Y GESTOR INTERACTIVO DE COMBOS EN VIVO -->
                                 <div class="space-y-4">
-                                    <div class="flex items-center justify-between">
+                                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                                         <div>
                                             <h4 class="font-title text-xs font-bold text-purple-400 uppercase tracking-wider flex items-center gap-1.5">
                                                 <span class="material-symbols-outlined text-[18px]">view_carousel</span> 🎁 Visor y Gestor de Combos (En Vivo)
                                             </h4>
-                                            <p class="text-[11px] text-gray-400 mt-0.5">Visualizá el estado actual de los 6 combos, editá títulos, precios, pausá/activá o cargá fotos.</p>
+                                            <p class="text-[11px] text-gray-400 mt-0.5">Visualizá el estado actual de los combos, buscá por nombre, editá títulos, precios, pausá/activá o cargá fotos.</p>
                                         </div>
-                                        <button onclick="cargarVisorCombos()" class="px-3 py-1.5 bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/40 text-purple-200 text-[11px] font-bold rounded-xl flex items-center gap-1 transition-all shadow">
+                                        <button onclick="cargarVisorCombos()" class="px-3 py-1.5 bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/40 text-purple-200 text-[11px] font-bold rounded-xl flex items-center gap-1 transition-all shadow shrink-0">
                                             <span class="material-symbols-outlined text-sm">refresh</span> Actualizar Visor
                                         </button>
+                                    </div>
+
+                                    <!-- 🔍 BUSCADOR DE COMBOS POR NOMBRE O SKU -->
+                                    <div class="relative">
+                                        <input type="text" id="combos-search-input" oninput="filtrarCombosUI(this.value)" placeholder="🔍 Buscar combo por nombre o SKU (ej: Pastas, N1)..." class="w-full bg-slate-900 border border-purple-500/40 rounded-xl px-4 py-2.5 text-xs text-white placeholder-gray-400 focus:outline-none focus:border-purple-400 font-mono shadow-inner">
                                     </div>
 
                                     <div id="visor-combos-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -590,9 +595,10 @@
                                         <p class="text-xs text-amber-200">Ingresá el SKU, ajustá el <strong>Precio Regular</strong> (precio sin descuento) y el <strong>Precio de Oferta</strong>, y subí la <strong>Foto de Portada</strong> y <strong>Fotos de Galería</strong> para que el cliente pueda deslizarlas en la tienda.</p>
 
                                         <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                            <div>
-                                                <label class="text-[10px] font-bold text-amber-300 uppercase block mb-1">SKU del Producto en Oferta:</label>
-                                                <input type="text" id="oferta-sku-input" placeholder="Ej: QD-DTRG-1001" class="w-full bg-white/10 border border-amber-500/40 text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-amber-400 placeholder-gray-400 font-mono">
+                                            <div class="relative">
+                                                <label class="text-[10px] font-bold text-amber-300 uppercase block mb-1">Buscar Producto u Oferta por Nombre o SKU:</label>
+                                                <input type="text" id="oferta-sku-input" oninput="buscarProductoParaOferta(this.value)" placeholder="🔍 Escribí nombre (ej: lavandina) o SKU..." class="w-full bg-white/10 border border-amber-500/40 text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-amber-400 placeholder-gray-400 font-mono">
+                                                <div id="oferta-search-results" class="hidden absolute left-0 right-0 top-full mt-1 z-50 bg-slate-900 border border-amber-500/30 rounded-xl max-h-56 overflow-y-auto shadow-2xl divide-y divide-white/5 backdrop-blur-xl"></div>
                                             </div>
                                             <div>
                                                 <label class="text-[10px] font-bold text-gray-300 uppercase block mb-1">Precio Normal / Lista ($):</label>
@@ -797,70 +803,49 @@
                                 <div id="banner-upload-res" class="hidden text-xs font-bold p-2.5 rounded-xl border"></div>
                             </div>
 
-                            <!-- SUB-TAB 4: BÚSQUEDA Y FOTO PRODUCTO INDIVIDUAL / LOTE -->
+                            <!-- SUB-TAB 4: BÚSQUEDA Y EDICIÓN MANUAL DE PRODUCTOS (1 O MÚLTIPLES ÍTEMS POR NOMBRE) -->
                             <div id="subtab-content-single" class="hidden space-y-5 p-5 rounded-2xl bg-white/5 border border-blue-500/30">
-                                <div class="flex items-center gap-2">
-                                    <span class="material-symbols-outlined text-blue-400">add_photo_alternate</span>
-                                    <h3 class="font-title text-xs font-bold uppercase text-blue-400 tracking-wider">Carga y Vinculación Directa de Imágenes (WooCommerce + Supabase)</h3>
-                                </div>
-
-                                <!-- BUSCADOR DE PRODUCTOS CON PREVIEW -->
-                                <div class="relative space-y-2">
-                                    <label class="text-[11px] font-bold text-gray-300 uppercase">Buscar Producto por Nombre o SKU (QD-):</label>
-                                    <input type="text" id="img-prod-search" oninput="buscarProductoImagen(this.value)" placeholder="Ej: QD-DTRG-1322 o Detergente Magistral..." class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-blue-400 font-mono">
-                                    <div id="img-search-results" class="hidden absolute left-0 right-0 top-full mt-1 z-50 bg-primary-dark/95 border border-blue-500/30 rounded-xl max-h-56 overflow-y-auto shadow-2xl divide-y divide-white/5 backdrop-blur-xl"></div>
-                                </div>
-
-                                <!-- TARJETA DEL PRODUCTO SELECCIONADO -->
-                                <div id="selected-prod-card" class="hidden space-y-3 p-4 rounded-xl glass-card border border-blue-400/40">
-                                    <div class="flex items-center justify-between gap-4">
-                                        <div class="flex items-center gap-3">
-                                            <img id="selected-prod-thumb" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 24 24' fill='none' stroke='%2338bdf8' stroke-width='1.5'><rect x='3' y='3' width='18' height='18' rx='2'/><circle cx='8.5' cy='8.5' r='1.5'/><polyline points='21 15 16 10 5 21'/></svg>" alt="Preview" class="w-14 h-14 object-cover rounded-lg border border-white/10 bg-black/40">
-                                            <div>
-                                                <h4 id="selected-prod-name" class="font-bold text-xs text-white">---</h4>
-                                                <p class="text-[10px] text-blue-300 font-mono">SKU: <span id="selected-prod-sku">---</span> | Precio: $<span id="selected-prod-price">0</span></p>
-                                            </div>
-                                        </div>
-                                        <span class="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-bold">Seleccionado</span>
+                                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-white/10 pb-3">
+                                    <div>
+                                        <h3 class="font-title text-xs font-bold uppercase text-blue-400 tracking-wider flex items-center gap-2">
+                                            <span class="material-symbols-outlined text-blue-400">edit_square</span> 🛠️ Editor Manual de Productos (1, 2, 3 o Múltiples Ítems)
+                                        </h3>
+                                        <p class="text-[11px] text-gray-400 mt-0.5">Buscá productos por su <strong>Nombre</strong> o SKU, agregá la cantidad de renglones que desees, modificá nombres, precios o fotos, y guardá los cambios en lote.</p>
                                     </div>
+                                    <button type="button" onclick="agregarRenglonEditorManual()" class="px-3.5 py-2 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/40 font-bold text-xs flex items-center gap-1.5 transition-all shadow shrink-0">
+                                        <span class="material-symbols-outlined text-sm">add_circle</span> + Sumar Otro Producto
+                                    </button>
+                                </div>
 
-                                    <!-- EDICIÓN RÁPIDA DE TÍTULO Y PRECIO -->
-                                    <div class="pt-3 border-t border-white/10 space-y-3">
-                                        <label class="text-[10px] font-bold text-amber-300 uppercase block">✏️ Editar Nombre Oficial en la Web:</label>
-                                        <div class="flex flex-col sm:flex-row gap-2">
-                                            <input type="text" id="edit-prod-name-input" placeholder="Nuevo nombre del producto..." class="flex-1 bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400">
-                                            <button onclick="guardarNuevoNombreProducto()" class="px-4 py-2 rounded-xl bg-amber-500 text-primary-dark font-bold text-xs hover:bg-amber-400 flex items-center justify-center gap-1">
-                                                <span class="material-symbols-outlined text-[16px]">edit</span> Guardar Nombre
+                                <!-- BUSCADOR GLOBAL CON AUTOCOMPLETADO POR NOMBRE -->
+                                <div class="relative space-y-1.5">
+                                    <label class="text-[11px] font-bold text-gray-300 uppercase">🔍 Buscar Producto por Nombre (ej: Alcohol, Desodorante, Lavandina)...</label>
+                                    <input type="text" id="img-prod-search" oninput="buscarProductoImagen(this.value)" placeholder="Escribí el nombre del producto o SKU..." class="w-full bg-slate-900 border border-blue-500/40 rounded-xl px-4 py-2.5 text-xs text-white placeholder-gray-400 focus:outline-none focus:border-blue-400 font-mono shadow-inner">
+                                    <div id="img-search-results" class="hidden absolute left-0 right-0 top-full mt-1 z-50 bg-slate-900 border border-blue-500/40 rounded-xl max-h-60 overflow-y-auto shadow-2xl divide-y divide-white/5 backdrop-blur-xl"></div>
+                                </div>
+
+                                <!-- CONTENEDOR DE RENGLONES DE PRODUCTOS A EDITAR EN LOTE -->
+                                <div id="batch-prod-editor-container" class="space-y-3 pt-2">
+                                    <!-- Renglones de productos agregados dinámicamente -->
+                                </div>
+
+                                <!-- BOTONES GLOBALES DE ACCIÓN Y MENSAJE DE ESTADO -->
+                                <div class="pt-3 border-t border-white/10 space-y-3">
+                                    <div class="flex flex-wrap items-center justify-between gap-3">
+                                        <button type="button" onclick="agregarRenglonEditorManual()" class="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 border border-white/10 font-bold text-xs flex items-center gap-1.5 transition-all">
+                                            <span class="material-symbols-outlined text-sm">add</span> + Sumar Otro Producto a la Lista
+                                        </button>
+                                        <div class="flex items-center gap-2">
+                                            <button type="button" onclick="limpiarEditorManualLote()" class="px-4 py-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 font-bold text-xs transition-all">
+                                                ❌ Cancelar Todo
+                                            </button>
+                                            <button type="button" onclick="guardarEditorManualLote()" id="btn-guardar-batch-manual" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-title text-xs font-bold uppercase tracking-wider shadow-lg transition-all flex items-center gap-1.5">
+                                                <span class="material-symbols-outlined text-sm">save</span> 💾 Aplicar Cambios (WooCommerce + Supabase)
                                             </button>
                                         </div>
-
-                                        <label class="text-[10px] font-bold text-emerald-300 uppercase block">💲 Editar Precio Regular:</label>
-                                        <div class="flex flex-col sm:flex-row gap-2">
-                                            <input type="number" id="edit-prod-price-input" placeholder="Nuevo precio (sin $)..." step="0.01" min="0" class="flex-1 bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-400">
-                                            <button onclick="guardarNuevoPrecioProducto()" class="px-4 py-2 rounded-xl bg-emerald-500 text-primary-dark font-bold text-xs hover:bg-emerald-400 flex items-center justify-center gap-1">
-                                                <span class="material-symbols-outlined text-[16px]">payments</span> Guardar Precio
-                                            </button>
-                                        </div>
-                                        <div id="edit-prod-res" class="hidden text-[11px] font-bold p-2 rounded-lg border"></div>
                                     </div>
+                                    <div id="batch-manual-res" class="hidden text-xs font-bold p-3 rounded-xl border"></div>
                                 </div>
-
-                                <!-- ENTRADA DE IMAGEN (ARCHIVO O URL) -->
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-white/10">
-                                    <div class="space-y-1.5">
-                                        <label class="text-[10px] font-bold text-gray-300 uppercase">Opción A: Subir Archivo Local (JPG, PNG, WEBP)</label>
-                                        <input type="file" id="img-file-input" accept="image/*" onchange="previewSelectedFile(event)" class="w-full text-xs text-gray-400 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-500/20 file:text-blue-400 hover:file:bg-blue-500/30 cursor-pointer">
-                                    </div>
-                                    <div class="space-y-1.5">
-                                        <label class="text-[10px] font-bold text-gray-300 uppercase">Opción B: Pegar URL Directa de Imagen</label>
-                                        <input type="url" id="img-url-input" placeholder="https://..." class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-500">
-                                    </div>
-                                </div>
-
-                                <button onclick="subirImagenProducto()" class="w-full py-3 rounded-xl bg-blue-500 text-white font-title text-xs font-bold uppercase tracking-wider hover:bg-blue-600 shadow-lg transition-all flex items-center justify-center gap-2">
-                                    <span class="material-symbols-outlined text-[18px]">cloud_upload</span> Subir y Vincular Imagen (WooCommerce + Supabase)
-                                </button>
-                                <div id="img-upload-res" class="hidden text-xs font-bold p-3 rounded-xl border"></div>
 
                                 <!-- CARGA MASIVA LOTE -->
                                 <div class="pt-5 border-t border-white/10 space-y-4">
@@ -2730,18 +2715,246 @@
         }
 
         // =========================================================================
-        // HANDLERS JS: BÚSQUEDA Y CARGA DIRECTA DE IMÁGENES
+        // HANDLERS JS: BÚSQUEDA POR NOMBRE Y EDICIÓN MANUAL MULTIPRODUCTO
         // =========================================================================
-        let selectedProductForImage = null;
-        let selectedFileBase64 = null;
-        let selectedFileName = '';
+        let combosDataCache = [];
+        function filtrarCombosUI(term = '') {
+            const container = document.getElementById('visor-combos-container');
+            if (!container || !window.combosDataCache) return;
+
+            const cleanTerm = term.toLowerCase().trim();
+            const filtered = window.combosDataCache.filter(c => {
+                if (!cleanTerm) return true;
+                const name = (c.name || '').toLowerCase();
+                const sku = (c.sku || '').toLowerCase();
+                return name.includes(cleanTerm) || sku.includes(cleanTerm);
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = `<div class="col-span-full text-center py-8 text-gray-400 text-xs font-bold">No se encontraron combos coincidentes con "${term}".</div>`;
+                return;
+            }
+
+            container.innerHTML = filtered.map(c => {
+                const esActivo = c.status === 'publish';
+                const imgUrl = c.featured_url || 'https://via.placeholder.com/300x300?text=Sin+Foto';
+                const totalImgs = c.total_images || 0;
+                const items = c.gallery_items || [];
+
+                return `
+                    <div class="bg-slate-900/80 rounded-2xl border ${esActivo ? 'border-purple-500/30' : 'border-amber-500/30'} p-4 flex flex-col justify-between shadow-lg relative group">
+                        <div>
+                            <div class="relative w-full aspect-[4/3] rounded-xl overflow-hidden mb-3 bg-black/40 border border-white/10">
+                                <img id="combo-preview-main-${c.sku}" src="${imgUrl}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                                <div class="absolute top-2 left-2 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider backdrop-blur-md ${esActivo ? 'bg-emerald-500/80 text-white' : 'bg-amber-500/80 text-black'} shadow">
+                                    ${esActivo ? '✅ PUBLICADO' : '⏸️ PAUSADO'}
+                                </div>
+                                <div class="absolute bottom-2 right-2 px-2 py-0.5 rounded text-[10px] font-bold bg-black/70 text-purple-300 border border-purple-500/30 backdrop-blur-md">
+                                    📷 ${totalImgs} fotos
+                                </div>
+                            </div>
+
+                            ${items.length > 0 ? `
+                                <div class="mb-3">
+                                    <span class="text-[9px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Fotos del Combo (Clic para borrar o preview):</span>
+                                    <div class="flex gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
+                                        ${items.map(item => `
+                                            <div class="relative group/img flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden border border-white/15 bg-black/50">
+                                                <img src="${item.url}" class="w-full h-full object-cover cursor-pointer" onclick="document.getElementById('combo-preview-main-${c.sku}').src='${item.url}'" title="${item.type_lbl}">
+                                                <button onclick="eliminarImagenCombo('${c.sku}', ${item.id}, '${item.url}')" title="Eliminar esta foto" class="absolute top-0 right-0 bg-red-600/90 text-white w-4 h-4 text-[9px] flex items-center justify-center font-black rounded-bl opacity-80 group-hover/img:opacity-100 hover:bg-red-500 transition-all">
+                                                    ×
+                                                </button>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            ` : ''}
+
+                            <div class="space-y-3">
+                                <div>
+                                    <span class="text-[10px] font-mono text-purple-400 font-bold">SKU: ${c.sku}</span>
+                                    <input type="text" id="combo-name-${c.sku}" value="${c.name}" class="w-full mt-1 bg-slate-950/80 border border-white/15 rounded-lg px-3 py-1.5 text-xs text-white font-bold focus:border-purple-500 focus:outline-none">
+                                </div>
+
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label class="text-[10px] text-gray-400 font-bold block mb-1">Precio ($):</label>
+                                        <input type="number" step="0.01" id="combo-price-${c.sku}" value="${c.regular_price}" class="w-full bg-slate-950/80 border border-white/15 rounded-lg px-3 py-1.5 text-xs text-brand-yellow font-bold focus:border-purple-500 focus:outline-none">
+                                    </div>
+                                    <div>
+                                        <label class="text-[10px] text-gray-400 font-bold block mb-1">Estado Tienda:</label>
+                                        <select id="combo-status-${c.sku}" class="w-full bg-slate-950/80 border border-white/15 rounded-lg px-2 py-1.5 text-xs text-white font-bold focus:border-purple-500 focus:outline-none">
+                                            <option value="publish" ${esActivo ? 'selected' : ''}>✅ Publicado</option>
+                                            <option value="draft" ${!esActivo ? 'selected' : ''}>⏸️ Pausado / Próximamente</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div id="combo-msg-${c.sku}" class="hidden text-[10px] font-bold p-2 rounded-lg text-center"></div>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-2 pt-3 border-t border-white/5 mt-3">
+                            <button onclick="guardarEdicionCombo('${c.sku}')" class="flex-1 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-1">
+                                <span class="material-symbols-outlined text-sm">save</span> Guardar
+                            </button>
+                            <button onclick="prepararSubidaFotosCombo('${c.sku}')" title="Cargar/Sumar Fotos" class="px-3 py-2 bg-purple-900/40 hover:bg-purple-800/60 text-purple-200 font-bold text-xs rounded-xl border border-purple-500/40 transition-all flex items-center justify-center gap-1">
+                                ➕ Fotos
+                            </button>
+                            <a href="${c.permalink || '#'}" target="_blank" title="Ver en Tienda Web" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-gray-300 font-bold text-xs rounded-xl border border-white/10 transition-all flex items-center justify-center">
+                                🔗
+                            </a>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Buscador de productos para Ofertas Semanales por Nombre
+        let ofertaSearchTimer = null;
+        async function buscarProductoParaOferta(val) {
+            clearTimeout(ofertaSearchTimer);
+            const resultsContainer = document.getElementById('oferta-search-results');
+            if (!resultsContainer) return;
+
+            const cleanVal = (val || '').trim();
+            if (!cleanVal || cleanVal.length < 2) {
+                resultsContainer.classList.add('hidden');
+                return;
+            }
+
+            ofertaSearchTimer = setTimeout(async () => {
+                try {
+                    const res = await fetch(`${API_URL}/products/search?q=${encodeURIComponent(cleanVal)}`);
+                    const data = await res.json();
+                    if (data.success && data.products && data.products.length > 0) {
+                        window.currentOfertaProducts = data.products;
+                        resultsContainer.innerHTML = data.products.map((p, idx) => `
+                            <div onclick="selectProdForOferta(${idx})" class="p-2.5 hover:bg-amber-500/20 cursor-pointer flex items-center justify-between transition-colors text-xs">
+                                <div class="flex items-center gap-2.5">
+                                    <img src="${p.image_url || ''}" class="w-8 h-8 object-cover rounded border border-white/10 bg-black/40">
+                                    <div>
+                                        <div class="font-bold text-white">${p.name}</div>
+                                        <div class="text-[10px] text-amber-300 font-mono">SKU: ${p.sku}</div>
+                                    </div>
+                                </div>
+                                <span class="font-bold text-brand-yellow">$${parseFloat(p.regular_price || 0).toLocaleString('es-AR')}</span>
+                            </div>
+                        `).join('');
+                        resultsContainer.classList.remove('hidden');
+                    } else {
+                        resultsContainer.innerHTML = `<div class="p-3 text-xs text-gray-400 text-center">No se encontraron productos.</div>`;
+                        resultsContainer.classList.remove('hidden');
+                    }
+                } catch(e) {}
+            }, 300);
+        }
+
+        function selectProdForOferta(idx) {
+            const p = (window.currentOfertaProducts || [])[idx];
+            if (!p) return;
+            document.getElementById('oferta-sku-input').value = p.sku;
+            document.getElementById('oferta-regular-price-input').value = p.regular_price || '';
+            document.getElementById('oferta-sale-price-input').value = Math.round(parseFloat(p.regular_price || 0) * 0.85); // 15% OFF sugerido
+            document.getElementById('oferta-search-results').classList.add('hidden');
+        }
+
+        // =========================================================================
+        // EDITOR MANUAL MULTIPRODUCTO (1, 2, 3 O N RENGLONES DE PRODUCTOS)
+        // =========================================================================
+        let manualBatchCounter = 0;
+
+        function agregarRenglonEditorManual(pObj = null) {
+            const container = document.getElementById('batch-prod-editor-container');
+            if (!container) return;
+
+            manualBatchCounter++;
+            const rowId = `batch-row-${manualBatchCounter}`;
+
+            const rowDiv = document.createElement('div');
+            rowDiv.id = rowId;
+            rowDiv.className = "p-4 rounded-xl glass-card border border-blue-400/30 space-y-3 relative transition-all";
+
+            const nameVal = pObj ? pObj.name : '';
+            const skuVal = pObj ? pObj.sku : '';
+            const priceVal = pObj ? (pObj.regular_price || pObj.price || 0) : '';
+            const imgVal = pObj ? (pObj.image_url || '') : '';
+
+            rowDiv.innerHTML = `
+                <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 border-b border-white/10 pb-3">
+                    <div class="flex items-center gap-3 w-full md:w-auto">
+                        <div class="row-prod-img-box w-12 h-12 rounded-lg bg-black/60 border border-white/10 flex items-center justify-center overflow-hidden shrink-0">
+                            ${imgVal ? `<img src="${imgVal}" class="w-full h-full object-cover rounded-lg">` : `<span class="material-symbols-outlined text-blue-400 text-[22px]">inventory_2</span>`}
+                        </div>
+                        <div class="flex-grow">
+                            <span class="text-[10px] font-mono text-blue-300 font-bold block">SKU: ${skuVal || 'Buscando...'}</span>
+                            <input type="text" value="${nameVal}" placeholder="✏️ Nombre del Producto..." class="row-prod-name w-full bg-white/10 border border-white/20 rounded-lg px-2.5 py-1 text-xs font-bold text-white focus:outline-none focus:border-amber-400">
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end">
+                        <div class="w-32">
+                            <span class="text-[9px] text-emerald-400 font-bold uppercase block mb-0.5">Precio Regular ($):</span>
+                            <input type="number" step="0.01" value="${priceVal}" placeholder="0" class="row-prod-price w-full bg-white/10 border border-white/20 rounded-lg px-2.5 py-1 text-xs font-mono font-bold text-brand-yellow text-right focus:outline-none focus:border-emerald-400">
+                        </div>
+
+                        <button type="button" onclick="eliminarRenglonEditorManual('${rowId}')" title="Cancelar / Eliminar este renglón" class="px-2.5 py-1.5 rounded-lg bg-rose-500/20 text-rose-400 border border-rose-500/30 hover:bg-rose-500/30 font-bold text-xs flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[16px]">delete</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                    <div>
+                        <label class="text-[9px] font-bold text-gray-300 uppercase block mb-1">Opción A: Foto Local (Subir Archivo)</label>
+                        <input type="file" accept="image/*" onchange="onRowFileSelected('${rowId}', event)" class="row-prod-file w-full text-[11px] text-gray-400 file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-[10px] file:font-bold file:bg-blue-500/20 file:text-blue-300 cursor-pointer">
+                    </div>
+                    <div>
+                        <label class="text-[9px] font-bold text-gray-300 uppercase block mb-1">Opción B: Pegar URL Directa de Imagen</label>
+                        <input type="url" value="${imgVal}" placeholder="https://..." class="row-prod-url w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-blue-400 font-mono">
+                    </div>
+                </div>
+                <input type="hidden" class="row-prod-sku" value="${skuVal}">
+                <input type="hidden" class="row-prod-file-base64" value="">
+                <input type="hidden" class="row-prod-file-name" value="">
+            `;
+
+            container.appendChild(rowDiv);
+        }
+
+        function onRowFileSelected(rowId, evt) {
+            const file = evt.target.files[0];
+            const row = document.getElementById(rowId);
+            if (!row || !file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                row.querySelector('.row-prod-file-base64').value = e.target.result;
+                row.querySelector('.row-prod-file-name').value = file.name;
+                const imgBox = row.querySelector('.row-prod-img-box');
+                if (imgBox) {
+                    imgBox.innerHTML = `<img src="${e.target.result}" class="w-full h-full object-cover rounded-lg">`;
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function eliminarRenglonEditorManual(rowId) {
+            const row = document.getElementById(rowId);
+            if (row) row.remove();
+        }
+
+        function limpiarEditorManualLote() {
+            document.getElementById('batch-prod-editor-container').innerHTML = '';
+            document.getElementById('img-prod-search').value = '';
+            document.getElementById('batch-manual-res').classList.add('hidden');
+        }
 
         let searchDebounceTimer = null;
         async function buscarProductoImagen(val) {
             clearTimeout(searchDebounceTimer);
             const resultsContainer = document.getElementById('img-search-results');
             
-            // Limpiar automáticamente prefijos como "SKU: ", "sku: ", "sku "
             const cleanVal = (val || '').replace(/^sku:\s*/i, '').replace(/^sku\s+/i, '').trim();
 
             if (!cleanVal || cleanVal.length < 2) {
@@ -2776,187 +2989,78 @@
                     console.error('Error buscando productos:', e);
                 }
             }, 300);
-
         }
 
         function selectProdFromCache(idx) {
             const p = (window.currentSearchProducts || [])[idx];
             if (!p) return;
-            selectedProductForImage = {
-                sku: p.sku,
-                name: p.name,
-                price: p.regular_price || 0,
-                imgUrl: p.image_url || ''
-            };
             document.getElementById('img-search-results').classList.add('hidden');
-            document.getElementById('img-prod-search').value = `${p.name} (${p.sku})`;
+            document.getElementById('img-prod-search').value = '';
 
-            document.getElementById('selected-prod-card').classList.remove('hidden');
-            document.getElementById('selected-prod-name').innerText = p.name;
-            document.getElementById('selected-prod-sku').innerText = p.sku;
-            document.getElementById('selected-prod-price').innerText = parseFloat(p.regular_price || 0).toLocaleString('es-AR');
-            document.getElementById('edit-prod-name-input').value = p.name;
-            document.getElementById('edit-prod-res').classList.add('hidden');
-            if (p.image_url) {
-                document.getElementById('selected-prod-thumb').src = p.image_url;
-            } else {
-                document.getElementById('selected-prod-thumb').src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="%2338bdf8" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>';
-            }
+            // Agregar a la lista del editor manual por lote
+            agregarRenglonEditorManual(p);
         }
 
-        async function guardarNuevoNombreProducto() {
-            if (!selectedProductForImage || !selectedProductForImage.sku) {
-                alert('⚠️ Por favor seleccioná un producto primero.');
-                return;
-            }
-            const newName = document.getElementById('edit-prod-name-input').value.trim();
-            if (!newName) {
-                alert('⚠️ El nombre del producto no puede estar vacío.');
-                return;
-            }
+        async function guardarEditorManualLote() {
+            const container = document.getElementById('batch-prod-editor-container');
+            const rows = container ? container.querySelectorAll('[id^="batch-row-"]') : [];
+            const resDiv = document.getElementById('batch-manual-res');
 
-            const resDiv = document.getElementById('edit-prod-res');
-            resDiv.className = 'text-[11px] font-bold p-2 rounded-lg border border-amber-500/40 bg-amber-500/10 text-amber-300';
-            resDiv.innerText = '⏳ Guardando nuevo nombre en WooCommerce y Supabase...';
-            resDiv.classList.remove('hidden');
-
-            try {
-                const response = await fetch(`${API_URL}/products/update-details`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        sku: selectedProductForImage.sku,
-                        name: newName
-                    })
-                });
-                const data = await response.json();
-                if (data.success) {
-                    resDiv.className = 'text-[11px] font-bold p-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 text-emerald-400';
-                    resDiv.innerText = `🎉 Nombre actualizado a: "${newName}" en WooCommerce y Supabase.`;
-                    document.getElementById('selected-prod-name').innerText = newName;
-                    selectedProductForImage.name = newName;
-                } else {
-                    resDiv.className = 'text-[11px] font-bold p-2 rounded-lg border border-red-500/40 bg-red-500/10 text-red-400';
-                    resDiv.innerText = `❌ Error: ${data.error || 'No se pudo guardar el nuevo nombre.'}`;
-                }
-            } catch(e) {
-                resDiv.className = 'text-[11px] font-bold p-2 rounded-lg border border-red-500/40 bg-red-500/10 text-red-400';
-                resDiv.innerText = `❌ Error: ${e.message}`;
-            }
-        }
-
-        async function guardarNuevoPrecioProducto() {
-            if (!selectedProductForImage || !selectedProductForImage.sku) {
-                alert('⚠️ Por favor seleccioná un producto primero.');
-                return;
-            }
-            const newPrice = document.getElementById('edit-prod-price-input').value.trim();
-            if (!newPrice || isNaN(newPrice) || parseFloat(newPrice) <= 0) {
-                alert('⚠️ Ingresá un precio válido (número mayor a 0).');
+            if (rows.length === 0) {
+                alert('⚠️ Buscá y agregá al menos 1 producto a la lista para editar.');
                 return;
             }
 
-            const resDiv = document.getElementById('edit-prod-res');
-            resDiv.className = 'text-[11px] font-bold p-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 text-emerald-300';
-            resDiv.innerText = '⏳ Guardando nuevo precio en WooCommerce y Supabase...';
-            resDiv.classList.remove('hidden');
-
-            try {
-                const response = await fetch(`${API_URL}/products/update-details`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        sku: selectedProductForImage.sku,
-                        regular_price: newPrice
-                    })
-                });
-                const data = await response.json();
-                if (data.success) {
-                    resDiv.className = 'text-[11px] font-bold p-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 text-emerald-400';
-                    resDiv.innerText = `🎉 Precio actualizado a: $${parseFloat(newPrice).toLocaleString('es-AR')} en WooCommerce y Supabase.`;
-                    document.getElementById('selected-prod-price').innerText = parseFloat(newPrice).toLocaleString('es-AR');
-                    selectedProductForImage.price = newPrice;
-                } else {
-                    resDiv.className = 'text-[11px] font-bold p-2 rounded-lg border border-red-500/40 bg-red-500/10 text-red-400';
-                    resDiv.innerText = `❌ Error: ${data.error || 'No se pudo guardar el precio.'}`;
-                }
-            } catch(e) {
-                resDiv.className = 'text-[11px] font-bold p-2 rounded-lg border border-red-500/40 bg-red-500/10 text-red-400';
-                resDiv.innerText = `❌ Error: ${e.message}`;
-            }
-        }
-
-        function previewSelectedFile(evt) {
-            const file = evt.target.files[0];
-            if (file) {
-                selectedFileName = file.name;
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    selectedFileBase64 = e.target.result;
-                };
-                reader.readAsDataURL(file);
-            } else {
-                selectedFileBase64 = null;
-                selectedFileName = '';
-            }
-        }
-
-        async function subirImagenProducto() {
-            const resDiv = document.getElementById('img-upload-res');
-            resDiv.classList.add('hidden');
-
-            if (!selectedProductForImage || !selectedProductForImage.sku) {
-                resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-red-500/40 bg-red-500/10 text-red-400';
-                resDiv.innerText = '⚠️ Por favor buscá y seleccioná un producto primero.';
-                resDiv.classList.remove('hidden');
-                return;
-            }
-
-            const urlInput = document.getElementById('img-url-input').value.trim();
-            if (!selectedFileBase64 && !urlInput) {
-                resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-red-500/40 bg-red-500/10 text-red-400';
-                resDiv.innerText = '⚠️ Por favor elegí un archivo de imagen o pegá una URL directa.';
-                resDiv.classList.remove('hidden');
-                return;
-            }
+            const btn = document.getElementById('btn-guardar-batch-manual');
+            btn.disabled = true;
 
             resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-blue-500/40 bg-blue-500/10 text-blue-300';
-            resDiv.innerText = '⏳ Subiendo imagen y vinculando a WooCommerce + Supabase... Por favor aguardá.';
+            resDiv.innerText = `⏳ Guardando ${rows.length} producto(s) en WooCommerce y Supabase... Por favor aguardá.`;
             resDiv.classList.remove('hidden');
 
-            try {
-                const payload = {
-                    sku: selectedProductForImage.sku,
-                    imageBase64: selectedFileBase64 || '',
-                    imageUrl: urlInput || '',
-                    filename: selectedFileName || `producto_${selectedProductForImage.sku}.jpg`
-                };
+            let successCount = 0;
 
-                const response = await fetch(`${API_URL}/products/upload-image`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
+            for (let i = 0; i < rows.length; i++) {
+                const row = rows[i];
+                const sku = row.querySelector('.row-prod-sku')?.value;
+                const name = row.querySelector('.row-prod-name')?.value;
+                const price = row.querySelector('.row-prod-price')?.value;
+                const fileBase64 = row.querySelector('.row-prod-file-base64')?.value;
+                const fileName = row.querySelector('.row-prod-file-name')?.value;
+                const urlInput = row.querySelector('.row-prod-url')?.value;
 
-                const data = await response.json();
-                if (data.success) {
-                    resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-400';
-                    resDiv.innerHTML = `🎉 ${data.mensaje} <br><a href="${data.image_url}" target="_blank" class="underline text-brand-yellow font-mono">Ver Imagen Oficial en WordPress</a>`;
-                    if (data.image_url) {
-                        document.getElementById('selected-prod-thumb').src = data.image_url;
-                    }
-                    // Reset inputs
-                    document.getElementById('img-file-input').value = '';
-                    document.getElementById('img-url-input').value = '';
-                    selectedFileBase64 = null;
-                } else {
-                    resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-red-500/40 bg-red-500/10 text-red-400';
-                    resDiv.innerText = `❌ Error: ${data.error || 'No se pudo subir la imagen.'}`;
+                if (sku) {
+                    try {
+                        // 1. Actualizar Nombre y Precio
+                        if (name || price) {
+                            await fetch(`${API_URL}/products/update-details`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ sku, name, regular_price: price })
+                            });
+                        }
+
+                        // 2. Subir Imagen si fue seleccionada
+                        if (fileBase64 || urlInput) {
+                            await fetch(`${API_URL}/products/upload-image`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    sku,
+                                    imageBase64: fileBase64 || '',
+                                    imageUrl: urlInput || '',
+                                    filename: fileName || `producto_${sku}.jpg`
+                                })
+                            });
+                        }
+                        successCount++;
+                    } catch(e) {}
                 }
-            } catch (err) {
-                resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-red-500/40 bg-red-500/10 text-red-400';
-                resDiv.innerText = `❌ Error de red al comunicarse con el servidor CRM: ${err.message}`;
             }
+
+            resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-400';
+            resDiv.innerText = `🎉 ¡${successCount} producto(s) actualizados con éxito en WooCommerce, Supabase y el CRM!`;
+            btn.disabled = false;
         }
 
 
@@ -3296,79 +3400,13 @@
                     return;
                 }
 
-                container.innerHTML = data.combos.map(c => {
-                    const esActivo = c.status === 'publish';
-                    const imgUrl = c.featured_url || 'https://via.placeholder.com/300x300?text=Sin+Foto';
-                    const totalImgs = c.total_images || 0;
-                    const items = c.gallery_items || [];
-
-                    return `
-                        <div class="bg-slate-900/80 rounded-2xl border ${esActivo ? 'border-purple-500/30' : 'border-amber-500/30'} p-4 flex flex-col justify-between shadow-lg relative group">
-                            <div>
-                                <div class="relative w-full aspect-[4/3] rounded-xl overflow-hidden mb-3 bg-black/40 border border-white/10">
-                                    <img id="combo-preview-main-${c.sku}" src="${imgUrl}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
-                                    <div class="absolute top-2 left-2 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider backdrop-blur-md ${esActivo ? 'bg-emerald-500/80 text-white' : 'bg-amber-500/80 text-black'} shadow">
-                                        ${esActivo ? '✅ PUBLICADO' : '⏸️ PAUSADO'}
-                                    </div>
-                                    <div class="absolute bottom-2 right-2 px-2 py-0.5 rounded text-[10px] font-bold bg-black/70 text-purple-300 border border-purple-500/30 backdrop-blur-md">
-                                        📷 ${totalImgs} fotos
-                                    </div>
-                                </div>
-
-                                <!-- Tira interactiva de imágenes subidas con botón borrar -->
-                                ${items.length > 0 ? `
-                                    <div class="mb-3">
-                                        <span class="text-[9px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Fotos del Combo (Clic para borrar o preview):</span>
-                                        <div class="flex gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
-                                            ${items.map(item => `
-                                                <div class="relative group/img flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden border border-white/15 bg-black/50">
-                                                    <img src="${item.url}" class="w-full h-full object-cover cursor-pointer" onclick="document.getElementById('combo-preview-main-${c.sku}').src='${item.url}'" title="${item.type_lbl}">
-                                                    <button onclick="eliminarImagenCombo('${c.sku}', ${item.id}, '${item.url}')" title="Eliminar esta foto" class="absolute top-0 right-0 bg-red-600/90 text-white w-4 h-4 text-[9px] flex items-center justify-center font-black rounded-bl opacity-80 group-hover/img:opacity-100 hover:bg-red-500 transition-all">
-                                                        ×
-                                                    </button>
-                                                </div>
-                                            `).join('')}
-                                        </div>
-                                    </div>
-                                ` : ''}
-
-                                <div class="space-y-3">
-                                    <div>
-                                        <span class="text-[10px] font-mono text-purple-400 font-bold">SKU: ${c.sku}</span>
-                                        <input type="text" id="combo-name-${c.sku}" value="${c.name}" class="w-full mt-1 bg-slate-950/80 border border-white/15 rounded-lg px-3 py-1.5 text-xs text-white font-bold focus:border-purple-500 focus:outline-none">
-                                    </div>
-
-                                    <div class="grid grid-cols-2 gap-2">
-                                        <div>
-                                            <label class="text-[10px] text-gray-400 font-bold block mb-1">Precio ($):</label>
-                                            <input type="number" step="0.01" id="combo-price-${c.sku}" value="${c.regular_price}" class="w-full bg-slate-950/80 border border-white/15 rounded-lg px-3 py-1.5 text-xs text-brand-yellow font-bold focus:border-purple-500 focus:outline-none">
-                                        </div>
-                                        <div>
-                                            <label class="text-[10px] text-gray-400 font-bold block mb-1">Estado Tienda:</label>
-                                            <select id="combo-status-${c.sku}" class="w-full bg-slate-950/80 border border-white/15 rounded-lg px-2 py-1.5 text-xs text-white font-bold focus:border-purple-500 focus:outline-none">
-                                                <option value="publish" ${esActivo ? 'selected' : ''}>✅ Publicado</option>
-                                                <option value="draft" ${!esActivo ? 'selected' : ''}>⏸️ Pausado / Próximamente</option>
-                                            </select>
-                                        </div>
-                                    </div>
-
-                                    <div id="combo-msg-${c.sku}" class="hidden text-[10px] font-bold p-2 rounded-lg text-center"></div>
-                                </div>
-                            </div>
-
-                            <div class="flex gap-2 pt-3 border-t border-white/5 mt-3">
-                                <button onclick="guardarEdicionCombo('${c.sku}')" class="flex-1 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-1">
-                                    <span class="material-symbols-outlined text-sm">save</span> Guardar
-                                </button>
-                                <button onclick="prepararSubidaFotosCombo('${c.sku}')" title="Cargar/Sumar Fotos" class="px-3 py-2 bg-purple-900/40 hover:bg-purple-800/60 text-purple-200 font-bold text-xs rounded-xl border border-purple-500/40 transition-all flex items-center justify-center gap-1">
-                                    ➕ Fotos
-                                </button>
-                                <a href="${c.permalink || '#'}" target="_blank" title="Ver en Tienda Web" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-gray-300 font-bold text-xs rounded-xl border border-white/10 transition-all flex items-center justify-center">
-                                    🔗
-                                </a>
-                            </div>
-                        </div>
-                    `;
+                window.combosDataCache = data.combos;
+                const searchVal = document.getElementById('combos-search-input')?.value || '';
+                filtrarCombosUI(searchVal);
+            } catch(e) {
+                container.innerHTML = `<div class="col-span-full text-center py-6 text-red-400 text-xs font-bold">❌ Error: ${e.message}</div>`;
+            }
+        }
                 }).join('');
             } catch(e) {
                 container.innerHTML = `<div class="col-span-full text-center py-6 text-red-400 text-xs font-bold">❌ Error: ${e.message}</div>`;
