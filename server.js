@@ -10,6 +10,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const path = require('path');
+const fs = require('fs');
 const https = require('https');
 const { createClient } = require('@supabase/supabase-js');
 const Groq = require('groq-sdk');
@@ -1462,7 +1463,11 @@ app.post('/api/categories/upload-banner', async (req, res) => {
 
             // Actualizar la URL de la imagen en catalogo_final.html y sincronizar con WP
             try {
-                const catalogPath = path.join(__dirname, '..', 'catalogo_final.html');
+                let catalogPath = path.join(__dirname, 'catalogo_final.html');
+                if (!fs.existsSync(catalogPath)) {
+                    catalogPath = path.join(__dirname, '..', 'catalogo_final.html');
+                }
+                
                 if (fs.existsSync(catalogPath)) {
                     let html = fs.readFileSync(catalogPath, 'utf8');
 
@@ -1495,7 +1500,11 @@ app.post('/api/categories/upload-banner', async (req, res) => {
                     const wpSyncData = await wpSyncRes.json().catch(() => ({ success: false }));
                     if (wpSyncData.success) {
                         stepsLog.push(`5. Página 'Nuestros Productos' (ID 2271) en WordPress actualizada e integración en vivo completada.`);
+                    } else {
+                        stepsLog.push(`⚠️ WordPress update_homepage_content no confirmó la actualización: ${JSON.stringify(wpSyncData)}`);
                     }
+                } else {
+                    stepsLog.push(`⚠️ No se encontró catalogo_final.html en el servidor.`);
                 }
             } catch (errSync) {
                 console.error('[CATEGORY BANNER HTML SYNC ERROR]:', errSync.message);
