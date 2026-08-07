@@ -864,17 +864,63 @@
             <!-- TAB 5: CLIENTES -->
             <section id="view-clientes" class="hidden space-y-6">
                 <div class="glass-panel p-6 rounded-2xl space-y-6">
-                    <div class="flex justify-between items-center">
-                        <h2 class="font-title text-lg font-bold uppercase text-white tracking-wider">Directorio de Clientes Mayoristas</h2>
+                    <!-- Header & Action Buttons -->
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div>
+                            <h2 class="font-title text-lg font-bold uppercase text-white tracking-wider flex items-center gap-2">
+                                <span class="material-symbols-outlined text-brand-yellow">groups</span> Directorio de Clientes Mayoristas
+                                <span id="clientes-count-badge" class="px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-brand-yellow/20 text-brand-yellow">0</span>
+                            </h2>
+                            <p class="text-xs text-gray-400 mt-1">Base de datos unificada de clientes, importación desde Excel/CSV y asignación de vendedores.</p>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-3">
+                            <button onclick="abrirModalImportarClientes()" class="px-4 py-2.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 font-bold text-xs flex items-center gap-2 transition-all shadow-lg hover:scale-105">
+                                <span class="material-symbols-outlined text-sm">upload_file</span> Importar Excel / CSV
+                            </button>
+                            <button onclick="exportarClientesCSV()" class="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white border border-white/10 font-bold text-xs flex items-center gap-2 transition-all">
+                                <span class="material-symbols-outlined text-sm">download</span> Exportar CSV
+                            </button>
+                        </div>
                     </div>
+
+                    <!-- Search & Filter Bar -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 bg-white/5 p-4 rounded-xl border border-white/10">
+                        <div class="relative">
+                            <span class="material-symbols-outlined absolute left-3 top-2.5 text-gray-400 text-sm">search</span>
+                            <input type="text" id="clientes-search-input" oninput="filtrarClientesUI()" placeholder="Buscar por Nombre, DNI/CUIT, Teléfono..." class="w-full bg-black/40 border border-white/10 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-yellow">
+                        </div>
+                        <div>
+                            <select id="clientes-filter-vendedor" onchange="filtrarClientesUI()" class="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-yellow">
+                                <option value="">Todos los Vendedores</option>
+                            </select>
+                        </div>
+                        <div>
+                            <select id="clientes-filter-tipo" onchange="filtrarClientesUI()" class="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-yellow">
+                                <option value="">Todas las Listas de Precios</option>
+                                <option value="Mayorista">Mayorista</option>
+                                <option value="Ninguno">Ninguno</option>
+                            </select>
+                        </div>
+                        <div>
+                            <select id="clientes-filter-deuda" onchange="filtrarClientesUI()" class="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-yellow">
+                                <option value="">Todos los Saldos</option>
+                                <option value="con_saldo">Con Compras Registradas</option>
+                                <option value="sin_compras">Sin Compras Registradas</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Table -->
                     <div class="overflow-x-auto">
                         <table class="w-full text-left text-xs">
                             <thead>
-                                <tr class="border-b border-white/10 text-gray-400 uppercase">
-                                    <th class="py-3 px-4">Razón Social</th>
-                                    <th class="py-3 px-4">WhatsApp</th>
-                                    <th class="py-3 px-4 text-right">Total Comprado</th>
-                                    <th class="py-3 px-4 text-center">Acciones</th>
+                                <tr class="border-b border-white/10 text-gray-400 uppercase tracking-wider">
+                                    <th class="py-3.5 px-4">Cliente / Razón Social</th>
+                                    <th class="py-3.5 px-4">DNI / CUIT</th>
+                                    <th class="py-3.5 px-4">Teléfono / WhatsApp</th>
+                                    <th class="py-3.5 px-4">Dirección / Localidad</th>
+                                    <th class="py-3.5 px-4">Vendedor / Estado</th>
+                                    <th class="py-3.5 px-4 text-center">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody id="clientes-tbody" class="divide-y divide-white/5"></tbody>
@@ -882,6 +928,61 @@
                     </div>
                 </div>
             </section>
+
+            <!-- MODAL IMPORTAR CLIENTES DESDE EXCEL / CSV -->
+            <div id="modal-importar-clientes" class="fixed inset-0 z-[99999] bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+                <div class="glass-panel p-6 md:p-8 rounded-2xl max-w-3xl w-full space-y-6 relative border border-emerald-500/30 max-h-[90vh] overflow-y-auto shadow-2xl">
+                    <div class="flex justify-between items-center border-b border-white/10 pb-4">
+                        <h3 class="font-title text-base font-bold uppercase text-white flex items-center gap-2">
+                            <span class="material-symbols-outlined text-emerald-400">upload_file</span> Importar Clientes desde Excel o CSV
+                        </h3>
+                        <button onclick="cerrarModalImportarClientes()" class="text-gray-400 hover:text-white">
+                            <span class="material-symbols-outlined">close</span>
+                        </button>
+                    </div>
+
+                    <div class="space-y-4">
+                        <p class="text-xs text-gray-300 leading-relaxed">
+                            Seleccioná o arrastrá tu archivo <code>CLIENTES - Sheet1.csv</code> o un archivo Excel (<code>.xlsx</code> / <code>.csv</code>). 
+                            El sistema detectará automáticamente las columnas: <em>Nombre, DNI/CUIT, Telefonos, Dirección, Correo Electrónico, Vendedor, Listas de precios, Importe de deuda, Saldo a favor</em>.
+                        </p>
+
+                        <!-- Dropzone -->
+                        <div id="clientes-dropzone" onclick="document.getElementById('clientes-file-input').click()" class="border-2 border-dashed border-emerald-500/40 hover:border-emerald-400 bg-emerald-500/5 hover:bg-emerald-500/10 rounded-2xl p-8 text-center cursor-pointer transition-all">
+                            <span class="material-symbols-outlined text-4xl text-emerald-400 mb-2">cloud_upload</span>
+                            <p class="text-sm font-bold text-white mb-1">Hacé clic o arrastrá tu archivo Excel o CSV aquí</p>
+                            <p class="text-xs text-gray-400">Archivos soportados: .xlsx, .xls, .csv</p>
+                            <input type="file" id="clientes-file-input" accept=".xlsx, .xls, .csv" onchange="procesarArchivoClientes(event)" class="hidden">
+                        </div>
+
+                        <!-- Preview Section -->
+                        <div id="clientes-preview-container" class="hidden space-y-4">
+                            <div class="flex justify-between items-center">
+                                <span id="clientes-preview-title" class="text-xs font-bold text-emerald-400">0 registros detectados</span>
+                                <button onclick="confirmarImportacionClientes()" id="btn-confirmar-import-clientes" class="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all hover:scale-105">
+                                    <span class="material-symbols-outlined text-sm">check_circle</span> Confirmar e Importar a Base de Datos
+                                </button>
+                            </div>
+
+                            <div class="overflow-x-auto max-h-60 rounded-xl border border-white/10 bg-black/40">
+                                <table class="w-full text-left text-[11px]">
+                                    <thead class="bg-white/10 text-gray-300 sticky top-0">
+                                        <tr>
+                                            <th class="py-2 px-3">Nombre</th>
+                                            <th class="py-2 px-3">DNI / CUIT</th>
+                                            <th class="py-2 px-3">Teléfono</th>
+                                            <th class="py-2 px-3">Dirección</th>
+                                            <th class="py-2 px-3">Vendedor</th>
+                                            <th class="py-2 px-3">Lista Precios</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="clientes-preview-tbody" class="divide-y divide-white/5 text-gray-300"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
         </main>
 
@@ -1342,17 +1443,218 @@
             `).join('');
         }
 
-        function renderClientes() {
+        let parsedClientesImportBuffer = [];
+
+        function abrirModalImportarClientes() {
+            document.getElementById('modal-importar-clientes').classList.remove('hidden');
+            document.getElementById('clientes-preview-container').classList.add('hidden');
+            document.getElementById('clientes-file-input').value = '';
+            parsedClientesImportBuffer = [];
+        }
+
+        function cerrarModalImportarClientes() {
+            document.getElementById('modal-importar-clientes').classList.add('hidden');
+        }
+
+        async function procesarArchivoClientes(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            try {
+                const data = await file.arrayBuffer();
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const jsonRows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+                if (!jsonRows || jsonRows.length === 0) {
+                    alert('El archivo no contiene registros o tiene un formato no reconocido.');
+                    return;
+                }
+
+                parsedClientesImportBuffer = jsonRows;
+
+                // Render Preview Table
+                const titleEl = document.getElementById('clientes-preview-title');
+                const tbody = document.getElementById('clientes-preview-tbody');
+                const container = document.getElementById('clientes-preview-container');
+
+                titleEl.innerText = `📊 ${jsonRows.length} clientes detectados en el archivo`;
+                tbody.innerHTML = jsonRows.slice(0, 15).map(r => `
+                    <tr class="hover:bg-white/5">
+                        <td class="py-2 px-3 font-bold text-white">${r.Nombre || r.nombre || r.razon_social || '-'}</td>
+                        <td class="py-2 px-3 font-mono text-gray-300">${r['ID (DNI/CUIT)'] || r.cuit || r.dni_cuit || '-'}</td>
+                        <td class="py-2 px-3 font-mono text-emerald-400">${r.Telefonos || r.telefonos || r.whatsapp || '-'}</td>
+                        <td class="py-2 px-3 text-gray-300 truncate max-w-[150px]">${r.Dirección || r.direccion || r.localidad || '-'}</td>
+                        <td class="py-2 px-3 text-brand-yellow">${r.Vendedor || r.vendedor || '-'}</td>
+                        <td class="py-2 px-3 text-gray-400">${r['Listas de precios'] || r.lista_precios || '-'}</td>
+                    </tr>
+                `).join('');
+
+                container.classList.remove('hidden');
+            } catch (err) {
+                alert('Error al leer el archivo: ' + err.message);
+            }
+        }
+
+        async function confirmarImportacionClientes() {
+            if (!parsedClientesImportBuffer || parsedClientesImportBuffer.length === 0) {
+                alert('No hay registros cargados para importar.');
+                return;
+            }
+
+            const btn = document.getElementById('btn-confirmar-import-clientes');
+            const origText = btn.innerHTML;
+            btn.innerHTML = `<span class="material-symbols-outlined text-sm animate-spin">refresh</span> Procesando...`;
+            btn.disabled = true;
+
+            try {
+                const res = await fetch(`${API_URL}/crm/clientes/importar-lote`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ clientes: parsedClientesImportBuffer })
+                });
+
+                const result = await res.json();
+                if (result.success) {
+                    alert(result.mensaje);
+                    cerrarModalImportarClientes();
+                    // Refrescar lista de clientes
+                    const cRes = await fetch(`${API_URL}/crm/clientes`);
+                    if (cRes.ok) {
+                        clientesData = (await cRes.json()).clientes || [];
+                        renderClientes();
+                    }
+                } else {
+                    alert('Error en importación: ' + (result.error || 'No se completó la carga'));
+                }
+            } catch (err) {
+                alert('Error de red al enviar importación: ' + err.message);
+            } finally {
+                btn.innerHTML = origText;
+                btn.disabled = false;
+            }
+        }
+
+        function renderClientes(dataToRender = null) {
             const tbody = document.getElementById('clientes-tbody');
-            if (!clientesData || clientesData.length === 0) return;
-            tbody.innerHTML = clientesData.map(c => `
-                <tr>
-                    <td class="py-3 px-4 font-bold text-white">${c.razon_social || c.contacto_nombre}</td>
-                    <td class="py-3 px-4 font-mono">${c.whatsapp}</td>
-                    <td class="py-3 px-4 text-right font-bold text-brand-yellow">$${parseFloat(c.total_comprado || 0).toLocaleString('es-AR')}</td>
-                    <td class="py-3 px-4 text-center"><a href="https://wa.me/${c.whatsapp}" target="_blank" class="text-emerald-400 font-bold">WhatsApp</a></td>
-                </tr>
-            `).join('');
+            const badge = document.getElementById('clientes-count-badge');
+            const list = dataToRender || clientesData || [];
+
+            if (badge) badge.innerText = clientesData ? clientesData.length : 0;
+
+            // Popular filtro de vendedores si no está lleno
+            const filterVendedor = document.getElementById('clientes-filter-vendedor');
+            if (filterVendedor && clientesData && filterVendedor.options.length <= 1) {
+                const vendedoresSet = new Set();
+                clientesData.forEach(c => {
+                    if (c.estado_lead && c.estado_lead.startsWith('Vendedor:')) {
+                        vendedoresSet.add(c.estado_lead.replace('Vendedor:', '').trim());
+                    }
+                });
+                vendedoresSet.forEach(v => {
+                    const opt = document.createElement('option');
+                    opt.value = v;
+                    opt.innerText = v;
+                    filterVendedor.appendChild(opt);
+                });
+            }
+
+            if (!list || list.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-gray-500 text-xs">No se encontraron clientes que coincidan con la búsqueda.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = list.map(c => {
+                const nombre = c.razon_social || c.contacto_nombre || 'Cliente Sin Nombre';
+                const cuitVal = c.cuit || '-';
+                const waVal = c.whatsapp || '-';
+                const dirVal = c.localidad || c.provincia || '-';
+                const vendedorVal = c.estado_lead || 'Cliente Importado';
+                const tipoVal = c.tipo_cliente || 'Mayorista';
+                const waClean = waVal.replace(/[^\d]/g, '');
+
+                return `
+                    <tr class="hover:bg-white/5 transition-colors">
+                        <td class="py-3 px-4 font-bold text-white">
+                            <div>${nombre}</div>
+                            <div class="text-[10px] text-gray-400 font-normal">Tipo: ${tipoVal}</div>
+                        </td>
+                        <td class="py-3 px-4 font-mono text-gray-300">${cuitVal}</td>
+                        <td class="py-3 px-4 font-mono text-emerald-400">${waVal}</td>
+                        <td class="py-3 px-4 text-gray-300 max-w-[200px] truncate" title="${dirVal}">${dirVal}</td>
+                        <td class="py-3 px-4 text-brand-yellow font-medium">${vendedorVal}</td>
+                        <td class="py-3 px-4 text-center">
+                            <div class="flex items-center justify-center gap-2">
+                                ${waClean && !waVal.startsWith('Web_') ? `
+                                    <a href="https://wa.me/${waClean}" target="_blank" class="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 font-bold text-[11px] flex items-center gap-1 transition-all">
+                                        📲 Chat
+                                    </a>
+                                ` : ''}
+                                <button onclick="selectChatClient('${c.id}'); switchTab('chat');" class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white font-bold text-[11px] transition-all">
+                                    💬 CRM
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function filtrarClientesUI() {
+            const query = (document.getElementById('clientes-search-input')?.value || '').toLowerCase().trim();
+            const vendedorSel = document.getElementById('clientes-filter-vendedor')?.value || '';
+            const tipoSel = document.getElementById('clientes-filter-tipo')?.value || '';
+            const deudaSel = document.getElementById('clientes-filter-deuda')?.value || '';
+
+            if (!clientesData) return;
+
+            const res = clientesData.filter(c => {
+                const nombre = (c.razon_social || c.contacto_nombre || '').toLowerCase();
+                const cuit = (c.cuit || '').toLowerCase();
+                const phone = (c.whatsapp || '').toLowerCase();
+                const loc = (c.localidad || '').toLowerCase();
+                const vendedor = (c.estado_lead || '').toLowerCase();
+
+                const matchesQuery = !query || nombre.includes(query) || cuit.includes(query) || phone.includes(query) || loc.includes(query) || vendedor.includes(query);
+                const matchesVendedor = !vendedorSel || (c.estado_lead && c.estado_lead.includes(vendedorSel));
+                const matchesTipo = !tipoSel || (c.tipo_cliente === tipoSel);
+                
+                let matchesDeuda = true;
+                if (deudaSel === 'con_saldo') matchesDeuda = parseFloat(c.total_comprado || 0) > 0;
+                else if (deudaSel === 'sin_compras') matchesDeuda = parseFloat(c.total_comprado || 0) === 0;
+
+                return matchesQuery && matchesVendedor && matchesTipo && matchesDeuda;
+            });
+
+            renderClientes(res);
+        }
+
+        function exportarClientesCSV() {
+            if (!clientesData || clientesData.length === 0) {
+                alert('No hay clientes registrados para exportar.');
+                return;
+            }
+
+            const headers = ['Nombre', 'ID (DNI/CUIT)', 'Telefonos', 'Dirección', 'Tipo Cliente', 'Vendedor', 'Total Comprado'];
+            const rows = clientesData.map(c => [
+                `"${(c.razon_social || c.contacto_nombre || '').replace(/"/g, '""')}"`,
+                `"${(c.cuit || '').replace(/"/g, '""')}"`,
+                `"${(c.whatsapp || '').replace(/"/g, '""')}"`,
+                `"${(c.localidad || '').replace(/"/g, '""')}"`,
+                `"${(c.tipo_cliente || '').replace(/"/g, '""')}"`,
+                `"${(c.estado_lead || '').replace(/"/g, '""')}"`,
+                `"${c.total_comprado || 0}"`
+            ]);
+
+            const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement('a');
+            link.setAttribute('href', encodedUri);
+            link.setAttribute('download', `CLIENTES_QUIMICA_DEC_${new Date().toISOString().slice(0, 10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
 
         function switchTab(tab) {
