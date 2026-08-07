@@ -579,6 +579,31 @@ app.post('/api/crm/clientes/actualizar', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Promover Lead Web a Cliente Mayorista Oficial
+app.post('/api/crm/clientes/promover-lead', async (req, res) => {
+    try {
+        const { cliente_id, cuit, razon_social, vendedor, tipo_cliente, whatsapp } = req.body;
+        if (!cliente_id) return res.status(400).json({ error: 'ID de cliente requerido' });
+
+        const updatePayload = {
+            razon_social: razon_social ? String(razon_social).trim() : 'Cliente Mayorista',
+            contacto_nombre: razon_social ? String(razon_social).trim() : 'Cliente Mayorista',
+            cuit: cuit ? String(cuit).trim() : '',
+            tipo_cliente: tipo_cliente || 'Mayorista',
+            estado_lead: vendedor ? `Vendedor: ${vendedor}` : 'Cliente Confirmado'
+        };
+
+        if (whatsapp && !whatsapp.startsWith('Web_')) {
+            updatePayload.whatsapp = whatsapp.replace(/[^\d+]/g, '').trim();
+        }
+
+        const { data, error } = await supabase.from('clientes').update(updatePayload).eq('id', cliente_id).select().single();
+        if (error) throw error;
+
+        res.json({ success: true, mensaje: '🎉 Lead promovido a Cliente Mayorista Oficial con éxito.', cliente: data });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // Obtener mensajes de un chat específico (acepta UUID de cliente o session_id de la web)
 app.get('/api/crm/chat/mensajes/:clienteId', async (req, res) => {
     try {

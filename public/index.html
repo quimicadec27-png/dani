@@ -179,14 +179,38 @@
             <!-- TAB CHAT EN VIVO -->
             <section id="view-chat" class="hidden space-y-6">
                 <div class="glass-panel rounded-2xl p-6 min-h-[600px] flex flex-col md:flex-row gap-6">
-                    <div class="w-full md:w-1/4 space-y-4 border-r border-white/10 pr-4">
-                        <div class="flex justify-between items-center border-b border-white/10 pb-3">
-                            <h3 class="font-title text-xs font-bold uppercase text-white tracking-wider flex items-center gap-2">
-                                <span class="material-symbols-outlined text-blue-400">chat</span> Chats Abiertos
-                            </h3>
-                            <span id="chats-count-badge" class="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-xs font-bold">0</span>
+                    <div class="w-full md:w-1/4 space-y-3 border-r border-white/10 pr-4">
+                        <div class="border-b border-white/10 pb-3 space-y-2">
+                            <div class="flex justify-between items-center">
+                                <h3 class="font-title text-xs font-bold uppercase text-white tracking-wider flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-blue-400">chat</span> Historial de Chats
+                                </h3>
+                                <span id="chats-count-badge" class="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-xs font-bold">0</span>
+                            </div>
+
+                            <!-- Filtros de Fecha & Búsqueda para Chat -->
+                            <div class="space-y-2 pt-1">
+                                <input type="text" id="chat-search-input" oninput="filtrarConversacionesChat()" placeholder="🔍 Buscar por cliente..." class="w-full bg-black/40 border border-white/10 rounded-lg px-2.5 py-1.5 text-[11px] text-white placeholder-gray-500 focus:outline-none focus:border-brand-yellow">
+                                
+                                <select id="chat-filter-mes" onchange="filtrarConversacionesChat()" class="w-full bg-black/40 border border-white/10 rounded-lg px-2 py-1.5 text-[11px] text-white focus:outline-none focus:border-brand-yellow">
+                                    <option value="">📅 Todos los Meses</option>
+                                    <option value="2026-08">Agosto 2026</option>
+                                    <option value="2026-07">Julio 2026</option>
+                                    <option value="2026-06">Junio 2026</option>
+                                </select>
+                                
+                                <div class="flex items-center gap-1.5">
+                                    <input type="date" id="chat-filter-desde" onchange="filtrarConversacionesChat()" title="Fecha Desde" class="w-1/2 bg-black/40 border border-white/10 rounded-lg px-2 py-1 text-[10px] text-gray-300 focus:outline-none">
+                                    <span class="text-gray-500 text-[10px]">-</span>
+                                    <input type="date" id="chat-filter-hasta" onchange="filtrarConversacionesChat()" title="Fecha Hasta" class="w-1/2 bg-black/40 border border-white/10 rounded-lg px-2 py-1 text-[10px] text-gray-300 focus:outline-none">
+                                </div>
+
+                                <button onclick="exportarReporteChatsExcel()" class="w-full py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 font-bold text-[10px] flex items-center justify-center gap-1 transition-all">
+                                    <span class="material-symbols-outlined text-[14px]">download</span> Exportar Chats a Excel (.xlsx)
+                                </button>
+                            </div>
                         </div>
-                        <div id="conversaciones-list" class="space-y-2 max-h-[500px] overflow-y-auto"></div>
+                        <div id="conversaciones-list" class="space-y-2 max-h-[420px] overflow-y-auto"></div>
                     </div>
 
                     <div class="w-full md:w-1/4 space-y-4 border-r border-white/10 pr-4">
@@ -204,7 +228,10 @@
                         <div class="flex justify-between items-center border-b border-white/10 pb-3">
                             <h3 id="chat-header-title" class="font-title text-xs font-bold uppercase text-white tracking-wider">Conversación en Vivo</h3>
                             <div class="flex items-center gap-2">
-                                <span class="text-xs text-gray-400">Bot Dani:</span>
+                                <button onclick="exportarChatActualTXT()" title="Descargar conversación como TXT" class="px-2.5 py-1 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 text-[11px] font-bold border border-white/10 flex items-center gap-1 transition-all">
+                                    <span class="material-symbols-outlined text-[14px]">download</span> TXT
+                                </button>
+                                <span class="text-xs text-gray-400">Bot:</span>
                                 <button id="toggle-bot-btn" onclick="toggleBotStatus()" class="px-3 py-1 rounded-xl text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                                     🤖 Activo
                                 </button>
@@ -868,10 +895,9 @@
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <div>
                             <h2 class="font-title text-lg font-bold uppercase text-white tracking-wider flex items-center gap-2">
-                                <span class="material-symbols-outlined text-brand-yellow">groups</span> Directorio de Clientes Mayoristas
-                                <span id="clientes-count-badge" class="px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-brand-yellow/20 text-brand-yellow">0</span>
+                                <span class="material-symbols-outlined text-brand-yellow">groups</span> Directorio de Clientes & Prospectos
                             </h2>
-                            <p class="text-xs text-gray-400 mt-1">Base de datos unificada de clientes, importación desde Excel/CSV y asignación de vendedores.</p>
+                            <p class="text-xs text-gray-400 mt-1">Gestión separada de Clientes Mayoristas Oficiales e interacciones de Prospectos Web.</p>
                         </div>
                         <div class="flex flex-wrap items-center gap-3">
                             <button onclick="abrirModalImportarClientes()" class="px-4 py-2.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 font-bold text-xs flex items-center gap-2 transition-all shadow-lg hover:scale-105">
@@ -881,6 +907,18 @@
                                 <span class="material-symbols-outlined text-sm">download</span> Exportar CSV
                             </button>
                         </div>
+                    </div>
+
+                    <!-- Sub-Tabs Selector -->
+                    <div class="flex flex-wrap items-center gap-3 border-b border-white/10 pb-4">
+                        <button id="subtab-btn-oficiales" onclick="switchClientesSubtab('oficiales')" class="px-4 py-2.5 rounded-xl text-xs font-bold transition-all bg-brand-yellow text-primary-dark shadow-md flex items-center gap-2">
+                            <span class="material-symbols-outlined text-sm">badge</span> 🏢 Clientes Mayoristas Oficiales
+                            <span id="badge-count-oficiales" class="px-2 py-0.5 rounded-full text-[10px] bg-black/30 font-black">0</span>
+                        </button>
+                        <button id="subtab-btn-prospectos" onclick="switchClientesSubtab('prospectos')" class="px-4 py-2.5 rounded-xl text-xs font-bold transition-all bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 border border-white/10 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-sm">travel_explore</span> 🌐 Prospectos & Leads Web / Chat
+                            <span id="badge-count-prospectos" class="px-2 py-0.5 rounded-full text-[10px] bg-blue-500/20 text-blue-400 font-black">0</span>
+                        </button>
                     </div>
 
                     <!-- Search & Filter Bar -->
@@ -981,6 +1019,50 @@
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- MODAL PROMOVER LEAD A CLIENTE MAYORISTA -->
+            <div id="modal-promover-lead" class="fixed inset-0 z-[99999] bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+                <div class="glass-panel p-6 md:p-8 rounded-2xl max-w-md w-full space-y-6 relative border border-brand-yellow/30 shadow-2xl">
+                    <div class="flex justify-between items-center border-b border-white/10 pb-4">
+                        <h3 class="font-title text-sm font-bold uppercase text-white flex items-center gap-2">
+                            <span class="material-symbols-outlined text-brand-yellow">verified</span> Promover a Cliente Mayorista
+                        </h3>
+                        <button onclick="cerrarModalPromoverLead()" class="text-gray-400 hover:text-white">
+                            <span class="material-symbols-outlined">close</span>
+                        </button>
+                    </div>
+
+                    <form onsubmit="ejecutarPromocionLead(event)" class="space-y-4 text-xs">
+                        <input type="hidden" id="promover-cliente-id">
+                        
+                        <div>
+                            <label class="block text-gray-300 font-bold mb-1">Nombre / Razón Social *</label>
+                            <input type="text" id="promover-nombre" required placeholder="Ej: Comercializadora Sur S.R.L." class="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white focus:border-brand-yellow focus:outline-none">
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-300 font-bold mb-1">DNI / CUIT *</label>
+                            <input type="text" id="promover-cuit" required placeholder="Ej: 30-71123456-8" class="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white focus:border-brand-yellow focus:outline-none">
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-300 font-bold mb-1">WhatsApp / Teléfono Real</label>
+                            <input type="text" id="promover-whatsapp" placeholder="Ej: 5493442509827" class="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white focus:border-brand-yellow focus:outline-none">
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-300 font-bold mb-1">Vendedor Asignado</label>
+                            <input type="text" id="promover-vendedor" placeholder="Ej: MICAELA SILVA" class="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white focus:border-brand-yellow focus:outline-none">
+                        </div>
+
+                        <div class="pt-2">
+                            <button type="submit" id="btn-submit-promover" class="w-full py-3 rounded-xl bg-brand-yellow hover:bg-yellow-400 text-primary-dark font-title text-xs font-bold uppercase tracking-wider transition-all shadow-lg shadow-brand-yellow/20">
+                                🌟 Confirmar y Promover a Cliente Oficial
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
 
@@ -1091,16 +1173,19 @@
             }
         }
 
-        function renderConversacionesList() {
-            const list = document.getElementById('conversaciones-list');
-            document.getElementById('chats-count-badge').innerText = conversacionesData.length;
+        let currentChatMessages = [];
 
-            if (conversacionesData.length === 0) {
-                list.innerHTML = `<div class="text-center py-6 text-gray-500 text-xs">Sin chats activos</div>`;
+        function renderConversacionesList(dataToRender = null) {
+            const list = document.getElementById('conversaciones-list');
+            const targetData = dataToRender || conversacionesData || [];
+            document.getElementById('chats-count-badge').innerText = targetData.length;
+
+            if (targetData.length === 0) {
+                list.innerHTML = `<div class="text-center py-8 text-gray-500 text-xs">Sin chats que coincidan con la búsqueda o rango de fechas.</div>`;
                 return;
             }
 
-            list.innerHTML = conversacionesData.map(c => {
+            list.innerHTML = targetData.map(c => {
                 const fechaStr = formatFechaAR(c.ultimo_mensaje_el || c.creado_el);
                 const esLeadWeb = c.whatsapp && c.whatsapp.startsWith('Web_');
 
@@ -1114,11 +1199,117 @@
                         </div>
                         <div class="flex justify-between items-center mt-2">
                             <span class="text-[10px] text-gray-400 font-mono">${esLeadWeb ? '🌐 Chat Web' : c.whatsapp}</span>
-                            <span class="text-[9px] text-gray-500 font-bold">${fechaStr}</span>
+                            <span class="text-[9px] text-gray-400 font-bold" title="${fechaStr}">${fechaStr}</span>
                         </div>
                     </div>
                 `;
             }).join('');
+        }
+
+        function filtrarConversacionesChat() {
+            const query = (document.getElementById('chat-search-input')?.value || '').toLowerCase().trim();
+            const mesSel = document.getElementById('chat-filter-mes')?.value || '';
+            const desdeSel = document.getElementById('chat-filter-desde')?.value || '';
+            const hastaSel = document.getElementById('chat-filter-hasta')?.value || '';
+
+            if (!conversacionesData) return;
+
+            const res = conversacionesData.filter(c => {
+                const nombre = (c.razon_social || '').toLowerCase();
+                const phone = (c.whatsapp || '').toLowerCase();
+                const matchesQuery = !query || nombre.includes(query) || phone.includes(query);
+
+                const fechaObj = new Date(c.ultimo_mensaje_el || c.creado_el);
+                let matchesMes = true;
+                if (mesSel) {
+                    const yyyymm = fechaObj.toISOString().slice(0, 7);
+                    matchesMes = (yyyymm === mesSel);
+                }
+
+                let matchesRango = true;
+                if (desdeSel) {
+                    const dObj = new Date(desdeSel + 'T00:00:00');
+                    if (fechaObj < dObj) matchesRango = false;
+                }
+                if (hastaSel) {
+                    const hObj = new Date(hastaSel + 'T23:59:59');
+                    if (fechaObj > hObj) matchesRango = false;
+                }
+
+                return matchesQuery && matchesMes && matchesRango;
+            });
+
+            renderConversacionesList(res);
+        }
+
+        function exportarReporteChatsExcel() {
+            if (!conversacionesData || conversacionesData.length === 0) {
+                alert('No hay conversaciones para exportar.');
+                return;
+            }
+
+            const query = (document.getElementById('chat-search-input')?.value || '').toLowerCase().trim();
+            const mesSel = document.getElementById('chat-filter-mes')?.value || '';
+            const desdeSel = document.getElementById('chat-filter-desde')?.value || '';
+            const hastaSel = document.getElementById('chat-filter-hasta')?.value || '';
+
+            const listToExport = conversacionesData.filter(c => {
+                const nombre = (c.razon_social || '').toLowerCase();
+                const phone = (c.whatsapp || '').toLowerCase();
+                const matchesQuery = !query || nombre.includes(query) || phone.includes(query);
+
+                const fechaObj = new Date(c.ultimo_mensaje_el || c.creado_el);
+                let matchesMes = true;
+                if (mesSel) matchesMes = (fechaObj.toISOString().slice(0, 7) === mesSel);
+
+                let matchesRango = true;
+                if (desdeSel && fechaObj < new Date(desdeSel + 'T00:00:00')) matchesRango = false;
+                if (hastaSel && fechaObj > new Date(hastaSel + 'T23:59:59')) matchesRango = false;
+
+                return matchesQuery && matchesMes && matchesRango;
+            });
+
+            const rows = listToExport.map(c => ({
+                'Nombre / Lead': c.razon_social || c.contacto_nombre || 'Cliente Web',
+                'WhatsApp / Identificador': c.whatsapp || '-',
+                'Última Interacción': formatFechaAR(c.ultimo_mensaje_el || c.creado_el),
+                'Estado Bot': c.bot_pausado ? 'Pausado por Vendedor' : 'Bot Dani Activo',
+                'Último Mensaje': c.ultimo_texto || '-'
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(rows);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Reporte de Chats');
+            XLSX.writeFile(workbook, `REPORTE_CHATS_QUIMICA_DEC_${new Date().toISOString().slice(0, 10)}.xlsx`);
+        }
+
+        function exportarChatActualTXT() {
+            if (!selectedClienteObj || !currentChatMessages || currentChatMessages.length === 0) {
+                alert('Seleccioná un chat activo con mensajes para exportar.');
+                return;
+            }
+
+            const clienteNombre = selectedClienteObj.razon_social || selectedClienteObj.contacto_nombre || 'Cliente';
+            let txt = `========================================================\n`;
+            txt += `HISTORIAL DE CONVERSACIÓN - QUÍMICA DEC B2B\n`;
+            txt += `Cliente: ${clienteNombre}\n`;
+            txt += `WhatsApp / ID: ${selectedClienteObj.whatsapp || '-'}\n`;
+            txt += `Fecha de Exportación: ${new Date().toLocaleString('es-AR')}\n`;
+            txt += `========================================================\n\n`;
+
+            currentChatMessages.forEach(m => {
+                const fecha = formatFechaAR(m.creado_el);
+                const emisor = m.emisor === 'cliente' ? 'CLIENTE' : m.emisor === 'bot' ? 'BOT DANI' : 'VENDEDOR HUMANO';
+                txt += `[${fecha}] ${emisor}:\n${m.texto}\n\n`;
+            });
+
+            const blob = new Blob([txt], { type: 'text/plain;charset=utf-8' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `CHAT_${clienteNombre.replace(/[^\w]/g, '_')}_${new Date().toISOString().slice(0, 10)}.txt`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
 
         async function selectChatClient(clienteId) {
@@ -1536,12 +1727,105 @@
             }
         }
 
+        let currentClientesSubtab = 'oficiales';
+
+        function switchClientesSubtab(subtab) {
+            currentClientesSubtab = subtab;
+            const btnOficiales = document.getElementById('subtab-btn-oficiales');
+            const btnProspectos = document.getElementById('subtab-btn-prospectos');
+
+            if (subtab === 'oficiales') {
+                btnOficiales.className = "px-4 py-2.5 rounded-xl text-xs font-bold transition-all bg-brand-yellow text-primary-dark shadow-md flex items-center gap-2";
+                btnProspectos.className = "px-4 py-2.5 rounded-xl text-xs font-bold transition-all bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 border border-white/10 flex items-center gap-2";
+            } else {
+                btnProspectos.className = "px-4 py-2.5 rounded-xl text-xs font-bold transition-all bg-blue-500 text-white shadow-md flex items-center gap-2";
+                btnOficiales.className = "px-4 py-2.5 rounded-xl text-xs font-bold transition-all bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 border border-white/10 flex items-center gap-2";
+            }
+
+            filtrarClientesUI();
+        }
+
+        function abrirModalPromoverLead(id, nombre, phone) {
+            document.getElementById('modal-promover-lead').classList.remove('hidden');
+            document.getElementById('promover-cliente-id').value = id;
+            document.getElementById('promover-nombre').value = nombre.startsWith('Lead Web') || nombre.startsWith('Web_') ? '' : nombre;
+            document.getElementById('promover-whatsapp').value = phone.startsWith('Web_') ? '' : phone;
+            document.getElementById('promover-cuit').value = '';
+            document.getElementById('promover-vendedor').value = '';
+        }
+
+        function cerrarModalPromoverLead() {
+            document.getElementById('modal-promover-lead').classList.add('hidden');
+        }
+
+        async function ejecutarPromocionLead(e) {
+            e.preventDefault();
+            const clienteId = document.getElementById('promover-cliente-id').value;
+            const nombre = document.getElementById('promover-nombre').value.trim();
+            const cuit = document.getElementById('promover-cuit').value.trim();
+            const wa = document.getElementById('promover-whatsapp').value.trim();
+            const vendedor = document.getElementById('promover-vendedor').value.trim();
+
+            const btn = document.getElementById('btn-submit-promover');
+            const origText = btn.innerHTML;
+            btn.innerHTML = `<span class="material-symbols-outlined text-sm animate-spin">refresh</span> Procesando...`;
+            btn.disabled = true;
+
+            try {
+                const res = await fetch(`${API_URL}/crm/clientes/promover-lead`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        cliente_id: clienteId,
+                        razon_social: nombre,
+                        cuit: cuit,
+                        whatsapp: wa,
+                        vendedor: vendedor,
+                        tipo_cliente: 'Mayorista'
+                    })
+                });
+
+                const result = await res.json();
+                if (result.success) {
+                    alert(result.mensaje);
+                    cerrarModalPromoverLead();
+                    refreshData();
+                } else {
+                    alert('Error: ' + (result.error || 'No se pudo promover el lead.'));
+                }
+            } catch (err) {
+                alert('Error de conexión: ' + err.message);
+            } finally {
+                btn.innerHTML = origText;
+                btn.disabled = false;
+            }
+        }
+
         function renderClientes(dataToRender = null) {
             const tbody = document.getElementById('clientes-tbody');
-            const badge = document.getElementById('clientes-count-badge');
-            const list = dataToRender || clientesData || [];
+            const fullList = dataToRender || clientesData || [];
 
-            if (badge) badge.innerText = clientesData ? clientesData.length : 0;
+            // Separación entre Clientes Mayoristas Oficiales vs Prospectos Web
+            const oficialesList = (clientesData || []).filter(c => {
+                const esLeadWeb = (c.whatsapp && c.whatsapp.startsWith('Web_')) || (c.razon_social && c.razon_social.startsWith('Lead Web #')) || (c.estado_lead === 'Nuevo' && !c.cuit);
+                return !esLeadWeb;
+            });
+
+            const prospectosList = (clientesData || []).filter(c => {
+                const esLeadWeb = (c.whatsapp && c.whatsapp.startsWith('Web_')) || (c.razon_social && c.razon_social.startsWith('Lead Web #')) || (c.estado_lead === 'Nuevo' && !c.cuit);
+                return esLeadWeb;
+            });
+
+            const badgeOficiales = document.getElementById('badge-count-oficiales');
+            const badgeProspectos = document.getElementById('badge-count-prospectos');
+            if (badgeOficiales) badgeOficiales.innerText = oficialesList.length;
+            if (badgeProspectos) badgeProspectos.innerText = prospectosList.length;
+
+            // Filtrar la lista actual según la subpestaña seleccionada
+            const list = fullList.filter(c => {
+                const esLeadWeb = (c.whatsapp && c.whatsapp.startsWith('Web_')) || (c.razon_social && c.razon_social.startsWith('Lead Web #')) || (c.estado_lead === 'Nuevo' && !c.cuit);
+                return currentClientesSubtab === 'oficiales' ? !esLeadWeb : esLeadWeb;
+            });
 
             // Popular filtro de vendedores si no está lleno
             const filterVendedor = document.getElementById('clientes-filter-vendedor');
@@ -1561,7 +1845,7 @@
             }
 
             if (!list || list.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-gray-500 text-xs">No se encontraron clientes que coincidan con la búsqueda.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-gray-500 text-xs">No se encontraron ${currentClientesSubtab === 'oficiales' ? 'clientes oficiales' : 'prospectos web'} en esta categoría.</td></tr>`;
                 return;
             }
 
@@ -1570,9 +1854,10 @@
                 const cuitVal = c.cuit || '-';
                 const waVal = c.whatsapp || '-';
                 const dirVal = c.localidad || c.provincia || '-';
-                const vendedorVal = c.estado_lead || 'Cliente Importado';
+                const vendedorVal = c.estado_lead || (currentClientesSubtab === 'oficiales' ? 'Cliente Importado' : 'Lead Web Nuevo');
                 const tipoVal = c.tipo_cliente || 'Mayorista';
                 const waClean = waVal.replace(/[^\d]/g, '');
+                const esProspecto = (currentClientesSubtab === 'prospectos');
 
                 return `
                     <tr class="hover:bg-white/5 transition-colors">
@@ -1586,6 +1871,11 @@
                         <td class="py-3 px-4 text-brand-yellow font-medium">${vendedorVal}</td>
                         <td class="py-3 px-4 text-center">
                             <div class="flex items-center justify-center gap-2">
+                                ${esProspecto ? `
+                                    <button onclick="abrirModalPromoverLead('${c.id}', '${(nombre||'').replace(/'/g, "\\'")}', '${waVal}')" class="px-2.5 py-1 rounded-lg bg-brand-yellow/20 hover:bg-brand-yellow/30 text-brand-yellow font-bold text-[11px] flex items-center gap-1 border border-brand-yellow/30 transition-all shadow">
+                                        🌟 Promover a Cliente
+                                    </button>
+                                ` : ''}
                                 ${waClean && !waVal.startsWith('Web_') ? `
                                     <a href="https://wa.me/${waClean}" target="_blank" class="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 font-bold text-[11px] flex items-center gap-1 transition-all">
                                         📲 Chat
