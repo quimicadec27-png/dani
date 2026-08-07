@@ -3407,11 +3407,6 @@
                 container.innerHTML = `<div class="col-span-full text-center py-6 text-red-400 text-xs font-bold">❌ Error: ${e.message}</div>`;
             }
         }
-                }).join('');
-            } catch(e) {
-                container.innerHTML = `<div class="col-span-full text-center py-6 text-red-400 text-xs font-bold">❌ Error: ${e.message}</div>`;
-            }
-        }
 
         async function guardarEdicionCombo(sku) {
             const name = document.getElementById(`combo-name-${sku}`).value.trim();
