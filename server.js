@@ -37,6 +37,10 @@ app.use(express.static(path.join(__dirname, 'public'), {
     }
 }));
 
+app.get('/favicon.ico', (req, res) => {
+    res.redirect('https://quimicadec.com/wp-content/uploads/2026/04/logo_quimicadec.png');
+});
+
 // Inicialización de Clientes
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, {
     auth: { persistSession: false }
