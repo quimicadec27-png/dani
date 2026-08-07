@@ -494,9 +494,16 @@
                                     <div class="p-4 bg-purple-950/20 border border-purple-500/30 rounded-xl space-y-4">
                                         <p class="text-xs text-purple-200">Subí la <strong>Portada Principal</strong> del combo y todas las <strong>Imágenes de la Galería</strong> de un solo viaje sin mezclar ni sobrescribir.</p>
 
-                                        <div>
-                                            <label class="text-[10px] font-bold text-purple-300 uppercase block mb-1">SKU del Combo o Producto:</label>
-                                            <input type="text" id="combo-sku-input" placeholder="Ej: QD-CMB-PST-001" class="w-full bg-white/10 border border-purple-500/40 text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-purple-400 placeholder-gray-400 font-mono">
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                             <div class="relative">
+                                                 <label class="text-[10px] font-bold text-purple-300 uppercase block mb-1">🔍 Buscar Combo o Producto por Nombre:</label>
+                                                 <input type="text" id="combo-name-search-input" oninput="buscarProductoParaComboUI(this.value)" placeholder="✏️ Escribí nombre (ej: Combo, Sahumerio)..." class="w-full bg-white/10 border border-purple-500/40 text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-purple-400 placeholder-gray-400 font-bold">
+                                                 <div id="combo-search-results" class="hidden absolute top-full left-0 right-0 z-50 bg-slate-900 border border-purple-500/40 rounded-xl shadow-2xl overflow-hidden max-h-48 overflow-y-auto mt-1"></div>
+                                             </div>
+                                             <div>
+                                                 <label class="text-[10px] font-bold text-purple-300 uppercase block mb-1">SKU Asignado:</label>
+                                                 <input type="text" id="combo-sku-input" placeholder="Ej: QD-CMB-PST-001" class="w-full bg-white/10 border border-purple-500/40 text-amber-300 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-purple-400 font-mono font-bold">
+                                             </div>
                                         </div>
 
                                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -541,9 +548,12 @@
                                                     <label class="text-[10px] font-bold text-gray-400 block mb-1">SKU del Combo:</label>
                                                     <input type="text" id="autolink-combo-sku" placeholder="Ej: QD-CMB-PST-001" class="w-full bg-slate-950/80 border border-indigo-500/40 text-white rounded-lg px-3 py-1.5 text-xs font-mono">
                                                 </div>
-                                                <div class="md:col-span-2">
-                                                    <label class="text-[10px] font-bold text-gray-400 block mb-1">SKUs Incluidos (separados por coma):</label>
-                                                    <input type="text" id="autolink-skus-input" placeholder="Ej: QD-DTRG-1001, QD-DES-2002, QD-JAB-3003" class="w-full bg-slate-950/80 border border-indigo-500/40 text-white rounded-lg px-3 py-1.5 text-xs font-mono">
+                                                <div class="md:col-span-2 relative">
+                                                    <label class="text-[10px] font-bold text-indigo-300 block mb-1">🔍 Buscar Producto por Nombre para agregar:</label>
+                                                    <input type="text" id="autolink-prod-search-input" oninput="buscarProductoParaAutoLinkUI(this.value)" placeholder="✏️ Escribí nombre para autocompletar (ej: Sahumerio, Detergente)..." class="w-full bg-slate-950/80 border border-indigo-500/40 text-white rounded-lg px-3 py-1.5 text-xs font-bold mb-1 focus:outline-none focus:border-indigo-400">
+                                                    <div id="autolink-search-results" class="hidden absolute top-full left-0 right-0 z-50 bg-slate-900 border border-indigo-500/40 rounded-xl shadow-2xl overflow-hidden max-h-48 overflow-y-auto"></div>
+                                                    <label class="text-[9px] font-bold text-gray-400 block mt-1">SKUs Incluidos (separados por coma):</label>
+                                                    <input type="text" id="autolink-skus-input" placeholder="Ej: QD-DTRG-1001, QD-DES-2002, QD-JAB-3003" class="w-full bg-slate-950/80 border border-indigo-500/40 text-amber-300 rounded-lg px-3 py-1.5 text-xs font-mono">
                                                 </div>
                                             </div>
                                             <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
@@ -3080,6 +3090,107 @@
             document.getElementById('oferta-regular-price-input').value = p.regular_price || '';
             document.getElementById('oferta-sale-price-input').value = Math.round(parseFloat(p.regular_price || 0) * 0.85); // 15% OFF sugerido
             document.getElementById('oferta-search-results').classList.add('hidden');
+        }
+
+        // Buscador de productos/combos para Portada de Combo
+        let comboSearchTimer = null;
+        async function buscarProductoParaComboUI(val) {
+            clearTimeout(comboSearchTimer);
+            const resultsContainer = document.getElementById('combo-search-results');
+            if (!resultsContainer) return;
+
+            const cleanVal = (val || '').trim();
+            if (!cleanVal || cleanVal.length < 2) {
+                resultsContainer.classList.add('hidden');
+                return;
+            }
+
+            comboSearchTimer = setTimeout(async () => {
+                try {
+                    const res = await fetch(`${API_URL}/products/search?q=${encodeURIComponent(cleanVal)}`);
+                    const data = await res.json();
+                    if (data.success && data.products && data.products.length > 0) {
+                        window.currentComboProducts = data.products;
+                        resultsContainer.innerHTML = data.products.map((p, idx) => `
+                            <div onclick="selectProdForComboUI(${idx})" class="p-2.5 hover:bg-purple-500/20 cursor-pointer flex items-center justify-between transition-colors text-xs">
+                                <div class="flex items-center gap-2.5">
+                                    <img src="${p.image_url || ''}" class="w-7 h-7 object-cover rounded border border-white/10 bg-black/40">
+                                    <div>
+                                        <div class="font-bold text-white">${p.name}</div>
+                                        <div class="text-[10px] text-purple-300 font-mono">SKU: ${p.sku}</div>
+                                    </div>
+                                </div>
+                                <span class="font-bold text-amber-300">$${parseFloat(p.regular_price || 0).toLocaleString('es-AR')}</span>
+                            </div>
+                        `).join('');
+                        resultsContainer.classList.remove('hidden');
+                    } else {
+                        resultsContainer.innerHTML = `<div class="p-2.5 text-xs text-gray-400 text-center">No se encontraron productos.</div>`;
+                        resultsContainer.classList.remove('hidden');
+                    }
+                } catch(e) {}
+            }, 300);
+        }
+
+        function selectProdForComboUI(idx) {
+            const p = (window.currentComboProducts || [])[idx];
+            if (!p) return;
+            document.getElementById('combo-sku-input').value = p.sku;
+            document.getElementById('combo-name-search-input').value = p.name;
+            document.getElementById('combo-search-results').classList.add('hidden');
+        }
+
+        // Buscador de productos para Auto-Link SKUs
+        let autolinkSearchTimer = null;
+        async function buscarProductoParaAutoLinkUI(val) {
+            clearTimeout(autolinkSearchTimer);
+            const resultsContainer = document.getElementById('autolink-search-results');
+            if (!resultsContainer) return;
+
+            const cleanVal = (val || '').trim();
+            if (!cleanVal || cleanVal.length < 2) {
+                resultsContainer.classList.add('hidden');
+                return;
+            }
+
+            autolinkSearchTimer = setTimeout(async () => {
+                try {
+                    const res = await fetch(`${API_URL}/products/search?q=${encodeURIComponent(cleanVal)}`);
+                    const data = await res.json();
+                    if (data.success && data.products && data.products.length > 0) {
+                        window.currentAutoLinkProducts = data.products;
+                        resultsContainer.innerHTML = data.products.map((p, idx) => `
+                            <div onclick="selectProdForAutoLinkUI(${idx})" class="p-2.5 hover:bg-indigo-500/20 cursor-pointer flex items-center justify-between transition-colors text-xs">
+                                <div class="flex items-center gap-2.5">
+                                    <img src="${p.image_url || ''}" class="w-7 h-7 object-cover rounded border border-white/10 bg-black/40">
+                                    <div>
+                                        <div class="font-bold text-white">${p.name}</div>
+                                        <div class="text-[10px] text-indigo-300 font-mono">SKU: ${p.sku}</div>
+                                    </div>
+                                </div>
+                                <span class="font-bold text-emerald-400">+ Agregar SKU</span>
+                            </div>
+                        `).join('');
+                        resultsContainer.classList.remove('hidden');
+                    } else {
+                        resultsContainer.innerHTML = `<div class="p-2.5 text-xs text-gray-400 text-center">No se encontraron productos.</div>`;
+                        resultsContainer.classList.remove('hidden');
+                    }
+                } catch(e) {}
+            }, 300);
+        }
+
+        function selectProdForAutoLinkUI(idx) {
+            const p = (window.currentAutoLinkProducts || [])[idx];
+            if (!p) return;
+            const input = document.getElementById('autolink-skus-input');
+            const currentSkus = input.value.split(',').map(s => s.trim()).filter(s => s.length > 0);
+            if (!currentSkus.includes(p.sku)) {
+                currentSkus.push(p.sku);
+            }
+            input.value = currentSkus.join(', ');
+            document.getElementById('autolink-prod-search-input').value = '';
+            document.getElementById('autolink-search-results').classList.add('hidden');
         }
 
         // =========================================================================

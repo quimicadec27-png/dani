@@ -1125,21 +1125,32 @@ app.get('/api/products/all', async (req, res) => {
     try {
         let { data, error } = await supabase
             .from('dec_products')
-            .select('id, name, sku, regular_price, stock, image_url, stock_status')
+            .select('id, name, sku, price, stock, image_url, stock_status')
             .order('name', { ascending: true })
-            .limit(200);
+            .limit(2000);
 
         if (error || !data || data.length === 0) {
-            const wcUrl = 'https://quimicadec.com/?qdec_api=search_product&q=a';
+            const wcUrl = 'https://quimicadec.com/?qdec_api=search_product&secret_key=qdec_crm_sec_2026&q=a';
             const wcRes = await fetch(wcUrl);
-            const wcData = await wcRes.json();
+            const wcData = await wcRes.json().catch(() => ({}));
             if (wcData && wcData.products) {
                 return res.json({ success: true, count: wcData.products.length, products: wcData.products });
             }
             return res.json({ success: true, count: 0, products: [] });
         }
 
-        res.json({ success: true, count: data.length, products: data });
+        const formatted = data.map(p => ({
+            id: p.id,
+            name: p.name,
+            sku: p.sku,
+            price: p.price || 0,
+            regular_price: p.price || 0,
+            stock: p.stock,
+            image_url: p.image_url,
+            stock_status: p.stock_status
+        }));
+
+        res.json({ success: true, count: formatted.length, products: formatted });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
     }
@@ -1157,26 +1168,36 @@ app.get('/api/products/search', async (req, res) => {
             return res.json({ success: true, count: 0, products: [] });
         }
 
-        // 1. Consultar Supabase dec_products
+        // 1. Consultar Supabase dec_products (columna es price, no regular_price)
         let { data, error } = await supabase
             .from('dec_products')
-            .select('id, name, sku, regular_price, stock, image_url, stock_status')
+            .select('id, name, sku, price, stock, image_url, stock_status')
             .or(`name.ilike.%${query}%,sku.ilike.%${query}%`)
-            .limit(20);
+            .limit(30);
 
         if (error) {
             console.error('Error buscando en Supabase:', error.message);
             data = [];
         }
 
-        // Si Supabase trajo resultados, responder
+        // Si Supabase trajo resultados, responder formateando regular_price
         if (data && data.length > 0) {
-            return res.json({ success: true, count: data.length, products: data });
+            const formatted = data.map(p => ({
+                id: p.id,
+                name: p.name,
+                sku: p.sku,
+                price: p.price || 0,
+                regular_price: p.price || 0,
+                stock: p.stock,
+                image_url: p.image_url,
+                stock_status: p.stock_status
+            }));
+            return res.json({ success: true, count: formatted.length, products: formatted });
         }
 
         // 2. Fallback: Consultar directamente WooCommerce si no está en Supabase
         try {
-            const wcUrl = `https://quimicadec.com/?qdec_api=search_product&q=${encodeURIComponent(query)}`;
+            const wcUrl = `https://quimicadec.com/?qdec_api=search_product&secret_key=qdec_crm_sec_2026&q=${encodeURIComponent(query)}`;
             const wcRes = await fetch(wcUrl);
             if (wcRes.ok) {
                 const wcData = await wcRes.json();
