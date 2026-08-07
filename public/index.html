@@ -3740,44 +3740,6 @@
             reader.readAsText(file);
         }
 
-        async function subirBannerSeccion(categoryKey) {
-            const fileInput = document.getElementById(`banner-file-${categoryKey}`);
-            const file = fileInput?.files[0];
-            const resDiv = document.getElementById('banner-upload-res');
-
-            if (!file) {
-                alert('⚠️ Seleccioná una imagen para el banner primero.');
-                return;
-            }
-
-            resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-cyan-500/40 bg-cyan-500/10 text-cyan-300';
-            resDiv.innerText = `⏳ Subiendo banner para ${categoryKey} y actualizando la web...`;
-            resDiv.classList.remove('hidden');
-
-            try {
-                const base64 = await readFileAsBase64(file);
-                const resp = await fetch(`${API_URL}/categories/upload-banner`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        categoryKey: categoryKey,
-                        imageBase64: base64,
-                        filename: `banner_${categoryKey}_${Date.now()}.${file.name.split('.').pop()}`
-                    })
-                });
-                const data = await resp.json();
-                if (data.success) {
-                    resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-300';
-                    resDiv.innerText = `🎉 ¡Banner de ${categoryKey} actualizado con éxito en WordPress y en el catálogo web!`;
-                } else {
-                    resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-red-500/40 bg-red-500/10 text-red-400';
-                    resDiv.innerText = `❌ Error: ${data.error || 'No se pudo actualizar el banner.'}`;
-                }
-            } catch(e) {
-                resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-red-500/40 bg-red-500/10 text-red-400';
-                resDiv.innerText = `❌ Error: ${e.message}`;
-            }
-        }
 
         async function cargarVisorOfertas() {
             const container = document.getElementById('visor-ofertas-container');
