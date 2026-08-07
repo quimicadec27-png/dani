@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Química DEC — Panel CRM Mayorista B2B</title>
     <link rel="icon" href="https://quimicadec.com/wp-content/uploads/2026/04/logo_quimicadec.png" type="image/png">
     <link rel="shortcut icon" href="https://quimicadec.com/wp-content/uploads/2026/04/logo_quimicadec.png" type="image/png">
@@ -2866,11 +2869,76 @@
             renderBannersGridUI(val);
         }
 
+        function abrirModalBanner(key, name) {
+            const modal = document.getElementById('banner-progress-modal');
+            if (!modal) return;
+            const catObj = ALL_CATEGORIES_BANNERS.find(c => c.key === key);
+            
+            const iconEl = document.getElementById('modal-cat-icon');
+            if (iconEl) iconEl.innerText = catObj ? catObj.icon : 'collections_bookmark';
+            
+            const titleEl = document.getElementById('modal-cat-title');
+            if (titleEl) titleEl.innerText = `Actualizando Banner: ${name}`;
+
+            const keyEl = document.getElementById('modal-cat-key');
+            if (keyEl) keyEl.innerText = key;
+
+            const stepEl = document.getElementById('modal-step-text');
+            if (stepEl) stepEl.innerText = '⏳ Paso 1/4 (25%): Leyendo archivo local...';
+
+            const percentEl = document.getElementById('modal-percent-text');
+            if (percentEl) percentEl.innerText = '25%';
+
+            const barEl = document.getElementById('modal-progress-bar');
+            if (barEl) barEl.style.width = '25%';
+
+            const terminal = document.getElementById('modal-log-terminal');
+            if (terminal) {
+                terminal.innerHTML = `
+                    <div class="text-cyan-300 font-bold">🚀 Iniciando actualización de banner para "${name}"...</div>
+                    <div class="text-gray-400">⏳ Paso 1/4: Leyendo datos de la foto local en Base64...</div>
+                `;
+            }
+
+            const compEl = document.getElementById('modal-preview-comparison');
+            if (compEl) compEl.classList.add('hidden');
+
+            const btn = document.getElementById('modal-action-btn');
+            if (btn) {
+                btn.disabled = true;
+                btn.className = "w-full py-2.5 rounded-xl bg-slate-800 text-gray-500 font-bold text-xs shadow-lg transition-all cursor-not-allowed";
+                btn.innerText = "⏳ Procesando actualización...";
+            }
+
+            modal.classList.remove('hidden');
+        }
+
+        function logModalStep(msg, percent = null, isError = false) {
+            const terminal = document.getElementById('modal-log-terminal');
+            if (terminal) {
+                const line = document.createElement('div');
+                line.className = isError ? 'text-red-400 font-bold' : 'text-emerald-300 font-mono';
+                line.innerHTML = msg;
+                terminal.appendChild(line);
+                terminal.scrollTop = terminal.scrollHeight;
+            }
+
+            if (percent !== null) {
+                const percentEl = document.getElementById('modal-percent-text');
+                if (percentEl) percentEl.innerText = `${percent}%`;
+                const barEl = document.getElementById('modal-progress-bar');
+                if (barEl) barEl.style.width = `${percent}%`;
+            }
+        }
+
+        function cerrarModalBanner() {
+            const modal = document.getElementById('banner-progress-modal');
+            if (modal) modal.classList.add('hidden');
+        }
+
         async function subirBannerSeccion(key, name) {
             const fileInput = document.getElementById(`banner-file-${key}`);
             const file = fileInput ? fileInput.files[0] : null;
-            const resGlobal = document.getElementById('banner-upload-res');
-            const resCard = document.getElementById(`banner-card-status-${key}`);
             const btnEl = document.getElementById(`banner-btn-${key}`);
 
             if (!file) {
@@ -2878,32 +2946,14 @@
                 return;
             }
 
-            const updateCardStep = (stepText, isError = false, isSuccess = false) => {
-                if (!resCard) return;
-                resCard.classList.remove('hidden');
-                if (isError) {
-                    resCard.className = 'text-[10px] font-bold p-2.5 rounded-xl border border-red-500/50 bg-red-500/10 text-red-300 font-mono';
-                } else if (isSuccess) {
-                    resCard.className = 'text-[10px] font-bold p-2.5 rounded-xl border border-emerald-500/50 bg-emerald-500/10 text-emerald-300 font-mono';
-                } else {
-                    resCard.className = 'text-[10px] font-bold p-2.5 rounded-xl border border-cyan-500/50 bg-cyan-500/10 text-cyan-300 font-mono animate-pulse';
-                }
-                resCard.innerHTML = stepText;
-            };
-
-            if (btnEl) btnEl.disabled = true;
-            updateCardStep(`⏳ Paso 1/4 (25%): Leyendo archivo de imagen local (${Math.round(file.size/1024)} KB)...`);
-
-            if (resGlobal) {
-                resGlobal.className = 'text-xs font-bold p-3 rounded-xl border border-cyan-500/40 bg-cyan-500/10 text-cyan-300 font-mono';
-                resGlobal.innerText = `⏳ Procesando actualización de banner para "${name || key}"...`;
-                resGlobal.classList.remove('hidden');
-            }
+            abrirModalBanner(key, name || key);
 
             try {
                 // Paso 1: Leer Base64
+                logModalStep(`📸 Foto elegida: "${file.name}" (${Math.round(file.size/1024)} KB).`, 25);
                 const base64 = await readFileAsBase64(file);
-                updateCardStep(`⏳ Paso 2/4 (50%): Enviando imagen a la API de WooCommerce...`);
+
+                logModalStep(`⏳ Paso 2/4 (50%): Transmitiendo imagen a WooCommerce y WordPress Media Library...`, 50);
 
                 // Paso 2: POST backend
                 const resp = await fetch(`${API_URL}/categories/upload-banner`, {
@@ -2916,50 +2966,70 @@
                     })
                 });
 
-                updateCardStep(`⏳ Paso 3/4 (75%): Actualizando plantilla catalogo_final.html en backend...`);
-
+                logModalStep(`⏳ Paso 3/4 (75%): Sincronizando catalogo_final.html y purgando caché en servidor...`, 75);
                 const data = await resp.json();
+
                 if (data.success && data.image_url) {
-                    updateCardStep(`⏳ Paso 4/4 (90%): Purgando caché de WordPress y aplicando cambios en la web...`);
+                    if (data.steps && data.steps.length > 0) {
+                        data.steps.forEach(st => logModalStep(`✔️ ${st}`));
+                    }
+
+                    logModalStep(`⏳ Paso 4/4 (90%): Aplicando cambios en vivo en la tienda web...`, 90);
+
+                    const finalUrl = data.cache_busting_url || `${data.image_url}?v=${Date.now()}`;
 
                     setTimeout(() => {
-                        const finalUrl = data.cache_busting_url || `${data.image_url}?v=${Date.now()}`;
-                        updateCardStep(`🎉 ¡Paso 4/4 (100%): Banner de "${name || key}" actualizado con éxito en la tienda web! Caché purgada.`, false, true);
+                        logModalStep(`🎉 ¡Paso 4/4 (100%): Banner de "${name || key}" actualizado y publicado con éxito!`, 100);
 
-                        if (resGlobal) {
-                            resGlobal.className = 'text-xs font-bold p-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-400 font-mono';
-                            resGlobal.innerHTML = `🎉 ¡Banner de "${name || key}" actualizado y publicado en vivo! <br><a href="${finalUrl}" target="_blank" class="underline text-brand-yellow font-mono">Ver Imagen de Banner Subida</a>`;
-                        }
+                        // Previsualizaciones Comparativas
+                        const catObj = ALL_CATEGORIES_BANNERS.find(c => c.key === key);
+                        const oldImg = catObj ? catObj.currentImg : '';
 
-                        // Actualizar la miniatura del banner actual en la tarjeta con Cache-Buster
+                        const oldImgEl = document.getElementById('modal-img-old');
+                        if (oldImgEl) oldImgEl.src = oldImg;
+                        const newImgEl = document.getElementById('modal-img-new');
+                        if (newImgEl) newImgEl.src = finalUrl;
+
+                        const compEl = document.getElementById('modal-preview-comparison');
+                        if (compEl) compEl.classList.remove('hidden');
+
+                        // Actualizar DOM local de la tarjeta
+                        if (catObj) catObj.currentImg = finalUrl;
                         const currentImgEl = document.getElementById(`banner-current-img-${key}`);
                         if (currentImgEl) currentImgEl.src = finalUrl;
 
-                        // Actualizar objeto en la caché local para no perder el cambio al filtrar
-                        const catObj = ALL_CATEGORIES_BANNERS.find(c => c.key === key);
-                        if (catObj) catObj.currentImg = finalUrl;
-
-                        // Resetear selector de archivo y preview de foto a subir
+                        // Limpiar formulario local
                         fileInput.value = '';
                         previewNuevoBanner(fileInput, key);
-                        if (btnEl) btnEl.disabled = false;
+
+                        const stepEl = document.getElementById('modal-step-text');
+                        if (stepEl) stepEl.innerText = '🎉 ¡Banner Aplicado en Vivo!';
+
+                        const btn = document.getElementById('modal-action-btn');
+                        if (btn) {
+                            btn.disabled = false;
+                            btn.className = "w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs shadow-lg transition-all cursor-pointer";
+                            btn.innerText = "🎉 ¡Excelente! Cerrar Ventana Emergente";
+                        }
                     }, 500);
 
                 } else {
-                    updateCardStep(`❌ Error en el proceso: ${data.error || 'No se pudo actualizar el banner.'}`, true);
-                    if (resGlobal) {
-                        resGlobal.className = 'text-xs font-bold p-3 rounded-xl border border-red-500/40 bg-red-500/10 text-red-400';
-                        resGlobal.innerText = `❌ Error: ${data.error || 'No se pudo actualizar el banner.'}`;
+                    logModalStep(`❌ Error en el servidor: ${data.error || 'No se pudo subir la imagen.'}`, null, true);
+                    const btn = document.getElementById('modal-action-btn');
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.className = "w-full py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs shadow-lg cursor-pointer";
+                        btn.innerText = "❌ Cerrar Ventana de Error";
                     }
-                    if (btnEl) btnEl.disabled = false;
                 }
             } catch(e) {
-                updateCardStep(`❌ Error de red/conexión: ${e.message}`, true);
-                if (resGlobal) {
-                    resGlobal.className = 'text-xs font-bold p-3 rounded-xl border border-red-500/40 bg-red-500/10 text-red-400';
-                    resGlobal.innerText = `❌ Error de red: ${e.message}`;
+                logModalStep(`❌ Error de red o conexión: ${e.message}`, null, true);
+                const btn = document.getElementById('modal-action-btn');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.className = "w-full py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs shadow-lg cursor-pointer";
+                    btn.innerText = "❌ Cerrar Ventana de Error";
                 }
-                if (btnEl) btnEl.disabled = false;
             }
         }
 
@@ -4349,6 +4419,59 @@
         window.onload = checkAuth;
 
     </script>
+
+    <!-- MODAL POPUP EMERGENTE DE PROCESAMIENTO Y DEPURACIÓN DE BANNERS -->
+    <div id="banner-progress-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="bg-slate-950 border border-cyan-500/40 rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-4 font-sans text-white relative animate-fade-in">
+            <div class="flex items-center justify-between border-b border-white/10 pb-3">
+                <div class="flex items-center gap-2">
+                    <span id="modal-cat-icon" class="material-symbols-outlined text-cyan-400 text-2xl">collections_bookmark</span>
+                    <h3 id="modal-cat-title" class="font-title text-sm font-bold uppercase tracking-wider text-white">Actualizando Banner</h3>
+                </div>
+                <span id="modal-cat-key" class="text-[9px] font-mono text-cyan-300 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">slug</span>
+            </div>
+
+            <!-- BARRAS DE PROGRESO -->
+            <div class="space-y-1.5">
+                <div class="flex justify-between items-center text-xs font-mono">
+                    <span id="modal-step-text" class="text-cyan-300 font-bold">⏳ Iniciando proceso...</span>
+                    <span id="modal-percent-text" class="text-cyan-400 font-bold">0%</span>
+                </div>
+                <div class="w-full bg-slate-900 rounded-full h-3 overflow-hidden border border-white/10 p-0.5">
+                    <div id="modal-progress-bar" class="bg-gradient-to-r from-cyan-500 to-emerald-400 h-full rounded-full transition-all duration-500 w-0"></div>
+                </div>
+            </div>
+
+            <!-- CONSOLA DE LOGS DEL PASO A PASO -->
+            <div class="space-y-1">
+                <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Terminal de Verificación en Vivo:</span>
+                <div id="modal-log-terminal" class="bg-black/90 border border-cyan-500/30 rounded-xl p-3 text-[11px] font-mono text-cyan-200 h-32 overflow-y-auto space-y-1 scrollbar-thin shadow-inner">
+                    <div class="text-gray-500">⏳ Esperando inicio...</div>
+                </div>
+            </div>
+
+            <!-- PREVISUALIZACIÓN DE IMÁGENES -->
+            <div id="modal-preview-comparison" class="hidden grid grid-cols-2 gap-2 pt-2 border-t border-white/10">
+                <div>
+                    <span class="text-[9px] font-bold text-gray-400 uppercase block mb-1">🌐 Anterior:</span>
+                    <div class="h-20 rounded-lg overflow-hidden border border-white/10 bg-slate-900">
+                        <img id="modal-img-old" src="" class="w-full h-full object-cover">
+                    </div>
+                </div>
+                <div>
+                    <span class="text-[9px] font-bold text-emerald-400 uppercase block mb-1">🎉 Nuevo Banner Publicado:</span>
+                    <div class="h-20 rounded-lg overflow-hidden border border-emerald-500/40 bg-slate-900">
+                        <img id="modal-img-new" src="" class="w-full h-full object-cover">
+                    </div>
+                </div>
+            </div>
+
+            <!-- BOTÓN DE ACCIÓN / CIERRE -->
+            <button id="modal-action-btn" disabled onclick="cerrarModalBanner()" class="w-full py-2.5 rounded-xl bg-slate-800 text-gray-500 font-bold text-xs shadow-lg transition-all cursor-not-allowed">
+                ⏳ Procesando actualización...
+            </button>
+        </div>
+    </div>
 </body>
 </html>
 
