@@ -131,47 +131,148 @@
                 </button>
             </div>
 
-            <!-- TAB 1: KANBAN DE PEDIDOS -->
+            <!-- TAB 1: EMBUDO DE PEDIDOS REDISEÑADO -->
             <section id="view-kanban" class="space-y-6">
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    <div class="glass-panel p-4 rounded-2xl space-y-4">
-                        <div class="flex justify-between items-center border-b border-white/10 pb-3">
-                            <h3 class="font-title text-sm font-bold uppercase tracking-wider text-yellow-400 flex items-center gap-2">
-                                <span class="material-symbols-outlined text-[18px]">request_quote</span> Presupuestos
-                            </h3>
-                            <span id="count-presupuestos" class="px-2 py-0.5 rounded-full bg-yellow-400/20 text-yellow-400 text-xs font-bold">0</span>
+                <!-- BARRA SUPERIOR DE FILTROS & BÚSQUEDA DEL EMBUDO -->
+                <div class="glass-panel p-4 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4 border border-white/10">
+                    <div class="flex items-center gap-3 w-full md:w-auto">
+                        <div class="relative flex-grow md:flex-grow-0 min-w-[220px]">
+                            <span class="material-symbols-outlined absolute left-3 top-2.5 text-gray-400 text-[18px]">search</span>
+                            <input type="text" id="embudo-search-input" oninput="filtrarPedidosEmbudo()" placeholder="🔍 Buscar por cliente, WhatsApp o pedido..." class="w-full bg-black/40 border border-white/10 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-yellow">
                         </div>
-                        <div id="col-presupuestos" class="space-y-3 min-h-[300px]"></div>
+                        <select id="embudo-filter-periodo" onchange="filtrarPedidosEmbudo()" class="bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-yellow">
+                            <option value="mes" selected>📅 Este Mes</option>
+                            <option value="semana">📅 Esta Semana</option>
+                            <option value="hoy">📅 Hoy</option>
+                            <option value="todo">📅 Todo el Histórico</option>
+                        </select>
                     </div>
 
-                    <div class="glass-panel p-4 rounded-2xl space-y-4">
-                        <div class="flex justify-between items-center border-b border-white/10 pb-3">
-                            <h3 class="font-title text-sm font-bold uppercase tracking-wider text-blue-400 flex items-center gap-2">
-                                <span class="material-symbols-outlined text-[18px]">rule</span> Confirmados
-                            </h3>
-                            <span id="count-confirmados" class="px-2 py-0.5 rounded-full bg-blue-400/20 text-blue-400 text-xs font-bold">0</span>
+                    <div class="flex items-center gap-2 w-full md:w-auto justify-end">
+                        <div class="flex items-center gap-1">
+                            <input type="date" id="embudo-filter-desde" onchange="filtrarPedidosEmbudo()" title="Fecha Desde" class="bg-black/40 border border-white/10 rounded-xl px-2.5 py-1.5 text-[11px] text-gray-300 focus:outline-none">
+                            <span class="text-gray-500 text-xs">-</span>
+                            <input type="date" id="embudo-filter-hasta" onchange="filtrarPedidosEmbudo()" title="Fecha Hasta" class="bg-black/40 border border-white/10 rounded-xl px-2.5 py-1.5 text-[11px] text-gray-300 focus:outline-none">
                         </div>
-                        <div id="col-confirmados" class="space-y-3 min-h-[300px]"></div>
+                        <button onclick="abrirModalNuevoPedido()" class="px-4 py-2 rounded-xl bg-brand-yellow text-primary-dark font-title text-xs font-bold uppercase tracking-wider hover:bg-yellow-400 transition-all flex items-center gap-1 shadow-lg">
+                            <span class="material-symbols-outlined text-[18px]">add_circle</span> + Armar Presupuesto
+                        </button>
+                    </div>
+                </div>
+
+                <!-- CONTENEDOR PRINCIPAL: PESTAÑAS VERTICALES A LA IZQUIERDA Y DETALLE A LA DERECHA -->
+                <div class="flex flex-col md:flex-row gap-6">
+                    <!-- SUB-NAVEGACIÓN LATERAL DE ETAPAS DEL EMBUDO -->
+                    <div class="w-full md:w-1/4 space-y-2">
+                        <div class="glass-panel p-3 rounded-2xl space-y-1.5 border border-white/10">
+                            <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider block px-3 py-1">Etapas del Embudo</span>
+                            
+                            <button id="etapa-tab-presupuesto" onclick="switchEmbudoEtapa('Presupuesto')" class="w-full px-3.5 py-3 rounded-xl font-title text-xs font-bold transition-all flex items-center justify-between bg-brand-yellow/20 text-brand-yellow border border-brand-yellow/30 shadow-md">
+                                <div class="flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-[18px]">request_quote</span>
+                                    <span>Presupuestos</span>
+                                </div>
+                                <span id="badge-count-presupuesto" class="px-2 py-0.5 rounded-full bg-yellow-400/30 text-yellow-300 text-[11px] font-bold">0</span>
+                            </button>
+
+                            <button id="etapa-tab-confirmado" onclick="switchEmbudoEtapa('Confirmado')" class="w-full px-3.5 py-3 rounded-xl font-title text-xs font-bold transition-all flex items-center justify-between bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white border border-white/5">
+                                <div class="flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-[18px] text-blue-400">rule</span>
+                                    <span>Confirmados</span>
+                                </div>
+                                <span id="badge-count-confirmado" class="px-2 py-0.5 rounded-full bg-blue-400/20 text-blue-400 text-[11px] font-bold">0</span>
+                            </button>
+
+                            <button id="etapa-tab-pagado" onclick="switchEmbudoEtapa('Pagado')" class="w-full px-3.5 py-3 rounded-xl font-title text-xs font-bold transition-all flex items-center justify-between bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white border border-white/5">
+                                <div class="flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-[18px] text-emerald-400">payments</span>
+                                    <span>Pagados</span>
+                                </div>
+                                <span id="badge-count-pagado" class="px-2 py-0.5 rounded-full bg-emerald-400/20 text-emerald-400 text-[11px] font-bold">0</span>
+                            </button>
+
+                            <button id="etapa-tab-despachado" onclick="switchEmbudoEtapa('Despachado')" class="w-full px-3.5 py-3 rounded-xl font-title text-xs font-bold transition-all flex items-center justify-between bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white border border-white/5">
+                                <div class="flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-[18px] text-purple-400">local_shipping</span>
+                                    <span>Despachados / Entregados</span>
+                                </div>
+                                <span id="badge-count-despachado" class="px-2 py-0.5 rounded-full bg-purple-400/20 text-purple-400 text-[11px] font-bold">0</span>
+                            </button>
+
+                            <button id="etapa-tab-cancelado" onclick="switchEmbudoEtapa('Cancelado')" class="w-full px-3.5 py-3 rounded-xl font-title text-xs font-bold transition-all flex items-center justify-between bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white border border-white/5">
+                                <div class="flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-[18px] text-red-400">cancel</span>
+                                    <span>Cancelados</span>
+                                </div>
+                                <span id="badge-count-cancelado" class="px-2 py-0.5 rounded-full bg-red-400/20 text-red-400 text-[11px] font-bold">0</span>
+                            </button>
+
+                            <div class="pt-2 border-t border-white/10">
+                                <button id="etapa-tab-kanban-global" onclick="switchEmbudoEtapa('kanban-global')" class="w-full px-3.5 py-2.5 rounded-xl font-title text-[11px] font-bold transition-all flex items-center justify-between bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 border border-white/5">
+                                    <div class="flex items-center gap-2">
+                                        <span class="material-symbols-outlined text-[16px]">view_column</span>
+                                        <span>Vista General (Tablero Kanban)</span>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- TARJETA RESUMEN MONTO ACUMULADO -->
+                        <div class="glass-panel p-4 rounded-2xl border border-white/10 space-y-1">
+                            <span class="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Total en esta Etapa</span>
+                            <h3 id="embudo-monto-etapa-total" class="font-title text-lg font-bold text-brand-yellow">$ 0,00</h3>
+                        </div>
                     </div>
 
-                    <div class="glass-panel p-4 rounded-2xl space-y-4">
-                        <div class="flex justify-between items-center border-b border-white/10 pb-3">
-                            <h3 class="font-title text-sm font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-2">
-                                <span class="material-symbols-outlined text-[18px]">payments</span> Pagados
-                            </h3>
-                            <span id="count-pagados" class="px-2 py-0.5 rounded-full bg-emerald-400/20 text-emerald-400 text-xs font-bold">0</span>
+                    <!-- PANEL DERECHO DE PEDIDOS / TARJETAS DETALLADAS -->
+                    <div class="w-full md:w-3/4 space-y-4">
+                        <!-- VISTA DE LISTA DETALLADA PARA LA ETAPA SELECCIONADA -->
+                        <div id="embudo-vista-lista" class="space-y-4">
+                            <div id="embudo-lista-pedidos" class="space-y-4 min-h-[400px]"></div>
                         </div>
-                        <div id="col-pagados" class="space-y-3 min-h-[300px]"></div>
-                    </div>
 
-                    <div class="glass-panel p-4 rounded-2xl space-y-4">
-                        <div class="flex justify-between items-center border-b border-white/10 pb-3">
-                            <h3 class="font-title text-sm font-bold uppercase tracking-wider text-purple-400 flex items-center gap-2">
-                                <span class="material-symbols-outlined text-[18px]">local_shipping</span> Despachados
-                            </h3>
-                            <span id="count-despachados" class="px-2 py-0.5 rounded-full bg-purple-400/20 text-purple-400 text-xs font-bold">0</span>
+                        <!-- VISTA KANBAN GLOBAL DE 5 COLUMNAS (OCULTA POR DEFECTO, ACTIVABLE EN EL MENÚ) -->
+                        <div id="embudo-vista-kanban-global" class="hidden grid grid-cols-1 md:grid-cols-5 gap-4">
+                            <div class="glass-panel p-3 rounded-2xl space-y-3">
+                                <div class="flex justify-between items-center border-b border-white/10 pb-2">
+                                    <span class="font-title text-xs font-bold text-yellow-400 uppercase">Presupuestos</span>
+                                    <span id="col-count-presupuestos" class="text-[10px] font-bold text-yellow-400 bg-yellow-400/20 px-2 py-0.5 rounded-full">0</span>
+                                </div>
+                                <div id="col-presupuestos" class="space-y-3 min-h-[250px]"></div>
+                            </div>
+
+                            <div class="glass-panel p-3 rounded-2xl space-y-3">
+                                <div class="flex justify-between items-center border-b border-white/10 pb-2">
+                                    <span class="font-title text-xs font-bold text-blue-400 uppercase">Confirmados</span>
+                                    <span id="col-count-confirmados" class="text-[10px] font-bold text-blue-400 bg-blue-400/20 px-2 py-0.5 rounded-full">0</span>
+                                </div>
+                                <div id="col-confirmados" class="space-y-3 min-h-[250px]"></div>
+                            </div>
+
+                            <div class="glass-panel p-3 rounded-2xl space-y-3">
+                                <div class="flex justify-between items-center border-b border-white/10 pb-2">
+                                    <span class="font-title text-xs font-bold text-emerald-400 uppercase">Pagados</span>
+                                    <span id="col-count-pagados" class="text-[10px] font-bold text-emerald-400 bg-emerald-400/20 px-2 py-0.5 rounded-full">0</span>
+                                </div>
+                                <div id="col-pagados" class="space-y-3 min-h-[250px]"></div>
+                            </div>
+
+                            <div class="glass-panel p-3 rounded-2xl space-y-3">
+                                <div class="flex justify-between items-center border-b border-white/10 pb-2">
+                                    <span class="font-title text-xs font-bold text-purple-400 uppercase">Despachados</span>
+                                    <span id="col-count-despachados" class="text-[10px] font-bold text-purple-400 bg-purple-400/20 px-2 py-0.5 rounded-full">0</span>
+                                </div>
+                                <div id="col-despachados" class="space-y-3 min-h-[250px]"></div>
+                            </div>
+
+                            <div class="glass-panel p-3 rounded-2xl space-y-3">
+                                <div class="flex justify-between items-center border-b border-white/10 pb-2">
+                                    <span class="font-title text-xs font-bold text-red-400 uppercase">Cancelados</span>
+                                    <span id="col-count-cancelados" class="text-[10px] font-bold text-red-400 bg-red-400/20 px-2 py-0.5 rounded-full">0</span>
+                                </div>
+                                <div id="col-cancelados" class="space-y-3 min-h-[250px]"></div>
+                            </div>
                         </div>
-                        <div id="col-despachados" class="space-y-3 min-h-[300px]"></div>
                     </div>
                 </div>
             </section>
@@ -1066,6 +1167,73 @@
                 </div>
             </div>
 
+            <!-- MODAL ARMAR PRESUPUESTO / NUEVO PEDIDO -->
+            <div id="modal-nuevo-pedido" class="fixed inset-0 z-[99999] bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+                <div class="glass-panel p-6 md:p-8 rounded-2xl max-w-2xl w-full space-y-6 relative border border-brand-yellow/40 shadow-2xl max-h-[90vh] overflow-y-auto">
+                    <div class="flex justify-between items-center border-b border-white/10 pb-4">
+                        <h3 class="font-title text-base font-bold uppercase text-white flex items-center gap-2">
+                            <span class="material-symbols-outlined text-brand-yellow">request_quote</span> Armar Nuevo Presupuesto / Pedido
+                        </h3>
+                        <button onclick="cerrarModalNuevoPedido()" class="text-gray-400 hover:text-white">
+                            <span class="material-symbols-outlined">close</span>
+                        </button>
+                    </div>
+
+                    <form onsubmit="guardarNuevoPresupuesto(event)" class="space-y-5 text-xs">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-gray-300 font-bold mb-1">Cliente *</label>
+                                <select id="presupuesto-cliente-id" required class="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white focus:border-brand-yellow focus:outline-none">
+                                    <option value="">Seleccionar Cliente...</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-gray-300 font-bold mb-1">Origen del Pedido</label>
+                                <select id="presupuesto-origen" class="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white focus:border-brand-yellow focus:outline-none">
+                                    <option value="WhatsApp">WhatsApp</option>
+                                    <option value="CRM Directo" selected>CRM Directo (Vendedor)</option>
+                                    <option value="Web">Web Chat</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- LISTA DE PRODUCTOS COTIZADOS -->
+                        <div class="space-y-3 pt-2 border-t border-white/10">
+                            <div class="flex justify-between items-center">
+                                <label class="block text-brand-yellow font-bold uppercase tracking-wider text-[11px]">Productos / Items del Pedido *</label>
+                                <button type="button" onclick="agregarFilaItemPresupuesto()" class="px-3 py-1 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold text-[11px] hover:bg-emerald-500/30 flex items-center gap-1 transition-all">
+                                    <span class="material-symbols-outlined text-[14px]">add</span> + Agregar Producto
+                                </button>
+                            </div>
+
+                            <div id="presupuesto-items-container" class="space-y-2.5">
+                                <!-- Filas de productos se renderizan dinámicamente -->
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-300 font-bold mb-1">Notas u Observaciones del Pedido (Texto Libre)</label>
+                            <textarea id="presupuesto-observaciones" rows="2" placeholder="Detalles de entrega, aclaraciones de presentación o notas informales..." class="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white focus:border-brand-yellow focus:outline-none"></textarea>
+                        </div>
+
+                        <!-- TOTAL DEL PRESUPUESTO -->
+                        <div class="flex justify-between items-center p-4 rounded-xl bg-white/5 border border-white/10">
+                            <span class="text-gray-300 font-bold uppercase tracking-wider">Total Calculado:</span>
+                            <span id="presupuesto-total-display" class="font-title text-xl font-bold text-brand-yellow">$ 0,00</span>
+                        </div>
+
+                        <div class="flex justify-end gap-3 pt-2">
+                            <button type="button" onclick="cerrarModalNuevoPedido()" class="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 font-bold">
+                                Cancelar
+                            </button>
+                            <button type="submit" id="btn-guardar-presupuesto" class="px-6 py-2.5 rounded-xl bg-brand-yellow text-primary-dark font-title text-xs font-bold uppercase tracking-wider hover:bg-yellow-400 transition-all flex items-center gap-1 shadow-lg">
+                                <span class="material-symbols-outlined text-[16px]">save</span> Guardar Presupuesto
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
         </main>
 
         <!-- FOOTER OFICIAL CON LOGO SIGLO 21 SOLUCIONES -->
@@ -1363,9 +1531,13 @@
                     <button onclick="guardarDatosLead('${c.id}')" class="w-full py-2 bg-brand-yellow text-primary-dark font-title text-xs font-bold uppercase rounded-xl hover:bg-yellow-400 transition-all flex items-center justify-center gap-1">
                         <span class="material-symbols-outlined text-[16px]">save</span> Guardar Datos del Lead
                     </button>
+
+                    <button onclick="abrirModalNuevoPedido('${c.id}')" class="w-full py-2 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-title text-xs font-bold uppercase rounded-xl hover:bg-emerald-500/30 transition-all flex items-center justify-center gap-1">
+                        <span class="material-symbols-outlined text-[16px]">request_quote</span> + Armar Presupuesto
+                    </button>
                 </div>
 
-                <div class="pt-3 border-t border-white/10">
+                <div class="pt-3 border-t border-white/10 space-y-2">
                     ${tieneWhatsappReal ? `
                         <a href="https://wa.me/${c.whatsapp.replace(/[^0-9]/g, '')}" target="_blank" class="w-full py-2 bg-emerald-500/20 text-emerald-400 rounded-xl text-xs font-bold text-center block border border-emerald-500/30 hover:bg-emerald-500/30 transition-all">
                             📲 Abrir Chat en WhatsApp
@@ -1411,7 +1583,6 @@
             const stream = document.getElementById('chat-messages-stream');
             if (!stream) return;
 
-            // Verificar si el usuario ya estaba cerca del final (o si es el primer despliegue del chat)
             const wasAtBottom = (stream.scrollHeight - stream.scrollTop - stream.clientHeight < 100);
 
             if (!mensajes || mensajes.length === 0) {
@@ -1446,7 +1617,6 @@
                 `;
             }).join('');
 
-            // Solo desplazar al final si el usuario estaba abajo o se forzó con un mensaje nuevo
             if (forceScroll || wasAtBottom) {
                 stream.scrollTop = stream.scrollHeight;
             }
@@ -1484,57 +1654,511 @@
             } catch (e) {}
         }
 
-        function renderKanban() {
-            const cols = {
-                'Presupuesto': { el: document.getElementById('col-presupuestos'), count: document.getElementById('count-presupuestos'), items: [] },
-                'Confirmado': { el: document.getElementById('col-confirmados'), count: document.getElementById('count-confirmados'), items: [] },
-                'Pagado': { el: document.getElementById('col-pagados'), count: document.getElementById('count-pagados'), items: [] },
-                'Despachado': { el: document.getElementById('col-despachados'), count: document.getElementById('count-despachados'), items: [] }
-            };
+        // =========================================================================
+        // GESTIÓN Y LÓGICA DEL EMBUDO DE PEDIDOS POR PESTAÑAS VERTICALES
+        let currentEmbudoEtapa = 'Presupuesto';
+        let productosCatalogoCache = [];
 
-            pedidosData.forEach(p => {
-                const est = p.estado || 'Presupuesto';
-                if (cols[est]) cols[est].items.push(p);
-                else cols['Presupuesto'].items.push(p);
+        function switchEmbudoEtapa(etapa) {
+            currentEmbudoEtapa = etapa;
+            const etapasKeys = ['Presupuesto', 'Confirmado', 'Pagado', 'Despachado', 'Cancelado'];
+
+            // Actualizar clases de botones laterales
+            etapasKeys.forEach(e => {
+                const keyLower = e.toLowerCase();
+                const btn = document.getElementById(`etapa-tab-${keyLower}`);
+                if (!btn) return;
+
+                if (e === etapa) {
+                    const colorMap = {
+                        'Presupuesto': 'bg-brand-yellow/20 text-brand-yellow border-brand-yellow/30 shadow-md',
+                        'Confirmado': 'bg-blue-500/20 text-blue-300 border-blue-500/30 shadow-md',
+                        'Pagado': 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30 shadow-md',
+                        'Despachado': 'bg-purple-500/20 text-purple-300 border-purple-500/30 shadow-md',
+                        'Cancelado': 'bg-red-500/20 text-red-300 border-red-500/30 shadow-md'
+                    };
+                    btn.className = `w-full px-3.5 py-3 rounded-xl font-title text-xs font-bold transition-all flex items-center justify-between border ${colorMap[e] || 'bg-brand-yellow/20 text-brand-yellow border-brand-yellow/30'}`;
+                } else {
+                    btn.className = "w-full px-3.5 py-3 rounded-xl font-title text-xs font-bold transition-all flex items-center justify-between bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white border border-white/5";
+                }
             });
 
-            Object.keys(cols).forEach(k => {
-                const col = cols[k];
-                col.count.innerText = col.items.length;
-                if (col.items.length === 0) {
-                    col.el.innerHTML = `<div class="text-center py-8 text-xs text-gray-500 font-light">Sin pedidos</div>`;
+            const btnKanbanGlobal = document.getElementById('etapa-tab-kanban-global');
+            const vistaLista = document.getElementById('embudo-vista-lista');
+            const vistaKanbanGlobal = document.getElementById('embudo-vista-kanban-global');
+
+            if (etapa === 'kanban-global') {
+                if (btnKanbanGlobal) btnKanbanGlobal.className = "w-full px-3.5 py-2.5 rounded-xl font-title text-[11px] font-bold transition-all flex items-center justify-between bg-blue-500/20 text-blue-300 border border-blue-500/30 shadow-md";
+                if (vistaLista) vistaLista.classList.add('hidden');
+                if (vistaKanbanGlobal) vistaKanbanGlobal.classList.remove('hidden');
+            } else {
+                if (btnKanbanGlobal) btnKanbanGlobal.className = "w-full px-3.5 py-2.5 rounded-xl font-title text-[11px] font-bold transition-all flex items-center justify-between bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 border border-white/5";
+                if (vistaLista) vistaLista.classList.remove('hidden');
+                if (vistaKanbanGlobal) vistaKanbanGlobal.classList.add('hidden');
+            }
+
+            renderKanban();
+        }
+
+        function filtrarPedidosEmbudo() {
+            if (!pedidosData) return;
+
+            const searchText = (document.getElementById('embudo-search-input')?.value || '').toLowerCase().trim();
+            const periodo = document.getElementById('embudo-filter-periodo')?.value || 'todo';
+            const desde = document.getElementById('embudo-filter-desde')?.value || '';
+            const hasta = document.getElementById('embudo-filter-hasta')?.value || '';
+
+            const now = new Date();
+            const todayStr = now.toISOString().split('T')[0];
+
+            // 1. Filtrar en memoria por fecha y búsqueda
+            const filtered = pedidosData.filter(p => {
+                // Filtro por texto
+                if (searchText) {
+                    const cNombre = (p.clientes?.razon_social || '').toLowerCase();
+                    const cPhone = (p.clientes?.whatsapp || '').toLowerCase();
+                    const orderId = String(p.woocommerce_order_id || p.id || '').toLowerCase();
+                    const match = cNombre.includes(searchText) || cPhone.includes(searchText) || orderId.includes(searchText);
+                    if (!match) return false;
+                }
+
+                // Filtro por fecha
+                if (p.creado_el) {
+                    const pDateStr = p.creado_el.split('T')[0];
+                    if (periodo === 'hoy' && pDateStr !== todayStr) return false;
+                    
+                    if (periodo === 'semana') {
+                        const pDate = new Date(p.creado_el);
+                        const diffDays = (now - pDate) / (1000 * 60 * 60 * 24);
+                        if (diffDays > 7) return false;
+                    }
+
+                    if (periodo === 'mes') {
+                        const currentMonthStr = todayStr.substring(0, 7);
+                        if (!pDateStr.startsWith(currentMonthStr)) return false;
+                    }
+
+                    if (desde && pDateStr < desde) return false;
+                    if (hasta && pDateStr > hasta) return false;
+                }
+
+                return true;
+            });
+
+            // 2. Mapear contadores por etapa
+            const counts = { Presupuesto: 0, Confirmado: 0, Pagado: 0, Despachado: 0, Cancelado: 0 };
+            const sums = { Presupuesto: 0, Confirmado: 0, Pagado: 0, Despachado: 0, Cancelado: 0 };
+            const itemsByStage = { Presupuesto: [], Confirmado: [], Pagado: [], Despachado: [], Cancelado: [] };
+
+            filtered.forEach(p => {
+                let est = p.estado || 'Presupuesto';
+                if (est.includes('Despachado') || est.includes('Entregado')) est = 'Despachado';
+                if (!counts.hasOwnProperty(est)) est = 'Presupuesto';
+
+                counts[est]++;
+                sums[est] += parseFloat(p.monto_total || 0);
+                itemsByStage[est].push(p);
+            });
+
+            // Actualizar Badges
+            document.getElementById('badge-count-presupuesto').innerText = counts.Presupuesto;
+            document.getElementById('badge-count-confirmado').innerText = counts.Confirmado;
+            document.getElementById('badge-count-pagado').innerText = counts.Pagado;
+            document.getElementById('badge-count-despachado').innerText = counts.Despachado;
+            document.getElementById('badge-count-cancelado').innerText = counts.Cancelado;
+
+            // En la vista Kanban Global
+            if (document.getElementById('col-count-presupuestos')) document.getElementById('col-count-presupuestos').innerText = counts.Presupuesto;
+            if (document.getElementById('col-count-confirmados')) document.getElementById('col-count-confirmados').innerText = counts.Confirmado;
+            if (document.getElementById('col-count-pagados')) document.getElementById('col-count-pagados').innerText = counts.Pagado;
+            if (document.getElementById('col-count-despachados')) document.getElementById('col-count-despachados').innerText = counts.Despachado;
+            if (document.getElementById('col-count-cancelados')) document.getElementById('col-count-cancelados').innerText = counts.Cancelado;
+
+            // Actualizar Monto Total de Etapa Seleccionada
+            const activeEst = currentEmbudoEtapa === 'kanban-global' ? 'Presupuesto' : currentEmbudoEtapa;
+            const activeSum = sums[activeEst] || 0;
+            const montoFormatted = activeSum.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' });
+            const elMontoTotal = document.getElementById('embudo-monto-etapa-total');
+            if (elMontoTotal) elMontoTotal.innerText = montoFormatted;
+
+            // Renderizar Lista Detallada de la Etapa Seleccionada
+            const containerLista = document.getElementById('embudo-lista-pedidos');
+            if (containerLista && currentEmbudoEtapa !== 'kanban-global') {
+                const listItems = itemsByStage[currentEmbudoEtapa] || [];
+
+                if (listItems.length === 0) {
+                    containerLista.innerHTML = `<div class="glass-panel p-12 text-center text-gray-500 text-xs font-light rounded-2xl">No hay pedidos en la etapa ${currentEmbudoEtapa}.</div>`;
                 } else {
-                    col.el.innerHTML = col.items.map(p => {
+                    containerLista.innerHTML = listItems.map(p => {
                         const clienteNombre = p.clientes ? p.clientes.razon_social : 'Cliente Web';
-                        const clientePhone = p.clientes ? p.clientes.whatsapp : '';
-                        const monto = parseFloat(p.monto_total || 0).toLocaleString('es-AR', { style: 'currency', currency: 'ARS' });
+                        const clientePhone = p.clientes ? (p.clientes.whatsapp || '') : '';
+                        const waLimpio = clientePhone.replace(/[^0-9]/g, '');
+                        const montoStr = parseFloat(p.monto_total || 0).toLocaleString('es-AR', { style: 'currency', currency: 'ARS' });
+                        const fechaStr = formatFechaAR(p.creado_el);
+                        const itemsPedido = p.items_pedido || [];
                         const esPagado = (p.estado === 'Pagado');
+                        const esCancelado = (p.estado === 'Cancelado');
 
                         return `
-                            <div class="glass-card p-4 rounded-xl space-y-3">
-                                <div class="flex justify-between items-start">
-                                    <span class="text-[10px] font-bold text-gray-400 uppercase">#${p.woocommerce_order_id || 'WC'}</span>
-                                    <span class="px-2 py-0.5 rounded-md text-[9px] font-bold ${esPagado ? 'bg-emerald-500/20 text-emerald-400' : 'bg-yellow-500/20 text-yellow-400'}">
-                                        ${p.estado || 'Presupuesto'}
-                                    </span>
+                            <div class="glass-panel p-5 rounded-2xl space-y-4 border border-white/10 hover:border-white/20 transition-all shadow-md">
+                                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-white/10 pb-3">
+                                    <div class="flex items-center gap-3">
+                                        <span class="px-2.5 py-1 rounded-lg text-xs font-bold bg-white/10 text-brand-yellow font-mono">
+                                            #${p.woocommerce_order_id || p.id.substring(0, 8)}
+                                        </span>
+                                        <div>
+                                            <h4 class="font-bold text-sm text-white">${clienteNombre}</h4>
+                                            ${clientePhone ? `
+                                                <a href="https://wa.me/${waLimpio}" target="_blank" class="text-[11px] text-emerald-400 font-mono hover:underline flex items-center gap-1">
+                                                    📲 ${clientePhone}
+                                                </a>
+                                            ` : ''}
+                                        </div>
+                                    </div>
+
+                                    <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+                                        <span class="text-xs text-gray-400">${fechaStr}</span>
+                                        <div class="flex items-center gap-1.5">
+                                            <span class="text-[10px] uppercase font-bold text-gray-400">Mover a:</span>
+                                            <select onchange="cambiarEstadoPedido('${p.id}', this.value)" class="bg-black/50 border border-white/10 rounded-lg px-2 py-1 text-[11px] text-white focus:outline-none focus:border-brand-yellow">
+                                                <option value="Presupuesto" ${p.estado === 'Presupuesto' ? 'selected' : ''}>📋 Presupuesto</option>
+                                                <option value="Confirmado" ${p.estado === 'Confirmado' ? 'selected' : ''}>🔵 Confirmado</option>
+                                                <option value="Pagado" ${p.estado === 'Pagado' ? 'selected' : ''}>🟢 Pagado</option>
+                                                <option value="Despachado" ${p.estado === 'Despachado' ? 'selected' : ''}>🟣 Despachado / Entregado</option>
+                                                <option value="Cancelado" ${p.estado === 'Cancelado' ? 'selected' : ''}>🔴 Cancelado</option>
+                                            </select>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <h4 class="font-bold text-xs text-white">${clienteNombre}</h4>
-                                    <p class="text-[10px] text-gray-400 font-mono">${clientePhone}</p>
+
+                                <!-- DETALLE DE PRODUCTOS DEL PEDIDO -->
+                                <div class="space-y-2">
+                                    <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Items Solicitados (${itemsPedido.length}):</span>
+                                    ${itemsPedido.length > 0 ? `
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                            ${itemsPedido.map(it => `
+                                                <div class="p-2.5 rounded-xl bg-white/5 border border-white/5 flex justify-between items-center text-xs">
+                                                    <div>
+                                                        <span class="font-bold text-white block">${it.producto_nombre || 'Producto'}</span>
+                                                        ${it.variacion_tamano ? `<span class="text-[10px] text-gray-400 block">${it.variacion_tamano}</span>` : ''}
+                                                    </div>
+                                                    <div class="text-right">
+                                                        <span class="text-brand-yellow font-bold">${it.cantidad}x $${parseFloat(it.precio_unitario || 0).toLocaleString('es-AR')}</span>
+                                                        <span class="text-[10px] text-gray-400 block font-mono">$${parseFloat(it.subtotal || 0).toLocaleString('es-AR')}</span>
+                                                    </div>
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    ` : `
+                                        <div class="text-[11px] text-gray-500 italic">Sin detalle de productos especificado.</div>
+                                    `}
                                 </div>
-                                <div class="flex justify-between items-center pt-2 border-t border-white/5">
-                                    <span class="text-xs font-bold text-brand-yellow">${monto}</span>
-                                    ${!esPagado ? `
-                                        <button onclick="confirmarPagoDescontarStock(${p.id})" class="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-[10px] font-bold flex items-center gap-1 border border-emerald-500/30">
-                                            🟢 Pagar & Restar Stock
-                                        </button>
-                                    ` : ''}
+
+                                <div class="flex flex-col sm:flex-row justify-between items-center pt-3 border-t border-white/10 gap-3">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-xs text-gray-400">Monto Total:</span>
+                                        <span class="font-title text-base font-bold text-brand-yellow">${montoStr}</span>
+                                        ${p.supera_minimo_80k ? `<span class="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 text-[10px] font-bold">✨ Cumple Min. $80k</span>` : ''}
+                                    </div>
+
+                                    <div class="flex items-center gap-2">
+                                        ${!esPagado && !esCancelado ? `
+                                            <button onclick="confirmarPagoDescontarStock('${p.id}')" class="px-3 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-xs font-bold border border-emerald-500/30 flex items-center gap-1 transition-all">
+                                                🟢 Confirmar Pago & Restar Stock
+                                            </button>
+                                        ` : ''}
+                                        ${!esCancelado ? `
+                                            <button onclick="cambiarEstadoPedido('${p.id}', 'Cancelado')" class="px-3 py-1.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs font-bold border border-red-500/30 transition-all">
+                                                🔴 Cancelar
+                                            </button>
+                                        ` : ''}
+                                    </div>
                                 </div>
                             </div>
                         `;
                     }).join('');
                 }
+            }
+
+            // Renderizar Vista Kanban Global de 5 Columnas
+            if (currentEmbudoEtapa === 'kanban-global') {
+                const colsMap = {
+                    'Presupuesto': document.getElementById('col-presupuestos'),
+                    'Confirmado': document.getElementById('col-confirmados'),
+                    'Pagado': document.getElementById('col-pagados'),
+                    'Despachado': document.getElementById('col-despachados'),
+                    'Cancelado': document.getElementById('col-cancelados')
+                };
+
+                Object.keys(colsMap).forEach(k => {
+                    const el = colsMap[k];
+                    if (!el) return;
+                    const items = itemsByStage[k] || [];
+
+                    if (items.length === 0) {
+                        el.innerHTML = `<div class="text-center py-6 text-[10px] text-gray-500">Sin pedidos</div>`;
+                    } else {
+                        el.innerHTML = items.map(p => `
+                            <div class="glass-card p-3 rounded-xl space-y-2 text-xs">
+                                <div class="flex justify-between items-start">
+                                    <span class="text-[9px] font-bold text-brand-yellow uppercase">#${p.woocommerce_order_id || p.id.substring(0, 6)}</span>
+                                    <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-white/10 text-white">${p.estado}</span>
+                                </div>
+                                <div>
+                                    <h5 class="font-bold text-white truncate">${p.clientes ? p.clientes.razon_social : 'Cliente Web'}</h5>
+                                    <span class="text-[10px] text-brand-yellow font-bold">$${parseFloat(p.monto_total || 0).toLocaleString('es-AR')}</span>
+                                </div>
+                                <button onclick="cambiarEstadoPedido('${p.id}', 'Pagado')" class="w-full py-1 text-[10px] font-bold rounded bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30">
+                                    🟢 Pagar
+                                </button>
+                            </div>
+                        `).join('');
+                    }
+                });
+            }
+        }
+
+        function renderKanban() {
+            filtrarPedidosEmbudo();
+        }
+
+        async function cambiarEstadoPedido(pedidoId, nuevoEstado) {
+            try {
+                const res = await fetch(`${API_URL}/crm/pedidos/cambiar-estado`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ pedido_id: pedidoId, nuevo_estado: nuevoEstado })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    refreshData();
+                } else {
+                    alert('Error al cambiar estado: ' + (data.error || 'No especificado'));
+                }
+            } catch (e) {
+                alert('Error de red al actualizar pedido: ' + e.message);
+            }
+        }
+
+        async function confirmarPagoDescontarStock(pedidoId) {
+            await cambiarEstadoPedido(pedidoId, 'Pagado');
+        }
+
+        // =========================================================================
+        // MODAL Y CREACIÓN DE NUEVOS PRESUPUESTOS / PEDIDOS
+        async function abrirModalNuevoPedido(clienteIdPreseleccionado = null) {
+            const modal = document.getElementById('modal-nuevo-pedido');
+            const selectCliente = document.getElementById('presupuesto-cliente-id');
+            if (!modal || !selectCliente) return;
+
+            // Cargar clientes en el dropdown
+            selectCliente.innerHTML = '<option value="">Seleccionar Cliente...</option>' + 
+                (clientesData || []).map(c => `
+                    <option value="${c.id}" ${clienteIdPreseleccionado === c.id ? 'selected' : ''}>
+                        ${c.razon_social} (${c.whatsapp || 'Sin Tel'})
+                    </option>
+                `).join('');
+
+            // Cargar catálogo de productos si no está en cache
+            if (!productosCatalogoCache || productosCatalogoCache.length === 0) {
+                try {
+                    const res = await fetch(`${API_URL}/crm/productos-list`);
+                    const data = await res.json();
+                    if (data.success) productosCatalogoCache = data.productos || [];
+                } catch (e) {}
+            }
+
+            // Limpiar formulario y agregar 1 fila inicial de producto
+            document.getElementById('presupuesto-items-container').innerHTML = '';
+            document.getElementById('presupuesto-observaciones').value = '';
+            agregarFilaItemPresupuesto();
+            calcularTotalPresupuestoModal();
+
+            modal.classList.remove('hidden');
+        }
+
+        function cerrarModalNuevoPedido() {
+            const modal = document.getElementById('modal-nuevo-pedido');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        let itemFilaCounter = 0;
+
+        function agregarFilaItemPresupuesto() {
+            const container = document.getElementById('presupuesto-items-container');
+            if (!container) return;
+
+            itemFilaCounter++;
+            const filaId = `item-fila-${itemFilaCounter}`;
+
+            const rowDiv = document.createElement('div');
+            rowDiv.id = filaId;
+            rowDiv.className = "flex flex-col sm:flex-row items-center gap-2 p-3 rounded-xl bg-black/40 border border-white/10";
+
+            rowDiv.innerHTML = `
+                <div class="w-full sm:w-1/2">
+                    <select onchange="onProductoSeleccionadoPresupuesto('${filaId}', this.value)" class="item-prod-select w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-brand-yellow focus:outline-none">
+                        <option value="">Seleccionar del catálogo o escribir...</option>
+                        ${(productosCatalogoCache || []).map(p => `
+                            <option value="${p.id}" data-name="${p.name}" data-price="${p.price}" data-sku="${p.sku}">
+                                ${p.name} — $${parseFloat(p.price || 0).toLocaleString('es-AR')}
+                            </option>
+                        `).join('')}
+                    </select>
+                    <input type="text" placeholder="O escribir nombre personalizado..." class="item-prod-name-custom w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1 text-[11px] text-gray-300 mt-1 focus:outline-none">
+                </div>
+
+                <div class="flex items-center gap-2 w-full sm:w-1/2 justify-between">
+                    <div class="w-20">
+                        <span class="text-[9px] text-gray-400 block mb-0.5 uppercase">Cant:</span>
+                        <input type="number" min="1" value="1" oninput="calcularTotalPresupuestoModal()" class="item-prod-cant w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white font-mono text-center focus:outline-none">
+                    </div>
+
+                    <div class="w-28">
+                        <span class="text-[9px] text-gray-400 block mb-0.5 uppercase">Precio U.:</span>
+                        <input type="number" step="0.01" value="0" oninput="calcularTotalPresupuestoModal()" class="item-prod-precio w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white font-mono text-right focus:outline-none">
+                    </div>
+
+                    <div class="w-24 text-right">
+                        <span class="text-[9px] text-gray-400 block mb-0.5 uppercase">Subtotal:</span>
+                        <span class="item-prod-subtotal text-xs font-bold text-brand-yellow font-mono">$ 0</span>
+                    </div>
+
+                    <button type="button" onclick="eliminarFilaItemPresupuesto('${filaId}')" class="text-red-400 hover:text-red-300 p-1">
+                        <span class="material-symbols-outlined text-[18px]">delete</span>
+                    </button>
+                </div>
+            `;
+
+            container.appendChild(rowDiv);
+            calcularTotalPresupuestoModal();
+        }
+
+        function onProductoSeleccionadoPresupuesto(filaId, prodId) {
+            const fila = document.getElementById(filaId);
+            if (!fila) return;
+
+            const select = fila.querySelector('.item-prod-select');
+            const inputCustom = fila.querySelector('.item-prod-name-custom');
+            const inputPrecio = fila.querySelector('.item-prod-precio');
+
+            const opt = select.options[select.selectedIndex];
+            if (opt && opt.value) {
+                const name = opt.getAttribute('data-name');
+                const price = opt.getAttribute('data-price');
+                if (inputCustom) inputCustom.value = name || '';
+                if (inputPrecio) inputPrecio.value = price || 0;
+            }
+
+            calcularTotalPresupuestoModal();
+        }
+
+        function eliminarFilaItemPresupuesto(filaId) {
+            const fila = document.getElementById(filaId);
+            if (fila) fila.remove();
+            calcularTotalPresupuestoModal();
+        }
+
+        function calcularTotalPresupuestoModal() {
+            const container = document.getElementById('presupuesto-items-container');
+            if (!container) return;
+
+            let grandTotal = 0;
+            const filas = container.querySelectorAll('[id^="item-fila-"]');
+
+            filas.forEach(f => {
+                const cantInput = f.querySelector('.item-prod-cant');
+                const precioInput = f.querySelector('.item-prod-precio');
+                const subtotalSpan = f.querySelector('.item-prod-subtotal');
+
+                const cant = parseFloat(cantInput?.value || 0);
+                const precio = parseFloat(precioInput?.value || 0);
+                const subtotal = cant * precio;
+                grandTotal += subtotal;
+
+                if (subtotalSpan) {
+                    subtotalSpan.innerText = subtotal.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' });
+                }
             });
+
+            const display = document.getElementById('presupuesto-total-display');
+            if (display) {
+                display.innerText = grandTotal.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' });
+            }
+        }
+
+        async function guardarNuevoPresupuesto(event) {
+            event.preventDefault();
+
+            const clienteId = document.getElementById('presupuesto-cliente-id')?.value;
+            const origen = document.getElementById('presupuesto-origen')?.value || 'CRM';
+            const observaciones = document.getElementById('presupuesto-observaciones')?.value || '';
+
+            if (!clienteId) {
+                alert('Seleccioná un cliente para el presupuesto.');
+                return;
+            }
+
+            const container = document.getElementById('presupuesto-items-container');
+            const filas = container ? container.querySelectorAll('[id^="item-fila-"]') : [];
+
+            const items = [];
+            filas.forEach(f => {
+                const select = f.querySelector('.item-prod-select');
+                const customName = f.querySelector('.item-prod-name-custom')?.value || '';
+                const cant = parseFloat(f.querySelector('.item-prod-cant')?.value || 1);
+                const precio = parseFloat(f.querySelector('.item-prod-precio')?.value || 0);
+
+                const opt = select ? select.options[select.selectedIndex] : null;
+                const prodName = customName || (opt ? opt.getAttribute('data-name') : '') || 'Producto Cotizado';
+                const sku = opt ? opt.getAttribute('data-sku') : '';
+
+                if (cant > 0) {
+                    items.push({
+                        producto_nombre: prodName,
+                        cantidad: cant,
+                        precio_unitario: precio,
+                        sku: sku
+                    });
+                }
+            });
+
+            if (items.length === 0) {
+                alert('Ingresá al menos 1 producto en el presupuesto.');
+                return;
+            }
+
+            const btn = document.getElementById('btn-guardar-presupuesto');
+            const origText = btn.innerHTML;
+            btn.innerHTML = `<span class="material-symbols-outlined text-sm animate-spin">refresh</span> Guardando...`;
+            btn.disabled = true;
+
+            try {
+                const res = await fetch(`${API_URL}/crm/pedidos/crear-presupuesto`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        cliente_id: clienteId,
+                        items: items,
+                        observaciones: observaciones,
+                        origen: origen
+                    })
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    alert(data.mensaje);
+                    cerrarModalNuevoPedido();
+                    refreshData();
+                } else {
+                    alert('Error al crear presupuesto: ' + (data.error || 'No se completó la operación'));
+                }
+            } catch (err) {
+                alert('Error de red al guardar presupuesto: ' + err.message);
+            } finally {
+                btn.innerHTML = origText;
+                btn.disabled = false;
+            }
         }
 
         async function loadAlertasStock() {

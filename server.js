@@ -797,24 +797,149 @@ app.post('/api/crm/subir-excel-catalogo', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Helper de deducción de stock en bulk para evitar N+1 queries
+async function descontarStockPedidoBulk(pedido_id) {
+    try {
+        const { data: items } = await supabase.from('items_pedido').select('*').eq('pedido_id', pedido_id);
+        if (!items || items.length === 0) return;
+
+        const { data: prods } = await supabase.from('dec_products').select('id, name, stock').limit(1000);
+        if (!prods || prods.length === 0) return;
+
+        for (const item of items) {
+            const cant = parseInt(item.cantidad || 1);
+            const rawName = (item.producto_nombre || '').toLowerCase().trim();
+            const firstWord = rawName.split(' ')[0];
+
+            const match = prods.find(p => p.name && (p.name.toLowerCase() === rawName || (firstWord && p.name.toLowerCase().includes(firstWord))));
+            if (match) {
+                const nuevoStock = Math.max(0, parseInt(match.stock || 0) - cant);
+                await supabase.from('dec_products').update({
+                    stock: nuevoStock,
+                    stock_status: nuevoStock > 0 ? 'instock' : 'outofstock'
+                }).eq('id', match.id);
+            }
+        }
+    } catch (e) {
+        console.error('Error en descontarStockPedidoBulk:', e);
+    }
+}
+
 app.post('/api/crm/confirmar-pago-descontar-stock', async (req, res) => {
     try {
         const { pedido_id } = req.body;
-        const { data: pedido } = await supabase.from('pedidos').select('*, items_pedido(*)').eq('id', pedido_id).single();
-        if (!pedido) throw new Error('Pedido no encontrado');
+        if (!pedido_id) return res.status(400).json({ error: 'ID de pedido requerido' });
 
-        const items = pedido.items_pedido || [];
-        for (const item of items) {
-            const cant = parseInt(item.cantidad || 1);
-            const { data: prods } = await supabase.from('dec_products').select('id, stock').ilike('name', `%${(item.producto_nombre || '').split(' ')[0]}%`).limit(1);
-            if (prods && prods.length > 0) {
-                const nuevoStock = Math.max(0, parseInt(prods[0].stock || 0) - cant);
-                await supabase.from('dec_products').update({ stock: nuevoStock, stock_status: nuevoStock > 0 ? 'instock' : 'outofstock' }).eq('id', prods[0].id);
-            }
+        await descontarStockPedidoBulk(pedido_id);
+        await supabase.from('pedidos').update({ estado: 'Pagado' }).eq('id', pedido_id);
+
+        res.json({ success: true, mensaje: `✅ Pago confirmado y stock descontado.` });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Endpoint para cambiar de estado un pedido en el embudo (con truncamiento y bulk stock)
+app.post('/api/crm/pedidos/cambiar-estado', async (req, res) => {
+    try {
+        const { pedido_id, nuevo_estado } = req.body;
+        if (!pedido_id || !nuevo_estado) return res.status(400).json({ error: 'pedido_id y nuevo_estado son requeridos' });
+
+        // Normalizar string a DB VARCHAR(20)
+        let estadoNormalizado = String(nuevo_estado).trim();
+        if (estadoNormalizado.includes('Despachado') || estadoNormalizado.includes('Entregado')) {
+            estadoNormalizado = 'Despachado';
+        }
+        estadoNormalizado = estadoNormalizado.substring(0, 20);
+
+        // Obtener estado actual antes de actualizar
+        const { data: actual } = await supabase.from('pedidos').select('estado').eq('id', pedido_id).single();
+        const estadoAnterior = actual ? actual.estado : '';
+
+        // Si pasa a Pagado y no estaba en Pagado antes, descontar stock en bulk
+        if (estadoNormalizado === 'Pagado' && estadoAnterior !== 'Pagado') {
+            await descontarStockPedidoBulk(pedido_id);
         }
 
-        await supabase.from('pedidos').update({ estado: 'Pagado' }).eq('id', pedido_id);
-        res.json({ success: true, mensaje: `✅ Pago confirmado y stock descontado.` });
+        const { data, error } = await supabase.from('pedidos')
+            .update({ estado: estadoNormalizado })
+            .eq('id', pedido_id)
+            .select()
+            .single();
+
+        if (error) throw error;
+        res.json({ success: true, mensaje: `✅ Pedido movido a ${estadoNormalizado} correctamente.`, pedido: data });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Endpoint para crear un Presupuesto / Pedido desde la Ficha de Chat o el Embudo
+app.post('/api/crm/pedidos/crear-presupuesto', async (req, res) => {
+    try {
+        const { cliente_id, items, observaciones, origen } = req.body;
+        if (!cliente_id) return res.status(400).json({ error: 'cliente_id es requerido' });
+
+        const itemsList = Array.isArray(items) ? items : [];
+        let montoTotal = 0;
+        itemsList.forEach(it => {
+            const cant = parseFloat(it.cantidad || 1);
+            const precio = parseFloat(it.precio_unitario || 0);
+            montoTotal += (cant * precio);
+        });
+
+        const pedidoPayload = {
+            cliente_id: cliente_id,
+            origen: String(origen || 'CRM').trim().substring(0, 20),
+            monto_total: montoTotal,
+            supera_minimo_80k: montoTotal >= 80000,
+            estado: 'Presupuesto'
+        };
+
+        const { data: orderData, error: orderErr } = await supabase
+            .from('pedidos')
+            .insert([pedidoPayload])
+            .select()
+            .single();
+
+        if (orderErr) throw orderErr;
+
+        // Insertar items_pedido si existen
+        if (itemsList.length > 0) {
+            const itemsPayload = itemsList.map(it => ({
+                pedido_id: orderData.id,
+                sku: it.sku ? String(it.sku).substring(0, 50) : null,
+                producto_nombre: String(it.producto_nombre || 'Producto sin nombre').substring(0, 150),
+                variacion_tamano: it.variacion_tamano ? String(it.variacion_tamano).substring(0, 50) : null,
+                cantidad: parseInt(it.cantidad || 1),
+                precio_unitario: parseFloat(it.precio_unitario || 0),
+                subtotal: parseFloat(it.cantidad || 1) * parseFloat(it.precio_unitario || 0)
+            }));
+
+            await supabase.from('items_pedido').insert(itemsPayload);
+        }
+
+        // Traer pedido completo con relaciones
+        const { data: fullOrder } = await supabase
+            .from('pedidos')
+            .select('*, clientes(razon_social, whatsapp), items_pedido(*)')
+            .eq('id', orderData.id)
+            .single();
+
+        res.json({
+            success: true,
+            mensaje: '🎉 ¡Presupuesto creado con éxito y cargado al embudo!',
+            pedido: fullOrder || orderData
+        });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Endpoint para obtener catálogo simple de productos para el modal de presupuestos
+app.get('/api/crm/productos-list', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('dec_products')
+            .select('id, sku, name, price, stock, category')
+            .order('name', { ascending: true })
+            .limit(1000);
+        if (error) throw error;
+        res.json({ success: true, count: data.length, productos: data });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -889,9 +1014,15 @@ app.post('/api/crm/clientes/importar-lote', async (req, res) => {
     }
 });
 
+// Obtener lista de pedidos con soporte opcional de filtro por cliente_id
 app.get('/api/crm/pedidos', async (req, res) => {
     try {
-        const { data, error } = await supabase.from('pedidos').select('*, clientes(razon_social, whatsapp), items_pedido(*)').order('creado_el', { ascending: false });
+        const { cliente_id } = req.query;
+        let query = supabase.from('pedidos').select('*, clientes(razon_social, whatsapp), items_pedido(*)').order('creado_el', { ascending: false }).limit(2000);
+        if (cliente_id) {
+            query = query.eq('cliente_id', cliente_id);
+        }
+        const { data, error } = await query;
         if (error) throw error;
         res.json({ success: true, count: data.length, pedidos: data });
     } catch (err) { res.status(500).json({ error: err.message }); }
