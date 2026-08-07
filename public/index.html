@@ -2747,40 +2747,43 @@
                 `;
             }).join('');
         }
+        // =========================================================================
+        // GESTOR DE BANNERS DE SECCIONES (TODAS LAS 33 CATEGORÍAS DEL CATÁLOGO)
+        // =========================================================================
         const ALL_CATEGORIES_BANNERS = [
-            { key: 'combos-emprendedores', name: 'Combos Emprendedores', icon: 'rocket_launch' },
-            { key: 'ofertas-semanales', name: 'Ofertas Semanales', icon: 'local_offer' },
-            { key: 'productos-liquidos', name: 'Productos Líquidos', icon: 'water_drop' },
-            { key: 'productos-para-diluir', name: 'Productos para Diluir', icon: 'invert_colors' },
-            { key: 'primeras-marcas', name: 'Primeras Marcas', icon: 'verified' },
-            { key: 'pastas-y-concentrados', name: 'Pastas y Concentrados', icon: 'science' },
-            { key: 'aerosoles', name: 'Aerosoles', icon: 'sprinkler' },
-            { key: 'jabon-en-polvo', name: 'Jabón en Polvo', icon: 'grain' },
-            { key: 'jabon-en-pan', name: 'Jabón en Pan', icon: 'rectangle' },
-            { key: 'esponjas', name: 'Esponjas', icon: 'grid_view' },
-            { key: 'escobillones', name: 'Escobillones', icon: 'cleaning_services' },
-            { key: 'cepillos', name: 'Cepillos', icon: 'brush' },
-            { key: 'secadores', name: 'Secadores', icon: 'mop' },
-            { key: 'cabos', name: 'Cabos', icon: 'straighten' },
-            { key: 'burlete', name: 'Burletes', icon: 'line_weight' },
-            { key: 'bolsas', name: 'Bolsas', icon: 'shopping_bag' },
-            { key: 'envases', name: 'Envases', icon: 'sanitizer' },
-            { key: 'bano', name: 'Baño', icon: 'bathtub' },
-            { key: 'cocina', name: 'Cocina', icon: 'cooking' },
-            { key: 'perfumeria', name: 'Perfumería', icon: 'humidity_mid' },
-            { key: 'sahumerios', name: 'Sahumerios', icon: 'self_care' },
-            { key: 'textiles', name: 'Textiles', icon: 'checkroom' },
-            { key: 'papeles', name: 'Papeles', icon: 'description' },
-            { key: 'repelentes', name: 'Repelentes', icon: 'bug_report' },
-            { key: 'insecticidas', name: 'Insecticidas', icon: 'pest_control' },
-            { key: 'higiene-personal', name: 'Higiene Personal', icon: 'wash' },
-            { key: 'jabon-tocador', name: 'Jabón Tocador', icon: 'soap' },
-            { key: 'jardin', name: 'Jardín', icon: 'potted_plant' },
-            { key: 'pileta', name: 'Pileta', icon: 'pool' },
-            { key: 'automovil', name: 'Automóvil', icon: 'directions_car' },
-            { key: 'kiosco-y-varios', name: 'Kiosco y Varios', icon: 'storefront' },
-            { key: 'plastico', name: 'Plásticos', icon: 'shopping_bag' },
-            { key: 'limpieza-hogar', name: 'Limpieza Hogar', icon: 'home' }
+            { key: 'combos-emprendedores', name: 'Combos Emprendedores', icon: 'rocket_launch', currentImg: 'https://quimicadec.com/wp-content/uploads/2026/08/combos_emprendedores_banner-3.jpg' },
+            { key: 'ofertas-semanales', name: 'Ofertas Semanales', icon: 'local_offer', currentImg: 'https://quimicadec.com/assets/img/categorias/ofertassemanales.jpeg' },
+            { key: 'productos-liquidos', name: 'Productos Líquidos', icon: 'water_drop', currentImg: 'https://quimicadec.com/assets/img/categorias/productosliquidos.jpeg' },
+            { key: 'productos-para-diluir', name: 'Productos para Diluir', icon: 'invert_colors', currentImg: 'https://quimicadec.com/assets/img/categorias/productosparadiluir.jpeg' },
+            { key: 'primeras-marcas', name: 'Primeras Marcas', icon: 'verified', currentImg: 'https://quimicadec.com/assets/img/categorias/primerasmarcas.jpeg' },
+            { key: 'pastas-y-concentrados', name: 'Pastas y Concentrados', icon: 'science', currentImg: 'https://quimicadec.com/assets/img/categorias/pastasyconcentrados.jpeg' },
+            { key: 'aerosoles', name: 'Aerosoles', icon: 'sprinkler', currentImg: 'https://quimicadec.com/assets/img/categorias/aerosoles.jpeg' },
+            { key: 'jabon-en-polvo', name: 'Jabón en Polvo', icon: 'grain', currentImg: 'https://quimicadec.com/assets/img/categorias/jabonenpolvo.jpeg' },
+            { key: 'jabon-en-pan', name: 'Jabón en Pan', icon: 'rectangle', currentImg: 'https://quimicadec.com/assets/img/categorias/jabonenpan.jpeg' },
+            { key: 'esponjas', name: 'Esponjas', icon: 'grid_view', currentImg: 'https://quimicadec.com/assets/img/categorias/esponjas.jpeg' },
+            { key: 'escobillones', name: 'Escobillones', icon: 'cleaning_services', currentImg: 'https://quimicadec.com/assets/img/categorias/escobillones.jpeg' },
+            { key: 'cepillos', name: 'Cepillos', icon: 'brush', currentImg: 'https://quimicadec.com/assets/img/categorias/cepillos.jpeg' },
+            { key: 'secadores', name: 'Secadores', icon: 'mop', currentImg: 'https://quimicadec.com/assets/img/categorias/secadores.jpeg' },
+            { key: 'cabos', name: 'Cabos', icon: 'straighten', currentImg: 'https://quimicadec.com/assets/img/categorias/cabos.jpeg' },
+            { key: 'burlete', name: 'Burletes', icon: 'line_weight', currentImg: 'https://quimicadec.com/assets/img/categorias/burletes.jpeg' },
+            { key: 'bolsas', name: 'Bolsas', icon: 'shopping_bag', currentImg: 'https://quimicadec.com/assets/img/categorias/bolsas.jpeg' },
+            { key: 'envases', name: 'Envases', icon: 'sanitizer', currentImg: 'https://quimicadec.com/assets/img/categorias/envases.jpeg' },
+            { key: 'bano', name: 'Baño', icon: 'bathtub', currentImg: 'https://quimicadec.com/assets/img/categorias/ba%C3%B1o.jpeg' },
+            { key: 'cocina', name: 'Cocina', icon: 'cooking', currentImg: 'https://quimicadec.com/assets/img/categorias/cocina.jpeg' },
+            { key: 'perfumeria', name: 'Perfumería', icon: 'humidity_mid', currentImg: 'https://quimicadec.com/assets/img/categorias/perfumeria.jpeg' },
+            { key: 'sahumerios', name: 'Sahumerios', icon: 'self_care', currentImg: 'https://quimicadec.com/assets/img/categorias/sahumerios.jpeg' },
+            { key: 'textiles', name: 'Textiles', icon: 'checkroom', currentImg: 'https://quimicadec.com/assets/img/categorias/textiles.jpeg' },
+            { key: 'papeles', name: 'Papeles', icon: 'description', currentImg: 'https://quimicadec.com/assets/img/categorias/papeles.jpeg' },
+            { key: 'repelentes', name: 'Repelentes', icon: 'bug_report', currentImg: 'https://quimicadec.com/assets/img/categorias/repelente.jpeg' },
+            { key: 'insecticidas', name: 'Insecticidas', icon: 'pest_control', currentImg: 'https://quimicadec.com/assets/img/categorias/insecticida.jpeg' },
+            { key: 'higiene-personal', name: 'Higiene Personal', icon: 'wash', currentImg: 'https://quimicadec.com/assets/img/categorias/higiene%20personal.jpeg' },
+            { key: 'jabon-tocador', name: 'Jabón Tocador', icon: 'soap', currentImg: 'https://quimicadec.com/assets/img/categorias/jabontocador.jpeg' },
+            { key: 'jardin', name: 'Jardín', icon: 'potted_plant', currentImg: 'https://quimicadec.com/assets/img/categorias/jardin.jpeg' },
+            { key: 'pileta', name: 'Pileta', icon: 'pool', currentImg: 'https://quimicadec.com/assets/img/categorias/pilera.jpeg' },
+            { key: 'automovil', name: 'Automóvil', icon: 'directions_car', currentImg: 'https://quimicadec.com/assets/img/categorias/automovil.jpeg' },
+            { key: 'kiosco-y-varios', name: 'Kiosco y Varios', icon: 'storefront', currentImg: 'https://quimicadec.com/assets/img/categorias/kioskoyvarios.jpeg' },
+            { key: 'plastico', name: 'Plásticos', icon: 'shopping_bag', currentImg: 'https://quimicadec.com/assets/img/categorias/plasticos.jpeg' },
+            { key: 'limpieza-hogar', name: 'Limpieza Hogar', icon: 'home', currentImg: 'https://via.placeholder.com/300x200?text=Proximamente' }
         ];
 
         function renderBannersGridUI(filterTerm = '') {
@@ -2799,7 +2802,7 @@
             }
 
             container.innerHTML = filtered.map(c => `
-                <div class="p-3.5 bg-slate-900/90 border border-cyan-500/30 hover:border-cyan-400/60 rounded-xl space-y-2.5 shadow-lg transition-all">
+                <div class="p-3.5 bg-slate-900/90 border border-cyan-500/30 hover:border-cyan-400/60 rounded-2xl space-y-3 shadow-lg transition-all">
                     <div class="flex items-center justify-between">
                         <span class="text-xs font-bold text-white uppercase flex items-center gap-1.5">
                             <span class="material-symbols-outlined text-[16px] text-cyan-400">${c.icon}</span> ${c.name}
@@ -2807,13 +2810,51 @@
                         <span class="text-[9px] font-mono text-cyan-300/70 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">${c.key}</span>
                     </div>
 
-                    <input type="file" id="banner-file-${c.key}" accept="image/*" class="w-full text-[11px] text-gray-300 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-[10px] file:font-bold file:bg-cyan-500/20 file:text-cyan-300 cursor-pointer">
+                    <!-- PREVISUALIZACIÓN DUAL: BANNER ACTUAL VS FOTO NUEVA -->
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <span class="text-[9px] font-bold text-gray-400 uppercase tracking-wider block mb-1">🌐 Banner Actual:</span>
+                            <div class="w-full h-24 rounded-lg overflow-hidden border border-white/10 bg-black/50 relative">
+                                <img id="banner-current-img-${c.key}" src="${c.currentImg}" class="w-full h-full object-cover">
+                            </div>
+                        </div>
+                        <div>
+                            <span class="text-[9px] font-bold text-cyan-400 uppercase tracking-wider block mb-1">📸 Foto a Subir:</span>
+                            <div id="banner-preview-box-${c.key}" class="w-full h-24 rounded-lg border border-dashed border-cyan-500/40 bg-slate-950 flex flex-col items-center justify-center text-gray-500 text-[10px] text-center p-1 font-mono">
+                                <span class="material-symbols-outlined text-lg opacity-40">add_photo_alternate</span>
+                                <span>Sin elegir</span>
+                            </div>
+                        </div>
+                    </div>
 
-                    <button onclick="subirBannerSeccion('${c.key}', '${c.name}')" class="w-full py-2 rounded-xl bg-cyan-600/30 hover:bg-cyan-500/40 border border-cyan-500/40 text-cyan-200 text-xs font-bold shadow transition-all flex items-center justify-center gap-1">
-                        📸 Actualizar Banner ${c.name}
+                    <div>
+                        <label class="text-[10px] text-gray-400 block mb-1">Elegir imagen local (formato 4:3):</label>
+                        <input type="file" id="banner-file-${c.key}" accept="image/*" onchange="previewNuevoBanner(this, '${c.key}')" class="w-full text-[11px] text-gray-300 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-[10px] file:font-bold file:bg-cyan-500/20 file:text-cyan-300 cursor-pointer">
+                    </div>
+
+                    <button onclick="subirBannerSeccion('${c.key}', '${c.name}')" class="w-full py-2 rounded-xl bg-cyan-600/30 hover:bg-cyan-500/40 border border-cyan-500/40 text-cyan-200 text-xs font-bold shadow transition-all flex items-center justify-center gap-1.5">
+                        <span class="material-symbols-outlined text-sm">cloud_upload</span> Actualizar Banner ${c.name}
                     </button>
                 </div>
             `).join('');
+        }
+
+        function previewNuevoBanner(input, key) {
+            const box = document.getElementById(`banner-preview-box-${key}`);
+            if (!box) return;
+
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    box.innerHTML = `<img src="${e.target.result}" class="w-full h-24 object-cover rounded-lg border border-cyan-400/60 shadow-md">`;
+                };
+                reader.readAsDataURL(input.files[0]);
+            } else {
+                box.innerHTML = `
+                    <span class="material-symbols-outlined text-lg opacity-40">add_photo_alternate</span>
+                    <span>Sin elegir</span>
+                `;
+            }
         }
 
         function filtrarBannersUI(val) {
@@ -2847,10 +2888,17 @@
                 });
 
                 const data = await resp.json();
-                if (data.success) {
+                if (data.success && data.image_url) {
                     resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-400';
                     resDiv.innerHTML = `🎉 ¡Banner de "${name || key}" actualizado con éxito! <br><a href="${data.image_url}" target="_blank" class="underline text-brand-yellow font-mono">Ver Imagen de Banner Subida</a>`;
+
+                    // Actualizar el preview del banner actual en vivo en la tarjeta
+                    const currentImgEl = document.getElementById(`banner-current-img-${key}`);
+                    if (currentImgEl) currentImgEl.src = data.image_url;
+
+                    // Resetear selector de archivo y preview de foto a subir
                     fileInput.value = '';
+                    previewNuevoBanner(fileInput, key);
                 } else {
                     resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-red-500/40 bg-red-500/10 text-red-400';
                     resDiv.innerText = `❌ Error: ${data.error || 'No se pudo actualizar el banner.'}`;

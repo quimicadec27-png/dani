@@ -1429,15 +1429,23 @@ app.post('/api/combos/auto-link-skus', async (req, res) => {
 app.post('/api/categories/upload-banner', async (req, res) => {
     try {
         const { categoryKey, imageBase64, imageUrl, filename } = req.body;
+
+        const slugMap = {
+            'pastas-y-concentrados': 'concentrados',
+            'aerosoles': 'aerosol',
+            'limpieza-hogar': 'limpieza-hogar'
+        };
+        const targetSlug = slugMap[categoryKey] || categoryKey;
+
         const resp = await fetch('https://quimicadec.com/?qdec_api=upload_category_banner', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 secret_key: 'qdec_crm_sec_2026',
-                category_key: categoryKey,
+                category_key: targetSlug,
                 image_base64: imageBase64 || '',
                 image_url: imageUrl || '',
-                filename: filename || `banner_${categoryKey}_${Date.now()}.jpg`
+                filename: filename || `banner_${targetSlug}_${Date.now()}.jpg`
             })
         });
         const data = await resp.json();
@@ -1449,27 +1457,16 @@ app.post('/api/categories/upload-banner', async (req, res) => {
                 if (fs.existsSync(catalogPath)) {
                     let html = fs.readFileSync(catalogPath, 'utf8');
 
-                    // Mapa de categorías a patrones de reemplazo
-                    const patternMap = {
-                        'combos-emprendedores': /combosemprendedores\.(jpeg|jpg|png|webp)/gi,
-                        'productos-liquidos': /productosliquidos\.(jpeg|jpg|png|webp)/gi,
-                        'ofertas-semanales': /ofertassemanales\.(jpeg|jpg|png|webp)/gi,
-                        'productos-para-diluir': /productosparadiluir\.(jpeg|jpg|png|webp)/gi,
-                        'aerosoles': /aerosoles\.(jpeg|jpg|png|webp)/gi,
-                        'primeras-marcas': /primerasmarcas\.(jpeg|jpg|png|webp)/gi,
-                        'pastas-y-concentrados': /pastasyconcentrados\.(jpeg|jpg|png|webp)/gi,
-                        'jabon-en-polvo': /jabonenpolvo\.(jpeg|jpg|png|webp)/gi,
-                        'jabon-en-pan': /jabonenpan\.(jpeg|jpg|png|webp)/gi
-                    };
-
-                    // Reemplazar la URL del banner específico por la URL HTTPS recién subida para cualquiera de las 33 categorías
-                    const regHref = new RegExp(`(href="[^"]*${categoryKey}[^"]*"[\\s\\S]*?<img [^>]*src=")[^"]*(")`, 'i');
-                    if (regHref.test(html)) {
-                        html = html.replace(regHref, `$1${data.image_url}$2`);
+                    // Reemplazar la URL del banner de la categoría específica dentro de catalogo_final.html
+                    const blockRegex = new RegExp(`(<a\\s+href="[^"]*categoria-producto\\/${targetSlug}\\/?[^"]*"[\\s\\S]*?<img\\s+src=")([^"]+)(")`, 'i');
+                    if (blockRegex.test(html)) {
+                        html = html.replace(blockRegex, `$1${data.image_url}$3`);
                     } else {
-                        const slugKey = categoryKey.replace(/-/g, '');
-                        const reg = new RegExp(`(src="[^"]*${slugKey}[^"]*")`, 'i');
-                        html = html.replace(reg, `src="${data.image_url}"`);
+                        const cleanSlug = targetSlug.replace(/-/g, '');
+                        const fallbackReg = new RegExp(`(src="[^"]*${cleanSlug}[^"]*")`, 'i');
+                        if (fallbackReg.test(html)) {
+                            html = html.replace(fallbackReg, `src="${data.image_url}"`);
+                        }
                     }
 
                     fs.writeFileSync(catalogPath, html, 'utf8');
