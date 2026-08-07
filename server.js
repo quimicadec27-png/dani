@@ -812,7 +812,7 @@ app.post('/api/crm/confirmar-pago-descontar-stock', async (req, res) => {
 
 app.get('/api/crm/clientes', async (req, res) => {
     try {
-        const { data, error } = await supabase.from('clientes').select('*').order('creado_el', { ascending: false }).limit(2000);
+        const { data, error } = await supabase.from('clientes').select('id, razon_social, contacto_nombre, whatsapp, cuit, email, localidad, tipo_cliente, estado_lead, total_comprado, creado_el').limit(2000);
         if (error) throw error;
         res.json({ success: true, count: data.length, clientes: data });
     } catch (err) { res.status(500).json({ error: err.message }); }
