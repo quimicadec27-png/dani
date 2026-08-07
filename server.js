@@ -818,7 +818,7 @@ app.get('/api/crm/clientes', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Importación Masiva de Clientes desde Excel / CSV
+// Importación Masiva de Clientes desde Excel / CSV (Ultrarrápida por Lote)
 app.post('/api/crm/clientes/importar-lote', async (req, res) => {
     try {
         const { clientes } = req.body;
@@ -826,32 +826,22 @@ app.post('/api/crm/clientes/importar-lote', async (req, res) => {
             return res.status(400).json({ error: 'Se requiere una lista de clientes no vacía' });
         }
 
-        let insertados = 0;
-        let actualizados = 0;
-        let errores = 0;
+        const payloadMap = new Map();
 
-        for (const item of clientes) {
-            // Mapeo robusto de columnas desde CSV/Excel o JSON
+        clientes.forEach((item, index) => {
             const nombre = item.Nombre || item.nombre || item.razon_social || item.contacto_nombre || 'Cliente Sin Nombre';
             const cuitVal = item['ID (DNI/CUIT)'] || item.cuit || item.dni_cuit || item.dni || '';
             const rawPhone = item.Telefonos || item.telefonos || item.whatsapp || item.telefono || '';
-            const telFijo = item['Teléfono fijo'] || item.telefono_fijo || '';
             const direccion = item.Dirección || item.direccion || item.localidad || '';
             const email = item['Correo Electrónico'] || item.email || '';
-            const deuda = item['Importe de deuda'] || item.importe_deuda || '';
-            const saldo = item['Saldo a Favor'] || item.saldo_a_favor || '';
             const listaPrecios = item['Listas de precios'] || item.lista_precios || 'Ninguno';
             const vendedor = item.Vendedor || item.vendedor || '';
-            const cumple = item['Fecha de cumpleaños'] || item.fecha_cumpleanos || '';
 
-            // Limpieza básica de teléfono WhatsApp
             let waLimpio = String(rawPhone).replace(/[^\d+]/g, '').trim();
             if (!waLimpio) {
-                // Generar identificador alternativo si no hay teléfono
-                waLimpio = cuitVal ? `CUIT_${cuitVal}` : `CLI_${Date.now()}_${Math.floor(Math.random()*1000)}`;
+                waLimpio = cuitVal ? `CUIT_${cuitVal}` : `CLI_${Date.now()}_${index}`;
             }
 
-            // Construir payload compatible con Supabase
             const clientPayload = {
                 razon_social: String(nombre).trim(),
                 contacto_nombre: String(nombre).trim(),
@@ -863,44 +853,25 @@ app.post('/api/crm/clientes/importar-lote', async (req, res) => {
                 estado_lead: vendedor ? `Vendedor: ${vendedor}` : 'Cliente Importado'
             };
 
-            // Intentar verificar si el cliente ya existe por WhatsApp o CUIT
-            const { data: exist } = await supabase
-                .from('clientes')
-                .select('id')
-                .eq('whatsapp', waLimpio)
-                .maybeSingle();
+            payloadMap.set(waLimpio, clientPayload);
+        });
 
-            if (exist && exist.id) {
-                const { error: uErr } = await supabase.from('clientes').update(clientPayload).eq('id', exist.id);
-                if (uErr) errores++; else actualizados++;
-            } else {
-                const { error: iErr } = await supabase.from('clientes').insert(clientPayload);
-                if (iErr) {
-                    // Si falla por duplicado de WhatsApp, intentar actualizar por CUIT si existe
-                    if (cuitVal) {
-                        const { data: existCuit } = await supabase.from('clientes').select('id').eq('cuit', cuitVal).maybeSingle();
-                        if (existCuit && existCuit.id) {
-                            await supabase.from('clientes').update(clientPayload).eq('id', existCuit.id);
-                            actualizados++;
-                        } else {
-                            errores++;
-                        }
-                    } else {
-                        errores++;
-                    }
-                } else {
-                    insertados++;
-                }
-            }
-        }
+        const batchArray = Array.from(payloadMap.values());
 
+        // Inserción / Actualización por Lote en una sola consulta HTTP en Supabase
+        const { data, error } = await supabase
+            .from('clientes')
+            .upsert(batchArray, { onConflict: 'whatsapp' })
+            .select();
+
+        if (error) throw error;
+
+        const countProcesados = batchArray.length;
         res.json({
             success: true,
-            mensaje: `✅ Importación completada: ${insertados} creados, ${actualizados} actualizados, ${errores} errores.`,
+            mensaje: `🎉 ¡Carga masiva completada con éxito! Se procesaron e importaron ${countProcesados} clientes en la base de datos oficial.`,
             total: clientes.length,
-            insertados,
-            actualizados,
-            errores
+            procesados: countProcesados
         });
     } catch (err) {
         res.status(500).json({ error: err.message });
