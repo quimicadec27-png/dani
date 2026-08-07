@@ -888,7 +888,6 @@ app.post('/api/crm/pedidos/crear-presupuesto', async (req, res) => {
             cliente_id: cliente_id,
             origen: String(origen || 'CRM').trim().substring(0, 20),
             monto_total: montoTotal,
-            supera_minimo_80k: montoTotal >= 80000,
             estado: 'Presupuesto'
         };
 
