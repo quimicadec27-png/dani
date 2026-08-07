@@ -1821,6 +1821,17 @@
                         const esPagado = (p.estado === 'Pagado');
                         const esCancelado = (p.estado === 'Cancelado');
 
+                        let notaPedido = '';
+                        if (p.origen && p.origen.includes('| Nota:')) {
+                            notaPedido = p.origen.split('| Nota:')[1].trim();
+                        }
+                        if (itemsPedido.length > 0) {
+                            const firstItemNote = itemsPedido.find(it => it.variacion_tamano && it.variacion_tamano.includes('Nota:'));
+                            if (firstItemNote) {
+                                notaPedido = firstItemNote.variacion_tamano.replace(/^Nota:\s*/i, '').trim();
+                            }
+                        }
+
                         return `
                             <div class="glass-panel p-5 rounded-2xl space-y-4 border border-white/10 hover:border-white/20 transition-all shadow-md">
                                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-white/10 pb-3">
@@ -1854,12 +1865,12 @@
                                 </div>
 
                                 <!-- NOTAS U OBSERVACIONES DEL PEDIDO SI EXISTEN -->
-                                ${p.origen && p.origen.includes('| Nota:') ? `
+                                ${notaPedido ? `
                                     <div class="p-2.5 rounded-xl bg-amber-400/10 border border-amber-400/30 text-amber-300 text-xs flex items-center gap-2">
                                         <span class="material-symbols-outlined text-[18px] text-amber-400">edit_note</span>
                                         <div>
                                             <strong class="uppercase text-[10px] block opacity-80 text-amber-400 font-bold">Observaciones / Notas del Pedido:</strong>
-                                            <span>${p.origen.split('| Nota:')[1].trim()}</span>
+                                            <span>${notaPedido}</span>
                                         </div>
                                     </div>
                                 ` : ''}
