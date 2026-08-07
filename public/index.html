@@ -1138,17 +1138,17 @@
 
         async function refreshData() {
             try {
-                const [resC, resP, resA, resChat] = await Promise.all([
+                const [resC, resP, resA, resChat] = await Promise.allSettled([
                     fetch(`${API_URL}/crm/clientes`),
                     fetch(`${API_URL}/crm/pedidos`),
                     fetch(`${API_URL}/crm/alertas-seguimiento`),
                     fetch(`${API_URL}/crm/chat/conversaciones`)
                 ]);
 
-                if (resC.ok) clientesData = (await resC.json()).clientes || [];
-                if (resP.ok) pedidosData = (await resP.json()).pedidos || [];
-                if (resA.ok) alertasData = (await resA.json()).alertas || [];
-                if (resChat.ok) conversacionesData = (await resChat.json()).conversaciones || [];
+                if (resC.status === 'fulfilled' && resC.value.ok) clientesData = (await resC.value.json()).clientes || [];
+                if (resP.status === 'fulfilled' && resP.value.ok) pedidosData = (await resP.value.json()).pedidos || [];
+                if (resA.status === 'fulfilled' && resA.value.ok) alertasData = (await resA.value.json()).alertas || [];
+                if (resChat.status === 'fulfilled' && resChat.value.ok) conversacionesData = (await resChat.value.json()).conversaciones || [];
 
                 renderConversacionesList();
                 renderKanban();

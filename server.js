@@ -517,26 +517,38 @@ Devuelve JSON: {"items": ["busqueda1", "busqueda2"]}`
 // Obtener lista de conversaciones para el CRM (incluyendo web y whatsapp)
 app.get('/api/crm/chat/conversaciones', async (req, res) => {
     try {
-        // 1. Obtener los últimos mensajes de chat para mapear la fecha más reciente
+        // 1. Obtener los últimos mensajes de chat (limit alto para cubrir todos los clientes)
         const { data: lastMessages } = await supabase
             .from('mensajes_chat')
-            .select('cliente_id, texto, creado_el')
+            .select('cliente_id, texto, emisor, creado_el')
             .order('creado_el', { ascending: false })
-            .limit(300);
+            .limit(2000);
 
+        // Mapear último mensaje y detectar bot_pausado por cliente en memoria
         const lastMsgMap = new Map();
+        const botPausadoMap = new Map();
         (lastMessages || []).forEach(m => {
             if (!lastMsgMap.has(m.cliente_id)) {
                 lastMsgMap.set(m.cliente_id, m);
             }
+            // Detectar bot_pausado: buscar marcadores en los mensajes recientes de cada cliente
+            if (!botPausadoMap.has(m.cliente_id)) {
+                if (m.texto && m.texto.includes('[BOT REANUDADO]')) {
+                    botPausadoMap.set(m.cliente_id, false);
+                } else if (m.texto && m.texto.includes('[BOT PAUSADO]')) {
+                    botPausadoMap.set(m.cliente_id, true);
+                } else if (m.emisor === 'vendedor') {
+                    botPausadoMap.set(m.cliente_id, true);
+                }
+            }
         });
 
-        // 2. Obtener lista de clientes (máximo 500 para la vista de chat)
+        // 2. Obtener lista de clientes (máximo 2000 para la vista de chat)
         const { data: clientes, error } = await supabase
             .from('clientes')
             .select('id, razon_social, whatsapp, contacto_nombre, creado_el')
             .order('creado_el', { ascending: false })
-            .limit(500);
+            .limit(2000);
 
         if (error) throw error;
         
@@ -544,7 +556,7 @@ app.get('/api/crm/chat/conversaciones', async (req, res) => {
             const lastM = lastMsgMap.get(c.id);
             return {
                 ...c,
-                bot_pausado: false,
+                bot_pausado: botPausadoMap.get(c.id) || false,
                 ultimo_mensaje_el: lastM ? lastM.creado_el : c.creado_el,
                 ultimo_texto: lastM ? lastM.texto : ''
             };
@@ -586,7 +598,7 @@ app.post('/api/crm/clientes/promover-lead', async (req, res) => {
             contacto_nombre: razon_social ? String(razon_social).trim() : 'Cliente Mayorista',
             cuit: cuit ? String(cuit).trim() : '',
             tipo_cliente: tipo_cliente || 'Mayorista',
-            estado_lead: vendedor ? `Vendedor: ${vendedor}` : 'Cliente Confirmado'
+            estado_lead: (vendedor ? `Vendedor: ${vendedor}` : 'Cliente Confirmado').substring(0, 20)
         };
 
         if (whatsapp && !whatsapp.startsWith('Web_')) {
@@ -888,7 +900,7 @@ app.get('/api/crm/pedidos', async (req, res) => {
 app.get('/api/crm/alertas-seguimiento', async (req, res) => {
     try {
         const firstDayOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
-        const { data: clientes } = await supabase.from('clientes').select('*').order('razon_social', { ascending: true });
+        const { data: clientes } = await supabase.from('clientes').select('id, razon_social, contacto_nombre, whatsapp').order('razon_social', { ascending: true }).limit(2000);
         const { data: pedidosMes } = await supabase.from('pedidos').select('cliente_id, monto_total').gte('creado_el', firstDayOfMonth);
 
         const consumos = {};
