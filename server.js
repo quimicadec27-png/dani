@@ -837,20 +837,23 @@ app.post('/api/crm/clientes/importar-lote', async (req, res) => {
             const listaPrecios = item['Listas de precios'] || item.lista_precios || 'Ninguno';
             const vendedor = item.Vendedor || item.vendedor || '';
 
-            let waLimpio = String(rawPhone).replace(/[^\d+]/g, '').trim();
+            let waLimpio = String(rawPhone).replace(/[^\d]/g, '').trim().substring(0, 20);
             if (!waLimpio) {
-                waLimpio = cuitVal ? `CUIT_${cuitVal}` : `CLI_${Date.now()}_${index}`;
+                waLimpio = cuitVal ? `CUIT_${String(cuitVal).trim().substring(0, 15)}` : `CLI_${index}_${Date.now()}`;
+                waLimpio = waLimpio.substring(0, 20);
             }
+
+            const estadoStr = vendedor ? `Vendedor: ${vendedor}` : 'Cliente Importado';
 
             const clientPayload = {
                 razon_social: String(nombre).trim(),
                 contacto_nombre: String(nombre).trim(),
                 whatsapp: waLimpio,
-                cuit: String(cuitVal).trim(),
+                cuit: String(cuitVal).trim().substring(0, 20),
                 email: String(email).trim() || null,
                 localidad: String(direccion).substring(0, 250),
-                tipo_cliente: String(listaPrecios).trim() || 'Mayorista',
-                estado_lead: vendedor ? `Vendedor: ${vendedor}` : 'Cliente Importado'
+                tipo_cliente: String(listaPrecios).trim().substring(0, 20) || 'Mayorista',
+                estado_lead: String(estadoStr).trim().substring(0, 20)
             };
 
             payloadMap.set(waLimpio, clientPayload);
