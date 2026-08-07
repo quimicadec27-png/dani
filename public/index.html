@@ -1182,17 +1182,18 @@
                     <form onsubmit="guardarNuevoPresupuesto(event)" class="space-y-5 text-xs">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-gray-300 font-bold mb-1">Cliente *</label>
-                                <select id="presupuesto-cliente-id" required class="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white focus:border-brand-yellow focus:outline-none">
-                                    <option value="">Seleccionar Cliente...</option>
+                                <label class="block text-gray-300 font-bold mb-1">Buscar y Seleccionar Cliente Confirmado *</label>
+                                <input type="text" id="presupuesto-cliente-search" oninput="filtrarClientesModalPresupuesto()" placeholder="🔍 Buscar por nombre o teléfono..." class="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white placeholder-gray-500 mb-1.5 focus:border-brand-yellow focus:outline-none">
+                                <select id="presupuesto-cliente-id" required class="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:border-brand-yellow focus:outline-none" style="background-color: #0f172a; color: #ffffff;">
+                                    <option value="" style="background-color: #0f172a; color: #ffffff;">Seleccionar Cliente...</option>
                                 </select>
                             </div>
                             <div>
                                 <label class="block text-gray-300 font-bold mb-1">Origen del Pedido</label>
-                                <select id="presupuesto-origen" class="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white focus:border-brand-yellow focus:outline-none">
-                                    <option value="WhatsApp">WhatsApp</option>
-                                    <option value="CRM Directo" selected>CRM Directo (Vendedor)</option>
-                                    <option value="Web">Web Chat</option>
+                                <select id="presupuesto-origen" class="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:border-brand-yellow focus:outline-none" style="background-color: #0f172a; color: #ffffff;">
+                                    <option value="WhatsApp" style="background-color: #0f172a; color: #ffffff;">WhatsApp</option>
+                                    <option value="CRM Directo" selected style="background-color: #0f172a; color: #ffffff;">CRM Directo (Vendedor)</option>
+                                    <option value="Web" style="background-color: #0f172a; color: #ffffff;">Web Chat</option>
                                 </select>
                             </div>
                         </div>
@@ -1852,6 +1853,17 @@
                                     </div>
                                 </div>
 
+                                <!-- NOTAS U OBSERVACIONES DEL PEDIDO SI EXISTEN -->
+                                ${p.origen && p.origen.includes('| Nota:') ? `
+                                    <div class="p-2.5 rounded-xl bg-amber-400/10 border border-amber-400/30 text-amber-300 text-xs flex items-center gap-2">
+                                        <span class="material-symbols-outlined text-[18px] text-amber-400">edit_note</span>
+                                        <div>
+                                            <strong class="uppercase text-[10px] block opacity-80 text-amber-400 font-bold">Observaciones / Notas del Pedido:</strong>
+                                            <span>${p.origen.split('| Nota:')[1].trim()}</span>
+                                        </div>
+                                    </div>
+                                ` : ''}
+
                                 <!-- DETALLE DE PRODUCTOS DEL PEDIDO -->
                                 <div class="space-y-2">
                                     <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Items Solicitados (${itemsPedido.length}):</span>
@@ -1967,18 +1979,57 @@
 
         // =========================================================================
         // MODAL Y CREACIÓN DE NUEVOS PRESUPUESTOS / PEDIDOS
-        async function abrirModalNuevoPedido(clienteIdPreseleccionado = null) {
-            const modal = document.getElementById('modal-nuevo-pedido');
-            const selectCliente = document.getElementById('presupuesto-cliente-id');
-            if (!modal || !selectCliente) return;
+        function esClienteConfirmado(c) {
+            if (!c) return false;
+            const name = (c.razon_social || c.contacto_nombre || '').toLowerCase();
+            const wa = (c.whatsapp || '').toLowerCase();
+            if (name.includes('webcustomer') || name.includes('cliente web') || name.includes('web_test') || name.includes('test_diag') || name.includes('test_999')) return false;
+            if (wa.startsWith('web_') || wa.startsWith('cli_') || wa.startsWith('cuit_')) return false;
+            return true;
+        }
 
-            // Cargar clientes en el dropdown
-            selectCliente.innerHTML = '<option value="">Seleccionar Cliente...</option>' + 
-                (clientesData || []).map(c => `
-                    <option value="${c.id}" ${clienteIdPreseleccionado === c.id ? 'selected' : ''}>
+        function cargarClientesModalDropdown(filterText = '', clienteIdPreseleccionado = null) {
+            const selectCliente = document.getElementById('presupuesto-cliente-id');
+            if (!selectCliente) return;
+
+            const term = filterText.toLowerCase().trim();
+
+            const list = (clientesData || []).filter(c => {
+                if (c.id === clienteIdPreseleccionado) return true; // Mantener preseleccionado si viene de ficha
+                if (!esClienteConfirmado(c)) return false; // Omitir leads de prueba del chat
+                if (term) {
+                    const name = (c.razon_social || c.contacto_nombre || '').toLowerCase();
+                    const phone = (c.whatsapp || '').toLowerCase();
+                    const cuit = (c.cuit || '').toLowerCase();
+                    return name.includes(term) || phone.includes(term) || cuit.includes(term);
+                }
+                return true;
+            });
+
+            selectCliente.innerHTML = '<option value="" style="background-color: #0f172a; color: #ffffff;">Seleccionar Cliente Confirmado...</option>' + 
+                list.map(c => `
+                    <option value="${c.id}" ${clienteIdPreseleccionado === c.id ? 'selected' : ''} style="background-color: #0f172a; color: #ffffff;">
                         ${c.razon_social} (${c.whatsapp || 'Sin Tel'})
                     </option>
                 `).join('');
+        }
+
+        function filtrarClientesModalPresupuesto() {
+            const searchText = document.getElementById('presupuesto-cliente-search')?.value || '';
+            const currentSelected = document.getElementById('presupuesto-cliente-id')?.value;
+            cargarClientesModalDropdown(searchText, currentSelected);
+        }
+
+        async function abrirModalNuevoPedido(clienteIdPreseleccionado = null) {
+            const modal = document.getElementById('modal-nuevo-pedido');
+            if (!modal) return;
+
+            // Limpiar buscador de clientes
+            const inputSearch = document.getElementById('presupuesto-cliente-search');
+            if (inputSearch) inputSearch.value = '';
+
+            // Cargar clientes confirmados en el dropdown
+            cargarClientesModalDropdown('', clienteIdPreseleccionado);
 
             // Cargar catálogo de productos si no está en cache
             if (!productosCatalogoCache || productosCatalogoCache.length === 0) {
@@ -2014,34 +2065,42 @@
 
             const rowDiv = document.createElement('div');
             rowDiv.id = filaId;
-            rowDiv.className = "flex flex-col sm:flex-row items-center gap-2 p-3 rounded-xl bg-black/40 border border-white/10";
+            rowDiv.className = "flex flex-col sm:flex-row items-center gap-3 p-3 rounded-xl bg-black/40 border border-white/10 shadow-sm";
 
             rowDiv.innerHTML = `
-                <div class="w-full sm:w-1/2">
-                    <select onchange="onProductoSeleccionadoPresupuesto('${filaId}', this.value)" class="item-prod-select w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-brand-yellow focus:outline-none">
-                        <option value="">Seleccionar del catálogo o escribir...</option>
-                        ${(productosCatalogoCache || []).map(p => `
-                            <option value="${p.id}" data-name="${p.name}" data-price="${p.price}" data-sku="${p.sku}">
-                                ${p.name} — $${parseFloat(p.price || 0).toLocaleString('es-AR')}
-                            </option>
-                        `).join('')}
-                    </select>
-                    <input type="text" placeholder="O escribir nombre personalizado..." class="item-prod-name-custom w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1 text-[11px] text-gray-300 mt-1 focus:outline-none">
+                <div class="w-full sm:w-1/2 space-y-1.5">
+                    <div class="flex items-center gap-2">
+                        <div class="item-prod-img-box w-10 h-10 rounded-lg bg-black/60 border border-white/10 flex items-center justify-center overflow-hidden flex-shrink-0">
+                            <span class="material-symbols-outlined text-gray-500 text-[20px]">inventory_2</span>
+                        </div>
+                        <div class="flex-grow">
+                            <input type="text" placeholder="🔍 Filtrar producto por nombre..." oninput="filtrarProductosModalRow('${filaId}', this.value)" class="item-prod-search w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1 text-[11px] text-white placeholder-gray-500 focus:border-brand-yellow focus:outline-none mb-1">
+                            <select onchange="onProductoSeleccionadoPresupuesto('${filaId}', this.value)" class="item-prod-select w-full bg-slate-900 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-brand-yellow focus:outline-none" style="background-color: #0f172a; color: #ffffff;">
+                                <option value="" style="background-color: #0f172a; color: #ffffff;">Seleccionar del catálogo...</option>
+                                ${(productosCatalogoCache || []).map(p => `
+                                    <option value="${p.id}" data-name="${p.name}" data-price="${p.price}" data-sku="${p.sku}" data-image="${p.image_url || ''}" style="background-color: #0f172a; color: #ffffff;">
+                                        ${p.name} — $${parseFloat(p.price || 0).toLocaleString('es-AR')}
+                                    </option>
+                                `).join('')}
+                            </select>
+                        </div>
+                    </div>
+                    <input type="text" placeholder="O escribir nombre personalizado / variante..." class="item-prod-name-custom w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1 text-[11px] text-gray-300 focus:outline-none">
                 </div>
 
                 <div class="flex items-center gap-2 w-full sm:w-1/2 justify-between">
                     <div class="w-20">
-                        <span class="text-[9px] text-gray-400 block mb-0.5 uppercase">Cant:</span>
-                        <input type="number" min="1" value="1" oninput="calcularTotalPresupuestoModal()" class="item-prod-cant w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white font-mono text-center focus:outline-none">
+                        <span class="text-[9px] text-gray-400 block mb-0.5 uppercase font-bold">Cant:</span>
+                        <input type="number" min="1" value="1" oninput="calcularTotalPresupuestoModal()" class="item-prod-cant w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white font-mono text-center focus:outline-none focus:border-brand-yellow">
                     </div>
 
                     <div class="w-28">
-                        <span class="text-[9px] text-gray-400 block mb-0.5 uppercase">Precio U.:</span>
-                        <input type="number" step="0.01" value="0" oninput="calcularTotalPresupuestoModal()" class="item-prod-precio w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white font-mono text-right focus:outline-none">
+                        <span class="text-[9px] text-gray-400 block mb-0.5 uppercase font-bold">Precio U.:</span>
+                        <input type="number" step="0.01" value="0" oninput="calcularTotalPresupuestoModal()" class="item-prod-precio w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white font-mono text-right focus:outline-none focus:border-brand-yellow">
                     </div>
 
                     <div class="w-24 text-right">
-                        <span class="text-[9px] text-gray-400 block mb-0.5 uppercase">Subtotal:</span>
+                        <span class="text-[9px] text-gray-400 block mb-0.5 uppercase font-bold">Subtotal:</span>
                         <span class="item-prod-subtotal text-xs font-bold text-brand-yellow font-mono">$ 0</span>
                     </div>
 
@@ -2055,6 +2114,36 @@
             calcularTotalPresupuestoModal();
         }
 
+        function filtrarProductosModalRow(filaId, searchText) {
+            const fila = document.getElementById(filaId);
+            if (!fila) return;
+
+            const select = fila.querySelector('.item-prod-select');
+            if (!select) return;
+
+            const term = searchText.toLowerCase().trim();
+            const list = (productosCatalogoCache || []).filter(p => {
+                if (!term) return true;
+                const name = (p.name || '').toLowerCase();
+                const sku = (p.sku || '').toLowerCase();
+                const cat = (p.category || '').toLowerCase();
+                return name.includes(term) || sku.includes(term) || cat.includes(term);
+            });
+
+            select.innerHTML = '<option value="" style="background-color: #0f172a; color: #ffffff;">Seleccionar del catálogo...</option>' +
+                list.map(p => `
+                    <option value="${p.id}" data-name="${p.name}" data-price="${p.price}" data-sku="${p.sku}" data-image="${p.image_url || ''}" style="background-color: #0f172a; color: #ffffff;">
+                        ${p.name} — $${parseFloat(p.price || 0).toLocaleString('es-AR')}
+                    </option>
+                `).join('');
+
+            // Si hay búsqueda y existe al menos 1 coincidencia, seleccionar automáticamente la primera coincidencia
+            if (term && list.length > 0) {
+                select.selectedIndex = 1;
+                onProductoSeleccionadoPresupuesto(filaId, select.value);
+            }
+        }
+
         function onProductoSeleccionadoPresupuesto(filaId, prodId) {
             const fila = document.getElementById(filaId);
             if (!fila) return;
@@ -2062,13 +2151,24 @@
             const select = fila.querySelector('.item-prod-select');
             const inputCustom = fila.querySelector('.item-prod-name-custom');
             const inputPrecio = fila.querySelector('.item-prod-precio');
+            const imgBox = fila.querySelector('.item-prod-img-box');
 
-            const opt = select.options[select.selectedIndex];
+            const opt = select ? select.options[select.selectedIndex] : null;
             if (opt && opt.value) {
                 const name = opt.getAttribute('data-name');
                 const price = opt.getAttribute('data-price');
+                const imgUrl = opt.getAttribute('data-image');
+
                 if (inputCustom) inputCustom.value = name || '';
                 if (inputPrecio) inputPrecio.value = price || 0;
+
+                if (imgBox) {
+                    if (imgUrl && imgUrl.startsWith('http')) {
+                        imgBox.innerHTML = `<img src="${imgUrl}" alt="${name}" class="w-full h-full object-cover rounded-lg">`;
+                    } else {
+                        imgBox.innerHTML = `<span class="material-symbols-outlined text-brand-yellow text-[20px]">package_2</span>`;
+                    }
+                }
             }
 
             calcularTotalPresupuestoModal();

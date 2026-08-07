@@ -893,9 +893,12 @@ app.post('/api/crm/pedidos/crear-presupuesto', async (req, res) => {
             montoTotal += (cant * precio);
         });
 
+        const origenBase = String(origen || 'CRM').trim();
+        const origenFormatted = (origenBase + (observaciones ? ` | Nota: ${observaciones}` : '')).substring(0, 150);
+
         const pedidoPayload = {
             cliente_id: cliente_id,
-            origen: String(origen || 'CRM').trim().substring(0, 20),
+            origen: origenFormatted,
             monto_total: montoTotal,
             estado: 'Presupuesto'
         };
@@ -908,7 +911,7 @@ app.post('/api/crm/pedidos/crear-presupuesto', async (req, res) => {
 
         if (orderErr) throw orderErr;
 
-        // Insertar items_pedido si existen
+        // Insertar items_pedido si existen (omitiendo subtotal porque es una columna GENERADA en PostgreSQL)
         if (itemsList.length > 0) {
             const itemsPayload = itemsList.map(it => ({
                 pedido_id: orderData.id,
@@ -916,11 +919,11 @@ app.post('/api/crm/pedidos/crear-presupuesto', async (req, res) => {
                 producto_nombre: String(it.producto_nombre || 'Producto sin nombre').substring(0, 150),
                 variacion_tamano: it.variacion_tamano ? String(it.variacion_tamano).substring(0, 50) : null,
                 cantidad: parseInt(it.cantidad || 1),
-                precio_unitario: parseFloat(it.precio_unitario || 0),
-                subtotal: parseFloat(it.cantidad || 1) * parseFloat(it.precio_unitario || 0)
+                precio_unitario: parseFloat(it.precio_unitario || 0)
             }));
 
-            await supabase.from('items_pedido').insert(itemsPayload);
+            const { error: itemsErr } = await supabase.from('items_pedido').insert(itemsPayload);
+            if (itemsErr) console.error('Error insertando items_pedido:', itemsErr);
         }
 
         // Traer pedido completo con relaciones
@@ -943,7 +946,7 @@ app.get('/api/crm/productos-list', async (req, res) => {
     try {
         const { data, error } = await supabase
             .from('dec_products')
-            .select('id, sku, name, price, stock, category')
+            .select('id, sku, name, price, stock, category, image_url')
             .order('name', { ascending: true })
             .limit(1000);
         if (error) throw error;
