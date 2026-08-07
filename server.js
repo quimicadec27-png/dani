@@ -1471,17 +1471,26 @@ app.post('/api/categories/upload-banner', async (req, res) => {
                 if (fs.existsSync(catalogPath)) {
                     let html = fs.readFileSync(catalogPath, 'utf8');
 
-                    // Reemplazar la URL del banner de la categoría específica dentro de catalogo_final.html
-                    const blockRegex = new RegExp(`(<a\\s+href="[^"]*categoria-producto\\/${targetSlug}\\/?[^"]*"[\\s\\S]*?<img\\s+src=")([^"]+)(")`, 'i');
-                    if (blockRegex.test(html)) {
-                        html = html.replace(blockRegex, `$1${data.image_url}$3`);
-                        stepsLog.push(`3. Plantilla local catalogo_final.html actualizada por coincidencia exacta de slug.`);
+                    // Buscar por data-banner-key (más robusto y directo)
+                    const dataKeyRegex = new RegExp(`(data-banner-key="${targetSlug}"[^>]*>|<img[^>]*data-banner-key="${targetSlug}"[^>]*)`, 'i');
+                    // Regex que encuentra la etiqueta img con ese data-banner-key y reemplaza su src
+                    const imgRegex = new RegExp(`(<img\\s[^>]*data-banner-key="${targetSlug}"[^>]*\\ssrc=")([^"]+)(")`, 'i');
+                    const imgRegexSrcFirst = new RegExp(`(<img\\s[^>]*src=")([^"]+)("[^>]*data-banner-key="${targetSlug}"[^>]*)`, 'i');
+
+                    if (imgRegex.test(html)) {
+                        html = html.replace(imgRegex, `$1${data.image_url}$3`);
+                        stepsLog.push(`3. Banner actualizado por data-banner-key="${targetSlug}" (src después).`);
+                    } else if (imgRegexSrcFirst.test(html)) {
+                        html = html.replace(imgRegexSrcFirst, `$1${data.image_url}$3`);
+                        stepsLog.push(`3. Banner actualizado por data-banner-key="${targetSlug}" (src primero).`);
                     } else {
-                        const cleanSlug = targetSlug.replace(/-/g, '');
-                        const fallbackReg = new RegExp(`(src="[^"]*${cleanSlug}[^"]*")`, 'i');
-                        if (fallbackReg.test(html)) {
-                            html = html.replace(fallbackReg, `src="${data.image_url}"`);
-                            stepsLog.push(`3. Plantilla local catalogo_final.html actualizada por fallback de nombre de archivo.`);
+                        // Fallback: buscar por href de la categoría
+                        const hrefRegex = new RegExp(`(<a\\s+href="[^"]*categoria-producto\\/${targetSlug}\\/?[^"]*"[\\s\\S]*?<img\\s+src=")([^"]+)(")`, 'i');
+                        if (hrefRegex.test(html)) {
+                            html = html.replace(hrefRegex, `$1${data.image_url}$3`);
+                            stepsLog.push(`3. Banner actualizado por href de categoría "${targetSlug}".`);
+                        } else {
+                            stepsLog.push(`⚠️ Paso 3: No se encontró sección para "${targetSlug}" en catalogo_final.html. Verificar estructura HTML.`);
                         }
                     }
 
