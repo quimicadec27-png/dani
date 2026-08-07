@@ -517,43 +517,39 @@ Devuelve JSON: {"items": ["busqueda1", "busqueda2"]}`
 // Obtener lista de conversaciones para el CRM (incluyendo web y whatsapp)
 app.get('/api/crm/chat/conversaciones', async (req, res) => {
     try {
+        // 1. Obtener los últimos mensajes de chat para mapear la fecha más reciente
+        const { data: lastMessages } = await supabase
+            .from('mensajes_chat')
+            .select('cliente_id, texto, creado_el')
+            .order('creado_el', { ascending: false })
+            .limit(300);
+
+        const lastMsgMap = new Map();
+        (lastMessages || []).forEach(m => {
+            if (!lastMsgMap.has(m.cliente_id)) {
+                lastMsgMap.set(m.cliente_id, m);
+            }
+        });
+
+        // 2. Obtener lista de clientes (máximo 500 para la vista de chat)
         const { data: clientes, error } = await supabase
             .from('clientes')
             .select('id, razon_social, whatsapp, contacto_nombre, creado_el')
-            .order('creado_el', { ascending: false });
+            .order('creado_el', { ascending: false })
+            .limit(500);
 
         if (error) throw error;
         
-        // Para cada cliente, obtener la fecha de su último mensaje, texto y estado del bot
-        const conversacionesFormatted = await Promise.all((clientes || []).map(async (c) => {
-            let ultimoMsgFecha = c.creado_el;
-            let ultimoTexto = '';
-            let botPausado = false;
-            try {
-                const { data: lastM } = await supabase
-                    .from('mensajes_chat')
-                    .select('texto, creado_el')
-                    .eq('cliente_id', c.id)
-                    .order('creado_el', { ascending: false })
-                    .limit(1);
-                
-                if (lastM && lastM.length > 0) {
-                    ultimoMsgFecha = lastM[0].creado_el;
-                    ultimoTexto = lastM[0].texto;
-                }
-
-                botPausado = await isBotPausado(c.id);
-            } catch (e) {}
-
+        const conversacionesFormatted = (clientes || []).map(c => {
+            const lastM = lastMsgMap.get(c.id);
             return {
                 ...c,
-                bot_pausado: botPausado,
-                ultimo_mensaje_el: ultimoMsgFecha,
-                ultimo_texto: ultimoTexto
+                bot_pausado: false,
+                ultimo_mensaje_el: lastM ? lastM.creado_el : c.creado_el,
+                ultimo_texto: lastM ? lastM.texto : ''
             };
-        }));
+        });
 
-        // Ordenar por fecha del último mensaje descendente
         conversacionesFormatted.sort((a, b) => new Date(b.ultimo_mensaje_el) - new Date(a.ultimo_mensaje_el));
 
         res.json({ success: true, conversaciones: conversacionesFormatted });
