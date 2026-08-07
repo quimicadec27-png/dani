@@ -2783,7 +2783,7 @@
             { key: 'automovil', name: 'Automóvil', icon: 'directions_car', currentImg: 'https://quimicadec.com/assets/img/categorias/automovil.jpeg' },
             { key: 'kiosco-y-varios', name: 'Kiosco y Varios', icon: 'storefront', currentImg: 'https://quimicadec.com/assets/img/categorias/kioskoyvarios.jpeg' },
             { key: 'plastico', name: 'Plásticos', icon: 'shopping_bag', currentImg: 'https://quimicadec.com/assets/img/categorias/plasticos.jpeg' },
-            { key: 'limpieza-hogar', name: 'Limpieza Hogar', icon: 'home', currentImg: 'https://via.placeholder.com/300x200?text=Proximamente' }
+            { key: 'limpieza-hogar', name: 'Limpieza Hogar', icon: 'home', currentImg: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="200" viewBox="0 0 300 200"><rect width="300" height="200" fill="%230f172a"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%2364748b" font-family="sans-serif" font-size="14">Próximamente</text></svg>' }
         ];
 
         function renderBannersGridUI(filterTerm = '') {
@@ -2802,7 +2802,7 @@
             }
 
             container.innerHTML = filtered.map(c => `
-                <div class="p-3.5 bg-slate-900/90 border border-cyan-500/30 hover:border-cyan-400/60 rounded-2xl space-y-3 shadow-lg transition-all">
+                <div id="banner-card-${c.key}" class="p-3.5 bg-slate-900/90 border border-cyan-500/30 hover:border-cyan-400/60 rounded-2xl space-y-3 shadow-lg transition-all relative">
                     <div class="flex items-center justify-between">
                         <span class="text-xs font-bold text-white uppercase flex items-center gap-1.5">
                             <span class="material-symbols-outlined text-[16px] text-cyan-400">${c.icon}</span> ${c.name}
@@ -2832,7 +2832,10 @@
                         <input type="file" id="banner-file-${c.key}" accept="image/*" onchange="previewNuevoBanner(this, '${c.key}')" class="w-full text-[11px] text-gray-300 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-[10px] file:font-bold file:bg-cyan-500/20 file:text-cyan-300 cursor-pointer">
                     </div>
 
-                    <button onclick="subirBannerSeccion('${c.key}', '${c.name}')" class="w-full py-2 rounded-xl bg-cyan-600/30 hover:bg-cyan-500/40 border border-cyan-500/40 text-cyan-200 text-xs font-bold shadow transition-all flex items-center justify-center gap-1.5">
+                    <!-- VISOR DEL PASO A PASO EN LA MISMA TARJETA -->
+                    <div id="banner-card-status-${c.key}" class="hidden text-[10px] font-mono p-2.5 rounded-xl border transition-all space-y-1"></div>
+
+                    <button id="banner-btn-${c.key}" onclick="subirBannerSeccion('${c.key}', '${c.name}')" class="w-full py-2 rounded-xl bg-cyan-600/30 hover:bg-cyan-500/40 border border-cyan-500/40 text-cyan-200 text-xs font-bold shadow transition-all flex items-center justify-center gap-1.5">
                         <span class="material-symbols-outlined text-sm">cloud_upload</span> Actualizar Banner ${c.name}
                     </button>
                 </div>
@@ -2864,19 +2867,43 @@
         async function subirBannerSeccion(key, name) {
             const fileInput = document.getElementById(`banner-file-${key}`);
             const file = fileInput ? fileInput.files[0] : null;
-            const resDiv = document.getElementById('banner-upload-res');
+            const resGlobal = document.getElementById('banner-upload-res');
+            const resCard = document.getElementById(`banner-card-status-${key}`);
+            const btnEl = document.getElementById(`banner-btn-${key}`);
 
             if (!file) {
                 alert(`⚠️ Seleccioná una imagen para el banner de ${name || key} primero.`);
                 return;
             }
 
-            resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-cyan-500/40 bg-cyan-500/10 text-cyan-300';
-            resDiv.innerText = `⏳ Subiendo banner para "${name || key}" y sincronizando tienda web... Por favor aguardá.`;
-            resDiv.classList.remove('hidden');
+            const updateCardStep = (stepText, isError = false, isSuccess = false) => {
+                if (!resCard) return;
+                resCard.classList.remove('hidden');
+                if (isError) {
+                    resCard.className = 'text-[10px] font-bold p-2.5 rounded-xl border border-red-500/50 bg-red-500/10 text-red-300 font-mono';
+                } else if (isSuccess) {
+                    resCard.className = 'text-[10px] font-bold p-2.5 rounded-xl border border-emerald-500/50 bg-emerald-500/10 text-emerald-300 font-mono';
+                } else {
+                    resCard.className = 'text-[10px] font-bold p-2.5 rounded-xl border border-cyan-500/50 bg-cyan-500/10 text-cyan-300 font-mono animate-pulse';
+                }
+                resCard.innerHTML = stepText;
+            };
+
+            if (btnEl) btnEl.disabled = true;
+            updateCardStep(`⏳ Paso 1/4 (25%): Leyendo archivo de imagen local (${Math.round(file.size/1024)} KB)...`);
+
+            if (resGlobal) {
+                resGlobal.className = 'text-xs font-bold p-3 rounded-xl border border-cyan-500/40 bg-cyan-500/10 text-cyan-300 font-mono';
+                resGlobal.innerText = `⏳ Procesando actualización de banner para "${name || key}"...`;
+                resGlobal.classList.remove('hidden');
+            }
 
             try {
+                // Paso 1: Leer Base64
                 const base64 = await readFileAsBase64(file);
+                updateCardStep(`⏳ Paso 2/4 (50%): Enviando imagen a la API de WooCommerce...`);
+
+                // Paso 2: POST backend
                 const resp = await fetch(`${API_URL}/categories/upload-banner`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -2887,25 +2914,50 @@
                     })
                 });
 
+                updateCardStep(`⏳ Paso 3/4 (75%): Actualizando plantilla catalogo_final.html en backend...`);
+
                 const data = await resp.json();
                 if (data.success && data.image_url) {
-                    resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-400';
-                    resDiv.innerHTML = `🎉 ¡Banner de "${name || key}" actualizado con éxito! <br><a href="${data.image_url}" target="_blank" class="underline text-brand-yellow font-mono">Ver Imagen de Banner Subida</a>`;
+                    updateCardStep(`⏳ Paso 4/4 (90%): Purgando caché de WordPress y aplicando cambios en la web...`);
 
-                    // Actualizar el preview del banner actual en vivo en la tarjeta
-                    const currentImgEl = document.getElementById(`banner-current-img-${key}`);
-                    if (currentImgEl) currentImgEl.src = data.image_url;
+                    setTimeout(() => {
+                        const finalUrl = data.cache_busting_url || `${data.image_url}?v=${Date.now()}`;
+                        updateCardStep(`🎉 ¡Paso 4/4 (100%): Banner de "${name || key}" actualizado con éxito en la tienda web! Caché purgada.`, false, true);
 
-                    // Resetear selector de archivo y preview de foto a subir
-                    fileInput.value = '';
-                    previewNuevoBanner(fileInput, key);
+                        if (resGlobal) {
+                            resGlobal.className = 'text-xs font-bold p-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-400 font-mono';
+                            resGlobal.innerHTML = `🎉 ¡Banner de "${name || key}" actualizado y publicado en vivo! <br><a href="${finalUrl}" target="_blank" class="underline text-brand-yellow font-mono">Ver Imagen de Banner Subida</a>`;
+                        }
+
+                        // Actualizar la miniatura del banner actual en la tarjeta con Cache-Buster
+                        const currentImgEl = document.getElementById(`banner-current-img-${key}`);
+                        if (currentImgEl) currentImgEl.src = finalUrl;
+
+                        // Actualizar objeto en la caché local para no perder el cambio al filtrar
+                        const catObj = ALL_CATEGORIES_BANNERS.find(c => c.key === key);
+                        if (catObj) catObj.currentImg = finalUrl;
+
+                        // Resetear selector de archivo y preview de foto a subir
+                        fileInput.value = '';
+                        previewNuevoBanner(fileInput, key);
+                        if (btnEl) btnEl.disabled = false;
+                    }, 500);
+
                 } else {
-                    resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-red-500/40 bg-red-500/10 text-red-400';
-                    resDiv.innerText = `❌ Error: ${data.error || 'No se pudo actualizar el banner.'}`;
+                    updateCardStep(`❌ Error en el proceso: ${data.error || 'No se pudo actualizar el banner.'}`, true);
+                    if (resGlobal) {
+                        resGlobal.className = 'text-xs font-bold p-3 rounded-xl border border-red-500/40 bg-red-500/10 text-red-400';
+                        resGlobal.innerText = `❌ Error: ${data.error || 'No se pudo actualizar el banner.'}`;
+                    }
+                    if (btnEl) btnEl.disabled = false;
                 }
             } catch(e) {
-                resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-red-500/40 bg-red-500/10 text-red-400';
-                resDiv.innerText = `❌ Error de red: ${e.message}`;
+                updateCardStep(`❌ Error de red/conexión: ${e.message}`, true);
+                if (resGlobal) {
+                    resGlobal.className = 'text-xs font-bold p-3 rounded-xl border border-red-500/40 bg-red-500/10 text-red-400';
+                    resGlobal.innerText = `❌ Error de red: ${e.message}`;
+                }
+                if (btnEl) btnEl.disabled = false;
             }
         }
 

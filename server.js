@@ -1427,6 +1427,7 @@ app.post('/api/combos/auto-link-skus', async (req, res) => {
 });
 
 app.post('/api/categories/upload-banner', async (req, res) => {
+    const stepsLog = [];
     try {
         const { categoryKey, imageBase64, imageUrl, filename } = req.body;
 
@@ -1436,6 +1437,8 @@ app.post('/api/categories/upload-banner', async (req, res) => {
             'limpieza-hogar': 'limpieza-hogar'
         };
         const targetSlug = slugMap[categoryKey] || categoryKey;
+
+        stepsLog.push(`1. Conectando con WordPress para registrar banner de categoría '${targetSlug}'...`);
 
         const resp = await fetch('https://quimicadec.com/?qdec_api=upload_category_banner', {
             method: 'POST',
@@ -1451,6 +1454,8 @@ app.post('/api/categories/upload-banner', async (req, res) => {
         const data = await resp.json();
 
         if (data.success && data.image_url) {
+            stepsLog.push(`2. Imagen subida con éxito a WordPress: ${data.image_url}`);
+
             // Actualizar la URL de la imagen en catalogo_final.html y sincronizar con WP
             try {
                 const catalogPath = path.join(__dirname, '..', 'catalogo_final.html');
@@ -1461,34 +1466,45 @@ app.post('/api/categories/upload-banner', async (req, res) => {
                     const blockRegex = new RegExp(`(<a\\s+href="[^"]*categoria-producto\\/${targetSlug}\\/?[^"]*"[\\s\\S]*?<img\\s+src=")([^"]+)(")`, 'i');
                     if (blockRegex.test(html)) {
                         html = html.replace(blockRegex, `$1${data.image_url}$3`);
+                        stepsLog.push(`3. Plantilla local catalogo_final.html actualizada por coincidencia exacta de slug.`);
                     } else {
                         const cleanSlug = targetSlug.replace(/-/g, '');
                         const fallbackReg = new RegExp(`(src="[^"]*${cleanSlug}[^"]*")`, 'i');
                         if (fallbackReg.test(html)) {
                             html = html.replace(fallbackReg, `src="${data.image_url}"`);
+                            stepsLog.push(`3. Plantilla local catalogo_final.html actualizada por fallback de nombre de archivo.`);
                         }
                     }
 
                     fs.writeFileSync(catalogPath, html, 'utf8');
 
                     // Sincronizar catálogo con WordPress automáticamente
-                    await fetch('https://quimicadec.com/?qdec_api=update_homepage_content', {
+                    stepsLog.push(`4. Sincronizando catálogo con WordPress (Página ID 2271)...`);
+                    const wpSyncRes = await fetch('https://quimicadec.com/?qdec_api=update_homepage_content', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             secret_key: 'qdec_crm_sec_2026',
                             html_content: html
                         })
-                    }).catch(() => {});
+                    });
+                    const wpSyncData = await wpSyncRes.json().catch(() => ({ success: false }));
+                    if (wpSyncData.success) {
+                        stepsLog.push(`5. Página 'Nuestros Productos' (ID 2271) en WordPress actualizada e integración en vivo completada.`);
+                    }
                 }
             } catch (errSync) {
                 console.error('[CATEGORY BANNER HTML SYNC ERROR]:', errSync.message);
+                stepsLog.push(`⚠️ Error en sincronización local HTML: ${errSync.message}`);
             }
+
+            data.steps = stepsLog;
+            data.cache_busting_url = `${data.image_url}?v=${Date.now()}`;
         }
 
         res.json(data);
     } catch (e) {
-        res.status(500).json({ success: false, error: e.message });
+        res.status(500).json({ success: false, error: e.message, steps: stepsLog });
     }
 });
 
