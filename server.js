@@ -92,6 +92,12 @@ Sí vendemos y distribuimos:
 - Productos para Diluir (Línea 1+4).
 - Combos Emprendedores y Ofertas Semanales.
 
+⚠️ MEDIOS DE PAGO OFICIALES DE QUÍMICA DEC (ESTRICTO - PROHIBIDO INVENTAR OTROS):
+- ÚNICAMENTE ACEPTAMOS DOS MEDIOS DE PAGO:
+  1. Pago en EFECTIVO (en el local o al retirar).
+  2. TRANSFERENCIA BANCARIA.
+- Queda ROTUNDAMENTE PROHIBIDO mencionar tarjetas de crédito, tarjetas de débito, Mercado Pago en cuotas o financiación.
+
 ⚠️ POLÍTICAS COMERCIALES, HORARIOS Y ENVÍOS OFICIALES DE QUÍMICA DEC (ESTRICTO):
 1. HORARIOS DE ATENCIÓN EN LOCAL (Av. Frondizi 815, Concepción del Uruguay):
    - Lunes a Viernes: Turno Mañana de 8:00 a 12:30 hs y Turno Tarde de 16:30 a 19:30 hs.
@@ -451,13 +457,14 @@ Devuelve JSON: {"items": [{"busqueda": "string", "cantidad": number}]}`
                     const bestMatch = prods[0];
                     const rawPrice = parseFloat(bestMatch.price || bestMatch.regular_price || 0);
                     const stockText = bestMatch.stock_status === 'instock' || !bestMatch.stock_status ? 'Disponible ✅' : 'Consultar ⚠️';
-                    
+                    const cleanName = bestMatch.name.replace(/\(SKU:.*?\)/gi, '').trim();
+
                     if (rawPrice > 0) {
                         const subtotal = rawPrice * cantidadDeseada;
                         totalGeneralCotizacion += subtotal;
                         itemsCotizadosCuenta++;
 
-                        let lineText = `• ${bestMatch.name} (SKU: ${bestMatch.sku || 'N/A'}): ${cantidadDeseada} u. x $${rawPrice.toLocaleString('es-AR')} = $${subtotal.toLocaleString('es-AR')} [Stock: ${stockText}]`;
+                        let lineText = `• ${cleanName}: ${cantidadDeseada} u. x $${rawPrice.toLocaleString('es-AR')} = $${subtotal.toLocaleString('es-AR')} [Stock: ${stockText}]`;
                         
                         // Si el cliente consultó por $80.000 para un solo ítem
                         if (cantidadDeseada === 1) {
@@ -468,15 +475,16 @@ Devuelve JSON: {"items": [{"busqueda": "string", "cantidad": number}]}`
                         
                         desgloses.push(lineText);
                     } else {
-                        desgloses.push(`• ${bestMatch.name} (SKU: ${bestMatch.sku || 'N/A'}): Consultar opciones de bidones y precios. [Stock: ${stockText}]`);
+                        desgloses.push(`• ${cleanName}: Consultar presentaciones y precios disponibles. [Stock: ${stockText}]`);
                     }
 
                     // Sugerir variantes si hay otras opciones
                     if (prods.length > 1 && busquedas.length <= 2) {
                         prods.slice(1, 3).forEach(otherP => {
                             const pPrice = parseFloat(otherP.price || otherP.regular_price || 0);
+                            const otherCleanName = otherP.name.replace(/\(SKU:.*?\)/gi, '').trim();
                             if (pPrice > 0) {
-                                desgloses.push(`  - Opción alternativa: ${otherP.name} ($${pPrice.toLocaleString('es-AR')} c/u)`);
+                                desgloses.push(`  - Variante / Opción: ${otherCleanName} ($${pPrice.toLocaleString('es-AR')} c/u)`);
                             }
                         });
                     }
@@ -490,13 +498,13 @@ Devuelve JSON: {"items": [{"busqueda": "string", "cantidad": number}]}`
                 }
 
                 cotizacionCalculada = "\n[DATOS REALES Y CÁLCULOS MATEMÁTICOS OFICIALES DE QUÍMICA DEC]:\n" + desgloses.join('\n') + resumenTotalGlobal +
-                "\n\n⚠️ INSTRUCCIONES ESTRICTAS PARA PRESENTAR LA LISTA DE PRECIOS Y CUENTAS AL CLIENTE:" +
-                "\n1. SI EL CLIENTE PIDIÓ UNA LISTA DE PRODUCTOS CON CANTIDADES: Presentá cada producto de forma limpia con su cantidad, precio unitario y subtotal exacto calculado en la lista de arriba. Al final, indicá el TOTAL ESTIMADO GENERAL CALCULADO de forma destacada." +
-                "\n2. CALCULADORA MATEMÁTICA EXACTA (PROHIBIDO DIVAGAR O RECALCULAR): Usá ÚNICAMENTE los números exactos calculados arriba. Queda rotundamente prohibido hacer cuentas mentales erróneas, dudar o cambiar las multiplicaciones." +
-                "\n3. JUEGO DE CINTURA Y EMPATÍA COMERCIAL: Si el cliente busca 'Detergente Magistral', explicá amablemente que contamos con nuestro 'Detergente TIPO MAGISTRAL' (Magenta y Azul) de calidad industrial superior." +
-                "\n4. PRODUCTOS EN BORRADOR PROHIBIDOS: Usá ÚNICAMENTE los datos reales de la lista oficial de arriba. JAMÁS inventes precios de $785 ni productos fuera de catálogo.";
+                "\n\n⚠️ INSTRUCCIONES ESTRICTAS PARA PRESENTAR LA LISTA DE PRECIOS Y ATENDER AL CLIENTE:" +
+                "\n1. SIN CÓDIGOS TÉCNICOS NI SKUs: Queda ROTUNDAMENTE PROHIBIDO mostrar códigos técnicos, SKUs o choclos de texto confuso (ej: QD-LCHL-1277). Presentá nombres de productos limpios, claros y comerciales." +
+                "\n2. MANEJO INTELIGENTE DE FRAGANCIAS Y PRESENTACIONES: Si el cliente pidió un producto general que tiene diferentes aromas (ej: sahumerios) o medidas (ej: bidones de 5L vs tambor 100L), explicale la presentación de referencia y decile amablemente que si busca una fragancia o medida específica, puede ingresar a nuestro catálogo en quimicadec.com/catalogo y buscar directamente con la LUPITA DE BÚSQUEDA 🔍 por el nombre del producto para ver todas las variantes disponibles y agregarlas al carrito." +
+                "\n3. CALCULADORA MATEMÁTICA EXACTA: Usá ÚNICAMENTE los números exactos calculados arriba. Al final del desglose de productos, mostrá de forma clara el TOTAL ESTIMADO GENERAL CALCULADO." +
+                "\n4. MEDIOS DE PAGO (RECORDATORIO CRÍTICO): ÚNICAMENTE aceptamos pago en EFECTIVO o TRANSFERENCIA BANCARIA. Jamás menciones tarjetas de crédito, débito ni cuotas.";
             } else {
-                cotizacionCalculada = "\n⚠️ INSTRUCCIÓN SI NO SE ENCONTRÓ EN BÚSQUEDA AUTOMÁTICA:\nInformá amablemente al cliente que puede revisar el catálogo completo en quimicadec.com/catalogo. JAMÁS INVENTES PRECIOS FALSOS NI PRODUCTOS EN BORRADOR.";
+                cotizacionCalculada = "\n⚠️ INSTRUCCIÓN SI NO SE ENCONTRÓ EN BÚSQUEDA AUTOMÁTICA:\nInformá amablemente al cliente que puede revisar el catálogo completo en quimicadec.com/catalogo buscando directamente con la LUPITA DE BÚSQUEDA 🔍 por el nombre del producto. JAMÁS INVENTES PRECIOS FALSOS NI PRODUCTOS EN BORRADOR.";
             }
         }
 
@@ -526,8 +534,11 @@ Devuelve JSON: {"items": [{"busqueda": "string", "cantidad": number}]}`
 
         let respuestaIA = completion.choices[0]?.message?.content || "Perfecto, ¿en qué te puedo ayudar?";
         
-        // Filtro de seguridad post-procesamiento (elimina modismos neutros o victimistas)
-        respuestaIA = respuestaIA.replace(/\bche,?\s*/gi, '')
+        // Filtro de seguridad post-procesamiento (elimina SKUs, tarjetas, cuotas o modismos victimistas)
+        respuestaIA = respuestaIA.replace(/\b\(?SKU:\s*[\w-]+\)?\b/gi, '')
+                                 .replace(/tarjetas? de (crédito|débito)/gi, 'efectivo o transferencia bancaria')
+                                 .replace(/\bcuotas\b/gi, 'pago al contado')
+                                 .replace(/\bche,?\s*/gi, '')
                                  .replace(/base de datos dec_products/gi, 'nuestro catálogo')
                                  .replace(/base de datos/gi, 'nuestro catálogo')
                                  .replace(/estoy aprendiendo\b/gi, 'estoy para ayudarte')
