@@ -55,8 +55,10 @@ Hablas en primera persona como representante oficial de la empresa ("en Química
 
 ⚠️ REGLA DE ORO DE DIALECTO Y VOSEO ARGENTINO RIOPLATENSE ESTRICTO:
 - Hablá SIEMPRE en Español Argentino Rioplatense natural, cercano, respetuoso y cálido.
-- ESTÁ ROTUNDAMENTE PROHIBIDO USAR LA PALABRA "Che". Saludá siempre con "¡Hola! ¿Cómo estás?", "¡Hola! Decime...", etc., tuteando con voseo pero NUNCA usando "Che".
-- Voseo obligatorio: "recordá", "podés", "querés", "tenés", "necesitás".
+- ESTÁ ROTUNDAMENTE PROHIBIDO usar palabras neutras o de España.
+  ❌ Prohibido: "si eres", "ten en cuenta", "deseas", "prefieres", "recuerda", "puedes", "tienes", "quieres".
+  ✅ Obligatorio Voseo: "si sos", "tené en cuenta", "deseás", "preferís", "recordá", "podés", "tenés", "querés".
+- ESTÁ ROTUNDAMENTE PROHIBIDO usar la palabra "Che". Saludá siempre con "¡Hola! ¿Cómo estás?", "¡Hola! Decime...", etc., tuteando con voseo pero NUNCA usando "Che".
 
 ⚠️ REGLA DE PROFESIONALISMO Y PROTOCOLO ANTE FRUSTRACIÓN / ENFADO DEL CLIENTE (CRÍTICO Y ESTRICTO):
 1. SI EL CLIENTE SE ENJOJA, SE MOLESTA O MANIFIESTA FRUSTRACIÓN (Ej: "no sabés nada", "respondé bien", "te equivocaste"):
@@ -108,10 +110,12 @@ Sí vendemos y distribuimos:
    - Registro e Inicio Mayorista: $80.000 acumulados.
    - Mantenimiento Mensual: Acumular $80.000 o más en compras mensuales.
 
-3. POLÍTICA EXACTA DE ENVÍOS (PROHIBIDO CONFUNDIR TRANSPORTES):
+3. POLÍTICA EXACTA DE ENVÍOS (PROHIBIDO ESTIMAR O CALCULAR VALORES EN PESOS AL RESTO DEL PAÍS):
    - DENTRO DE CONCEPCIÓN DEL URUGUAY: Envío GRATIS en compras a partir de $50.000.
-   - DENTRO DE LA PROVINCIA DE ENTRE RÍOS: Se envía EXCLUSIVAMENTE por transporte MOSTTO. El costo de envío es EXACTAMENTE del 5% del valor total de la factura.
-   - RESTO DE ARGENTINA / RESTO DEL PAÍS: Se despacha a través de ANDREANI y VÍA CARGO. El costo de envío se calcula según el peso y tamaño del paquete/bulto.
+   - DENTRO DE LA PROVINCIA DE ENTRE RÍOS: Se envía por transporte MOSTTO y el costo de envío es EXACTAMENTE del 5% del valor total de la factura.
+   - RESTO DE ARGENTINA / RESTO DEL PAÍS: Se despacha a través de ANDREANI y VÍA CARGO.
+     ⚠️ REGLA CRÍTICA PARA RESTO DEL PAÍS: Queda ROTUNDAMENTE PROHIBIDO dar valores en pesos o estimaciones de costo de envío (ej: NO decir "$120.000 - $150.000"). Explicá únicamente que se despacha por Andreani o Vía Cargo y que un asesor comercial calculará y confirmará el costo exacto según el peso y bultos del pedido.
+   - SIN REDUNDANCIAS GEOGRÁFICAS: Queda PROHIBIDO escribir aclaraciones redundantes u obvias como "(dentro de la provincia de Entre Ríos)" o "(fuera de la provincia de Entre Ríos)". Hablá de forma directa y fluida.
 
 ⚠️ REGLA DE CONTINUIDAD DE CONVERSACIÓN (NO REPETIR SALUDOS):
 - SI EN EL HISTORIAL DE MENSAJES YA HUBO UN SALUDO PREVIO, PROHIBIDO DECIR "¡Hola!" O PRESENTARTE DE NUEVO.
@@ -123,30 +127,15 @@ app.get('/health', (req, res) => {
     res.json({
         status: 'online',
         service: 'Química DEC CRM, Chat en Vivo & IA API',
-        timestamp: new Date().toISOString(),
-        supabase: 'connected'
+        timestamp: new Date().toISOString()
     });
 });
 
-// Auto Ping Interno de Render cada 10 Minutos para evitar suspensiones
-setInterval(() => {
-    const targetUrl = 'https://crm.quimicadec.com/health';
-    https.get(targetUrl, (res) => {
-        console.log(`[KEEP-ALIVE PING] Auto-ping enviado a ${targetUrl} - Status: ${res.statusCode}`);
-    }).on('error', (err) => {
-        console.log(`[KEEP-ALIVE PING ERROR]: ${err.message}`);
-    });
-}, 10 * 60 * 1000);
-
-// Categorías Oficiales Estructuradas de Química DEC
-const CATEGORIAS_OFICIALES = [
-    { key: 'PRODUCTOS LÍQUIDOS', icon: 'water_drop', terms: ['LIQUIDO', 'LÍQUIDO', 'JABON', 'JABÓN', 'SUAVIZANTE', 'DETERGENTE', 'DESODORANTE', 'LIMPIADOR'] },
-    { key: 'PRODUCTOS PARA DILUIR', icon: 'opacity', terms: ['DILUIR', 'CONCENTRADO 1+4'] },
-    { key: 'PASTAS Y CONCENTRADOS', icon: 'science', terms: ['PASTA'] },
-    { key: 'JABÓN EN POLVO Y PAN', icon: 'grain', terms: ['POLVO', 'PAN'] },
-    { key: 'AEROSOLES Y PERFUMERÍA', icon: 'air', terms: ['AEROSOL', 'PERFUMINA', 'AROMATIZADOR', 'SAHUMERIO'] },
-    { key: 'DESINFECTANTES Y REPELENTES', icon: 'sanitizer', terms: ['LAVANDINA', 'CLORO', 'DESINFECTANTE', 'REPELENTE', 'INSECTICIDA', 'RAID', 'FUYI', 'OFF'] },
-    { key: 'ACCESORIOS Y HERRAMIENTAS', icon: 'cleaning_services', terms: ['ESPONJA', 'ESCOBILLON', 'ESCOBILLÓN', 'CEPILLO', 'SECADOR', 'CABO', 'BURLETE', 'GUANTE'] },
+const MENU_CATEGORIES_CONFIG = [
+    { key: 'PRODUCTOS LÍQUIDOS', icon: 'local_wash', terms: ['JABON', 'JABÓN', 'SUAVIZANTE', 'DETERGENTE', 'DESODORANTE', 'LAVANDINA', 'CLORO', 'DESENGRASANTE', 'CERA', 'SILICONA'] },
+    { key: 'SAHUMERIOS Y AROMAS', icon: 'self_improvement', terms: ['SAHUMERIO', 'SAUMERIO', 'AMOGH', 'TUK', 'PRANA', 'DHOOP', 'CONO', 'VARILLA'] },
+    { key: 'AEROSOLES Y PESTICIDAS', icon: 'sprinkler', terms: ['AEROSOL', 'RAID', 'LYSOFORM', 'FUYI', 'OFF', 'PERFUMINA', 'INSECTICIDA', 'REPELENTE'] },
+    { key: 'PASTAS Y CONCENTRADOS', icon: 'science', terms: ['PASTA', 'CONCENTRADO', 'PASTAS', '50L', '1+4'] },
     { key: 'ENVASES Y BOLSAS', icon: 'inventory_2', terms: ['ENVASE', 'BOLSA', 'BIDON', 'BIDÓN', 'BOTELLA'] },
     { key: 'ESPECIALIDADES Y VARIOS', icon: 'grid_view', terms: [] }
 ];
@@ -163,7 +152,7 @@ const SPANISH_STOP_WORDS = [
     'algún', 'tengan', 'hablar', 'contacto', 'producto', 'productos'
 ];
 
-// Detección e IA Extractor Automático de Datos de Lead (Nombre, Apellido, WhatsApp, DNI, Comercio)
+// Detección e IA Extractor Automático de Datos de Lead (Nombre, Apellido, WhatsApp)
 async function autoExtractAndUpdateLead(clienteId, clienteObj, textoUsuario) {
     if (!clienteId || !textoUsuario) return;
 
@@ -171,20 +160,22 @@ async function autoExtractAndUpdateLead(clienteId, clienteObj, textoUsuario) {
         let extractedNombre = null;
         let extractedWhatsapp = null;
 
-        // 1. Extraer WhatsApp / Teléfono si el usuario lo escribe (ej. 3442571100 o 5493442...)
-        const cleanNums = textoUsuario.replace(/[^0-9]/g, '');
-        if (cleanNums.length >= 8 && cleanNums.length <= 13) {
-            if (!clienteObj.whatsapp || clienteObj.whatsapp.startsWith('Web_') || clienteObj.whatsapp.includes('Cliente Web')) {
-                let cleanPhone = cleanNums;
-                if (cleanPhone.length === 10 && (cleanPhone.startsWith('3') || cleanPhone.startsWith('11') || cleanPhone.startsWith('2') || cleanPhone.startsWith('9'))) {
-                    cleanPhone = '549' + cleanPhone;
+        // 1. Extraer Número de WhatsApp / Teléfono inteligente con Regex (evita confundir cantidades y precios)
+        // Busca secuencias como: 3442 586974, 3442-586974, +5493442586974, 5493442586974, 11 2345 6789, 3442586974
+        const phoneRegex = /(?:\+?54\s*9?\s*)?(?:11|[234678]\d{2,3})[\s.-]*\d{3,4}[\s.-]*\d{3,4}\b|\b549\d{9,10}\b|\b3442\d{6}\b/g;
+        const matches = textoUsuario.match(phoneRegex);
+        if (matches && matches.length > 0) {
+            let rawPhone = matches[0].replace(/[^0-9]/g, '');
+            if (rawPhone.length >= 8 && rawPhone.length <= 13) {
+                if (rawPhone.length === 10 && (rawPhone.startsWith('3') || rawPhone.startsWith('11') || rawPhone.startsWith('2') || rawPhone.startsWith('9'))) {
+                    rawPhone = '549' + rawPhone;
                 }
-                extractedWhatsapp = cleanPhone.substring(0, 20);
+                extractedWhatsapp = rawPhone;
             }
         }
 
         // 2. Extraer Nombre y Apellido real del texto
-        // A) Prefijo explícito: "me llamo X", "mi nombre es X", "soy X", "me dicen X", "habla X"
+        // Prefijos explícitos: "me llamo X", "mi nombre es X", "soy X", "me dicen X", "habla X"
         const prefixRegex = /(?:me llamo|mi nombre es|soy|me dicen|habla|saluda)\s+([a-záéíóúñÁÉÍÓÚÑ]{2,}(?:\s+[a-záéíóúñÁÉÍÓÚÑ]{2,}){0,3})/i;
         const pm = textoUsuario.match(prefixRegex);
         if (pm && pm[1]) {
@@ -195,12 +186,12 @@ async function autoExtractAndUpdateLead(clienteId, clienteObj, textoUsuario) {
             }
         }
 
-        // B) Si no hay prefijo, buscar si las palabras al inicio (antes de una coma/punto) son un Nombre y Apellido legítimo
+        // Si no hay prefijo, buscar si las palabras al inicio son un Nombre legítimo
         if (!extractedNombre) {
             const firstChunk = textoUsuario.split(/[,;\n\.]/)[0].trim();
             if (firstChunk) {
                 const words = firstChunk.split(/\s+/);
-                if (words.length >= 1 && words.length <= 4) {
+                if (words.length >= 1 && words.length <= 3) {
                     const isAllLetters = words.every(w => /^[a-záéíóúñÁÉÍÓÚÑ]+$/i.test(w));
                     const hasStopWord = words.some(w => SPANISH_STOP_WORDS.includes(w.toLowerCase()));
                     if (isAllLetters && !hasStopWord) {
@@ -213,14 +204,9 @@ async function autoExtractAndUpdateLead(clienteId, clienteObj, textoUsuario) {
         // 3. Actualizar en Supabase si se detectó un dato válido
         const updateData = {};
         
-        // Sobrescribir razon_social si es nulo, generico (Lead Web...) o si contenia una frase falsa (Quiero Comprar, Hola Buenas...)
-        const esNombreGenericoOFalso = !clienteObj || !clienteObj.razon_social || 
-            clienteObj.razon_social.startsWith('Lead Web') || 
-            clienteObj.razon_social.startsWith('Cliente Web') ||
-            ['quiero', 'comprar', 'hola', 'buenas', 'cuanto', 'sale', 'precio'].some(sw => (clienteObj.razon_social || '').toLowerCase().includes(sw));
-
-        if (extractedNombre && esNombreGenericoOFalso) {
+        if (extractedNombre) {
             updateData.razon_social = extractedNombre;
+            updateData.contacto_nombre = extractedNombre;
         }
 
         if (extractedWhatsapp) {
@@ -229,7 +215,7 @@ async function autoExtractAndUpdateLead(clienteId, clienteObj, textoUsuario) {
 
         if (Object.keys(updateData).length > 0) {
             await supabase.from('clientes').update(updateData).eq('id', clienteId);
-            console.log(`[AUTO LEAD EXTRACT] Ficha del Lead ${clienteId} actualizada en Supabase:`, updateData);
+            console.log(`[AUTO LEAD EXTRACT SUCCESS] Ficha del Lead ${clienteId} actualizada en Supabase:`, updateData);
         }
     } catch(err) {
         console.error('[AUTO LEAD EXTRACT ERROR]:', err.message);
@@ -534,7 +520,7 @@ Devuelve JSON: {"items": [{"busqueda": "string", "cantidad": number}]}`
 
         let respuestaIA = completion.choices[0]?.message?.content || "Perfecto, ¿en qué te puedo ayudar?";
         
-        // Filtro de seguridad post-procesamiento (elimina SKUs, tarjetas, cuotas o modismos victimistas)
+        // Filtro de seguridad post-procesamiento (elimina SKUs, tarjetas, cuotas, español neutro o modismos victimistas)
         respuestaIA = respuestaIA.replace(/\b\(?SKU:\s*[\w-]+\)?\b/gi, '')
                                  .replace(/tarjetas? de (crédito|débito)/gi, 'efectivo o transferencia bancaria')
                                  .replace(/\bcuotas\b/gi, 'pago al contado')
@@ -545,6 +531,10 @@ Devuelve JSON: {"items": [{"busqueda": "string", "cantidad": number}]}`
                                  .replace(/ayudarme a aprender/gi, 'ayudarte con tu consulta')
                                  .replace(/ayudar a aprender/gi, 'ayudarte con tu consulta')
                                  .replace(/soy solo un bot/gi, 'soy la asistente virtual')
+                                 .replace(/\bsi eres\b/gi, 'si sos')
+                                 .replace(/\bten en cuenta\b/gi, 'tené en cuenta')
+                                 .replace(/\bdeseas\b/gi, 'deseás')
+                                 .replace(/\bprefieres\b/gi, 'preferís')
                                  .replace(/\brecuerda\b/gi, 'recordá')
                                  .replace(/\brecuerde\b/gi, 'recordá')
                                  .replace(/\bpuedes\b/gi, 'podés')

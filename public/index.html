@@ -344,7 +344,7 @@
                             </div>
                         </div>
 
-                        <div id="chat-messages-stream" class="flex-grow space-y-3 max-h-[400px] overflow-y-auto p-4 rounded-xl bg-black/20 border border-white/5">
+                        <div id="chat-messages-stream" class="flex-grow space-y-3 max-h-[400px] overflow-y-auto p-4 rounded-xl bg-black/20 border border-white/5 select-text" style="user-select: text !important; -webkit-user-select: text !important;">
                             <div class="text-center py-12 text-gray-500 text-xs">Seleccioná un cliente para chatear en vivo.</div>
                         </div>
 
@@ -1568,10 +1568,10 @@
                 const cleanText = (m.texto || '').replace(/\n?\[BOT PAUSADO\]/g, '').replace(/\n?\[BOT REANUDADO\]/g, '');
 
                 return `
-                    <div class="flex flex-col ${esCliente ? 'items-start' : 'items-end'} my-1">
-                        <div class="max-w-[80%] p-3 rounded-2xl text-xs ${esCliente ? 'bg-white/10 text-white rounded-tl-none' : esBot ? 'bg-brand-yellow/15 text-brand-yellow border border-brand-yellow/30 rounded-tr-none' : 'bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded-tr-none'}">
-                            <span class="text-[9px] font-bold block opacity-60 uppercase mb-1">${esCliente ? 'CLIENTE' : esBot ? 'BOT DANI' : '👤 VENDEDOR HUMANO'}</span>
-                            <p class="leading-relaxed whitespace-pre-wrap">${cleanText}</p>
+                    <div class="flex flex-col ${esCliente ? 'items-start' : 'items-end'} my-1 select-text" style="user-select: text !important; -webkit-user-select: text !important;">
+                        <div class="max-w-[80%] p-3 rounded-2xl text-xs select-text cursor-text ${esCliente ? 'bg-white/10 text-white rounded-tl-none' : esBot ? 'bg-brand-yellow/15 text-brand-yellow border border-brand-yellow/30 rounded-tr-none' : 'bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded-tr-none'}" style="user-select: text !important; -webkit-user-select: text !important;">
+                            <span class="text-[9px] font-bold block opacity-60 uppercase mb-1 select-none">${esCliente ? 'CLIENTE' : esBot ? 'BOT DANI' : '👤 VENDEDOR HUMANO'}</span>
+                            <p class="leading-relaxed whitespace-pre-wrap select-text cursor-text" style="user-select: text !important; -webkit-user-select: text !important;">${cleanText}</p>
                         </div>
                     </div>
                 `;
