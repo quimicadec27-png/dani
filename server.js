@@ -50,24 +50,38 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 // System Prompt Oficial de "Dani"
 const SYSTEM_PROMPT_DANI = `
-Eres "Dani", el asistente virtual oficial de Química DEC (Concepción del Uruguay, Entre Ríos).
-Hablas en primera persona como representante oficial ("en Química DEC nos dedicamos", "ofrecemos", "nuestro local").
+Eres "Dani", la asistente virtual oficial de Química DEC (Concepción del Uruguay, Entre Ríos).
+Hablas en primera persona como representante oficial de la empresa ("en Química DEC nos dedicamos", "ofrecemos", "nuestro local").
 
 ⚠️ REGLA DE ORO DE DIALECTO Y VOSEO ARGENTINO RIOPLATENSE ESTRICTO:
-- Habla SIEMPRE en Español Argentino Rioplatense natural, cercano, respetuoso y cálido.
-- ESTÁ ROTUNDAMENTE PROHIBIDO USAR LA PALABRA "Che". Saluda siempre con "¡Hola! ¿Cómo estás?", "¡Hola! Decime...", etc., tuteando con voseo pero NUNCA usando "Che".
+- Hablá SIEMPRE en Español Argentino Rioplatense natural, cercano, respetuoso y cálido.
+- ESTÁ ROTUNDAMENTE PROHIBIDO USAR LA PALABRA "Che". Saludá siempre con "¡Hola! ¿Cómo estás?", "¡Hola! Decime...", etc., tuteando con voseo pero NUNCA usando "Che".
 - Voseo obligatorio: "recordá", "podés", "querés", "tenés", "necesitás".
+
+⚠️ REGLA DE PROFESIONALISMO Y PROTOCOLO ANTE FRUSTRACIÓN / ENFADO DEL CLIENTE (CRÍTICO Y ESTRICTO):
+1. SI EL CLIENTE SE ENJOJA, SE MOLESTA O MANIFIESTA FRUSTRACIÓN (Ej: "no sabés nada", "respondé bien", "te equivocaste"):
+   - Queda ROTUNDAMENTE PROHIBIDO usar frases victimistas, informales o de auto-compasión como:
+     ❌ "Estoy aprendiendo"
+     ❌ "¿Me podés ayudar a aprender con vos?"
+     ❌ "Perdón por no saber"
+     ❌ "Soy solo un bot desorientado"
+   - Respondé de forma SOBRIA, EJECUTIVA, CORDIAL Y ALTAMENTE PROFESIONAL.
+   - Ofrecé de inmediato la derivación con un asesor comercial humano, informando brevemente las funciones que vos podés resolver:
+     "Te pido disculpas por el inconveniente. Para brindarte una atención exacta y personalizada, puedo derivarte de inmediato con uno de nuestros asesores comerciales humanos. Recordá que desde aquí también puedo informarte el stock en tiempo real, calcularte presupuestos de listas de productos, informarte nuestros medios de pago y horarios de atención. ¿Deseás que le transfiera tu consulta a un representante comercial?"
+
+2. SI EL CLIENTE PIDE EXPLÍCITAMENTE HABLAR CON UN HUMANO O ASESOR COMERCIAL:
+   - Respondé de inmediato con total cordialidad profesional:
+     "¡Con mucho gusto! Ya dejé asentada tu consulta para que un representante de nuestro equipo comercial se ponga en contacto contigo a la brevedad."
 
 ⚠️ REGLAS ESTRICTAS DE CAPTURA SUTIL DE LEAD (NOMBRE, APELLIDO Y WHATSAPP):
 1. EN LA PRIMERA RESPUESTA AL CLIENTE (Si no te ha dicho su nombre aún):
    - Respondé PRIMERO de forma directa y amable lo que el cliente está consultando (precios, stock, productos).
    - En ese mismo mensaje, presentate educadamente e invitá a decirte su nombre:
-     "¡Hola! Mi nombre es Dani, muchas gracias por consultar. Sí, ¡tenemos [producto]! Me gustaría saber tu nombre y apellido para poder brindarte una atención personalizada y seguir charlando contigo. ¿Cuál es tu nombre?"
+     "¡Hola! Mi nombre es Dani, muchas gracias por consultar. Sí, ¡tenemos [producto]! Me gustaría saber tu nombre y apellido para poder brindarte una atención personalizada. ¿Cuál es tu nombre?"
 2. EN LA SEGUNDA O TERCERA INTERACCIÓN (Sugerencia de WhatsApp):
    - Tras responder sus consultas sobre productos, sugerí amablemente:
-     "Para que luego de que consultes todo lo que necesites, un representante humano de nuestro equipo pueda enviarte el presupuesto completo o ayudarte a cerrar la compra, ¿me compartís tu número de WhatsApp con característica?"
-   - JAMÁS des nombres específicos de representantes (como Danilo o Micaela). El asesor se identificará cuando tome la charla.
-3. RECUERDA: Dejá que el cliente consulte todo lo que necesite con Dani; NO lo derivés abruptamente salvo que lo pida explícitamente.
+     "Para que un representante de nuestro equipo pueda enviarte el presupuesto completo o ayudarte a cerrar la compra, ¿me compartís tu número de WhatsApp con característica?"
+3. RECUERDA: Dejá que el cliente consulte todo lo que necesite; NO lo derivés abruptamente salvo que lo solicite o se presente una queja/frustración.
 
 ⚠️ CATÁLOGO COMPLETO DE PRODUCTOS QUÍMICA DEC:
 Sí vendemos y distribuimos:
@@ -82,7 +96,7 @@ Sí vendemos y distribuimos:
 1. COMPRA MÍNIMA MAYORISTA:
    - Registro e Inicio Mayorista: $80.000 acumulados.
    - Mantenimiento Mensual: Acumular $80.000 o más en compras mensuales.
-   - Retiro en Local (Av. Frondizi 815): A partir de $2.500 por pedido.
+   - Retiro en Local (Av. Frondizi 815, Concepción del Uruguay): A partir de $2.500 por pedido. Horarios: Lunes a Viernes de 8:00 a 17:00hs y Sábados de 8:00 a 12:30hs.
 
 2. POLÍTICA EXACTA DE ENVÍOS:
    - DENTRO DE CONCEPCIÓN DEL URUGUAY: Envío GRATIS en compras a partir de $50.000.
@@ -336,22 +350,20 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
             } catch (e) {}
         }
 
-        // Cotizador matemático exacto para precios de productos
+        // Cotizador matemático exacto para precios de productos y listas extensas
         let itemsExtraidos = [];
         try {
             const parserCompletion = await groq.chat.completions.create({
                 messages: [
                     { 
                         role: "system", 
-                        content: `Analiza el mensaje y extrae JSON con los nombres de productos buscados, CORRIGIENDO errores de tipeo y faltas de ortografía.
+                        content: `Analizá el mensaje del cliente y extraé un JSON con la lista de productos consultados o pedidos, corrigiendo errores de tipeo y registrando la cantidad pedida si el cliente la menciona.
 Ejemplos:
-- "detergnt magnt" -> {"items": ["detergente magenta"]}
-- "jabon ropa scip" -> {"items": ["jabon ropa", "skip"]}
-- "lavandna" -> {"items": ["lavandina"]}
-- "desodorant piso" -> {"items": ["desodorante piso"]}
-Devuelve JSON: {"items": ["busqueda1", "busqueda2"]}` 
+- "quiero 2 alcohol etilico y 5 sahumerio" -> {"items": [{"busqueda": "alcohol etilico", "cantidad": 2}, {"busqueda": "sahumerio", "cantidad": 5}]}
+- "cuanto sale el detergente magenta?" -> {"items": [{"busqueda": "detergente magenta", "cantidad": 1}]}
+- "3 detergnt magnt, 10 lavandina y 1 desodorant piso" -> {"items": [{"busqueda": "detergente magenta", "cantidad": 3}, {"busqueda": "lavandina", "cantidad": 10}, {"busqueda": "desodorante piso", "cantidad": 1}]}
+Devuelve JSON: {"items": [{"busqueda": "string", "cantidad": number}]}` 
                     },
-
                     { role: "user", content: textoProcesado }
                 ],
                 model: "llama-3.3-70b-versatile",
@@ -364,26 +376,29 @@ Devuelve JSON: {"items": ["busqueda1", "busqueda2"]}`
 
         let cotizacionCalculada = "";
         let desgloses = [];
+        let totalGeneralCotizacion = 0;
+        let itemsCotizadosCuenta = 0;
 
         if (itemsExtraidos.length > 0 || textoProcesado.length > 3) {
-            const busquedas = itemsExtraidos.length > 0 ? itemsExtraidos : [textoProcesado];
+            const busquedas = itemsExtraidos.length > 0 ? itemsExtraidos : [{ busqueda: textoProcesado, cantidad: 1 }];
             
-            for (const queryItem of busquedas) {
+            for (const itemObj of busquedas) {
                 let prods = [];
-                let queryStr = (typeof queryItem === 'string' ? queryItem : (queryItem.busqueda || '')).toLowerCase();
+                let queryStr = (typeof itemObj === 'string' ? itemObj : (itemObj.busqueda || '')).toLowerCase().trim();
+                let cantidadDeseada = (typeof itemObj === 'object' && itemObj.cantidad) ? parseInt(itemObj.cantidad) || 1 : 1;
                 if (!queryStr) continue;
 
                 // Normalizar faltas de ortografía comunes (saumerio -> sahumerio)
                 queryStr = queryStr.replace(/\bsaumerios?\b/g, 'sahumerio')
                                    .replace(/\bsahumerios?\b/g, 'sahumerio');
 
-                const stopWords = ['cuanto', 'sale', 'tenes', 'opciones', 'producto', 'precio', 'este', 'para', 'saber', 'quisiera'];
+                const stopWords = ['cuanto', 'sale', 'tenes', 'opciones', 'producto', 'precio', 'este', 'para', 'saber', 'quisiera', 'quiero', 'necesito', 'unidades', 'paquetes', 'cajas'];
                 const words = queryStr.split(' ').filter(w => w.length > 2 && !stopWords.includes(w));
                 if (words.length === 0) continue;
 
                 // 1. Consultar WooCommerce Live Search PRIMERO (Exclusivamente productos PUBLICADOS)
                 try {
-                    const wcRes = await fetch(`https://quimicadec.com/?qdec_api=search_product&q=${encodeURIComponent(queryStr)}`);
+                    const wcRes = await fetch(`https://quimicadec.com/?qdec_api=search_product&secret_key=qdec_crm_sec_2026&q=${encodeURIComponent(queryStr)}`);
                     if (wcRes.ok) {
                         const wcData = await wcRes.json();
                         if (wcData && wcData.success && wcData.products && wcData.products.length > 0) {
@@ -391,7 +406,6 @@ Devuelve JSON: {"items": ["busqueda1", "busqueda2"]}`
                                 const pSku = (p.sku || '').toUpperCase();
                                 const pName = (p.name || '').toUpperCase();
                                 const price = parseFloat(p.regular_price || p.price || 0);
-                                // Excluir productos obsoletos/desactualizados como QD-DTRG-1320 (Magistral Azul $785)
                                 if (pSku.includes('QD-DTRG-1320') || (pName.includes('MAGISTRAL AZUL') && price < 1000)) {
                                     return false;
                                 }
@@ -400,7 +414,6 @@ Devuelve JSON: {"items": ["busqueda1", "busqueda2"]}`
                         }
                     }
                 } catch(e) {}
-
 
                 // 2. Fallback a Supabase dec_products ÚNICAMENTE si WooCommerce no devolvió NINGÚN resultado
                 if (prods.length === 0) {
@@ -413,7 +426,7 @@ Devuelve JSON: {"items": ["busqueda1", "busqueda2"]}`
                         queryBuilder = queryBuilder.ilike('name', `%${w}%`);
                     }
 
-                    let { data: sbProds } = await queryBuilder.limit(15);
+                    let { data: sbProds } = await queryBuilder.limit(10);
                     if (!sbProds || sbProds.length === 0) {
                         const sortedWords = words.sort((a,b) => b.length - a.length);
                         const longestWord = sortedWords[0];
@@ -430,40 +443,56 @@ Devuelve JSON: {"items": ["busqueda1", "busqueda2"]}`
                     if (sbProds && sbProds.length > 0) prods = sbProds;
                 }
 
-
                 if (prods && prods.length > 0) {
-                    prods.forEach(p => {
-                        const rawPrice = parseFloat(p.price || p.regular_price || 0);
-                        const priceTxt = rawPrice > 0 
-                            ? `$${rawPrice.toLocaleString('es-AR')}` 
-                            : 'Opciones de Bidones disponibles: 5LT ($4.906,40), 10LT ($9.812,80), 20LT ($19.625,60), 40LT ($38.858,80), 120LT ($114.220,00)';
-                        
-                        let descLine = `- ${p.name} (SKU: ${p.sku || 'N/A'}): ${priceTxt} | Stock: ${p.stock_status === 'instock' || !p.stock_status ? 'Disponible' : 'Consultar'}`;
+                    const bestMatch = prods[0];
+                    const rawPrice = parseFloat(bestMatch.price || bestMatch.regular_price || 0);
+                    const stockText = bestMatch.stock_status === 'instock' || !bestMatch.stock_status ? 'Disponible ✅' : 'Consultar ⚠️';
+                    
+                    if (rawPrice > 0) {
+                        const subtotal = rawPrice * cantidadDeseada;
+                        totalGeneralCotizacion += subtotal;
+                        itemsCotizadosCuenta++;
 
-                        if (rawPrice > 0) {
+                        let lineText = `• ${bestMatch.name} (SKU: ${bestMatch.sku || 'N/A'}): ${cantidadDeseada} u. x $${rawPrice.toLocaleString('es-AR')} = $${subtotal.toLocaleString('es-AR')} [Stock: ${stockText}]`;
+                        
+                        // Si el cliente consultó por $80.000 para un solo ítem
+                        if (cantidadDeseada === 1) {
                             const minQty80k = Math.ceil(80000 / rawPrice);
                             const minTotal80k = minQty80k * rawPrice;
-                            descLine += `\n  * CÁLCULO DE COMPRA MÍNIMA DE $80.000: Para alcanzar o superar la compra mínima inicial de $80.000 se necesitan EXACTAMENTE ${minQty80k} unidades. La cuenta matemática exacta es: ${minQty80k} unidades x $${rawPrice.toLocaleString('es-AR')} = $${minTotal80k.toLocaleString('es-AR')}.`;
+                            lineText += `\n  * Para alcanzar la compra mínima de $80.000 se necesitan ${minQty80k} unidades ($${minTotal80k.toLocaleString('es-AR')} en total).`;
                         }
+                        
+                        desgloses.push(lineText);
+                    } else {
+                        desgloses.push(`• ${bestMatch.name} (SKU: ${bestMatch.sku || 'N/A'}): Consultar opciones de bidones y precios. [Stock: ${stockText}]`);
+                    }
 
-                        if (!desgloses.includes(descLine)) {
-                            desgloses.push(descLine);
-                        }
-                    });
+                    // Sugerir variantes si hay otras opciones
+                    if (prods.length > 1 && busquedas.length <= 2) {
+                        prods.slice(1, 3).forEach(otherP => {
+                            const pPrice = parseFloat(otherP.price || otherP.regular_price || 0);
+                            if (pPrice > 0) {
+                                desgloses.push(`  - Opción alternativa: ${otherP.name} ($${pPrice.toLocaleString('es-AR')} c/u)`);
+                            }
+                        });
+                    }
                 }
             }
 
             if (desgloses.length > 0) {
-                cotizacionCalculada = "\n[DATOS REALES Y CÁLCULOS MATEMÁTICOS OFICIALES DE QUÍMICA DEC]:\n" + desgloses.join('\n') + 
-                "\n⚠️ INSTRUCCIONES DE VENTA, CALCULADORA MATEMÁTICA Y RESPUESTAS LIMPISIMAS:" +
-                "\n1. CALCULADORA MATEMÁTICA DIRECTA (PROHIBIDO DIVAGAR): Si el cliente consulta cuántas unidades necesita para superar la compra mínima de $80.000, responde ÚNICAMENTE con el resultado final calculado arriba (* CÁLCULO DE COMPRA MÍNIMA). Queda ABSOLUTAMENTE PROHIBIDO escribir pensamientos paso a paso, dudas o borradores de cuentas en tu respuesta (ej: 'no, porque el precio...', 'entonces no alcanza...', 'probemos con...'). Da la cifra final directa y limpia de una sola vez." +
-                "\nEjemplo obligatorio de respuesta limpia: 'Para alcanzar la compra mínima de $80.000 con el Detergente Magistral 5 LT ($4.906,40 c/u), necesitarías comprar 17 unidades ($83.408,80 en total).'" +
-                "\n2. JUEGO DE CINTURA Y EMPATÍA COMERCIAL: Si el cliente busca 'Detergente Magistral' (sin la palabra 'tipo'), sé inteligente y proactivo. Explicá amablemente: 'No vendemos marca comercial Magistral, pero contamos con nuestro Detergente TIPO MAGISTRAL (Magenta y Azul) de calidad industrial superior que es nuestro producto estrella.' Y ofrecile las opciones." +
-                "\n3. RESPONDÉ CON LOS PRECIOS Y OPCIONES REALES: Presentá las presentaciones con sus precios exactos." +
-                "\n4. PRODUCTOS EN BORRADOR PROHIBIDOS: Usá ÚNICAMENTE los datos reales de la lista oficial de arriba. JAMÁS inventes precios de $785 ni muestres productos que no estén listados." +
-                "\n5. Si el cliente pide un producto que figura en la lista anterior, CONFIRMÁ DE INMEDIATO SU EXISTENCIA.";
+                let resumenTotalGlobal = "";
+                if (itemsCotizadosCuenta > 1 && totalGeneralCotizacion > 0) {
+                    resumenTotalGlobal = `\n\n🧮 TOTAL ESTIMADO GENERAL CALCULADO ($${totalGeneralCotizacion.toLocaleString('es-AR')})`;
+                }
+
+                cotizacionCalculada = "\n[DATOS REALES Y CÁLCULOS MATEMÁTICOS OFICIALES DE QUÍMICA DEC]:\n" + desgloses.join('\n') + resumenTotalGlobal +
+                "\n\n⚠️ INSTRUCCIONES ESTRICTAS PARA PRESENTAR LA LISTA DE PRECIOS Y CUENTAS AL CLIENTE:" +
+                "\n1. SI EL CLIENTE PIDIÓ UNA LISTA DE PRODUCTOS CON CANTIDADES: Presentá cada producto de forma limpia con su cantidad, precio unitario y subtotal exacto calculado en la lista de arriba. Al final, indicá el TOTAL ESTIMADO GENERAL CALCULADO de forma destacada." +
+                "\n2. CALCULADORA MATEMÁTICA EXACTA (PROHIBIDO DIVAGAR O RECALCULAR): Usá ÚNICAMENTE los números exactos calculados arriba. Queda rotundamente prohibido hacer cuentas mentales erróneas, dudar o cambiar las multiplicaciones." +
+                "\n3. JUEGO DE CINTURA Y EMPATÍA COMERCIAL: Si el cliente busca 'Detergente Magistral', explicá amablemente que contamos con nuestro 'Detergente TIPO MAGISTRAL' (Magenta y Azul) de calidad industrial superior." +
+                "\n4. PRODUCTOS EN BORRADOR PROHIBIDOS: Usá ÚNICAMENTE los datos reales de la lista oficial de arriba. JAMÁS inventes precios de $785 ni productos fuera de catálogo.";
             } else {
-                cotizacionCalculada = "\n⚠️ INSTRUCCIÓN SI NO SE ENCONTRÓ EN BÚSQUEDA AUTOMÁTICA:\nInformá amablemente al cliente que puede revisar la categoría completa de Productos Líquidos en el catálogo oficial (quimicadec.com/catalogo). JAMÁS INVENTES PRECIOS FALSOS NI PRODUCTOS EN BORRADOR.";
+                cotizacionCalculada = "\n⚠️ INSTRUCCIÓN SI NO SE ENCONTRÓ EN BÚSQUEDA AUTOMÁTICA:\nInformá amablemente al cliente que puede revisar el catálogo completo en quimicadec.com/catalogo. JAMÁS INVENTES PRECIOS FALSOS NI PRODUCTOS EN BORRADOR.";
             }
         }
 
@@ -493,10 +522,14 @@ Devuelve JSON: {"items": ["busqueda1", "busqueda2"]}`
 
         let respuestaIA = completion.choices[0]?.message?.content || "Perfecto, ¿en qué te puedo ayudar?";
         
-        // Filtro de seguridad contra "Che", menciones de base de datos y dialecto neutro
+        // Filtro de seguridad post-procesamiento (elimina modismos neutros o victimistas)
         respuestaIA = respuestaIA.replace(/\bche,?\s*/gi, '')
                                  .replace(/base de datos dec_products/gi, 'nuestro catálogo')
                                  .replace(/base de datos/gi, 'nuestro catálogo')
+                                 .replace(/estoy aprendiendo\b/gi, 'estoy para ayudarte')
+                                 .replace(/ayudarme a aprender/gi, 'ayudarte con tu consulta')
+                                 .replace(/ayudar a aprender/gi, 'ayudarte con tu consulta')
+                                 .replace(/soy solo un bot/gi, 'soy la asistente virtual')
                                  .replace(/\brecuerda\b/gi, 'recordá')
                                  .replace(/\brecuerde\b/gi, 'recordá')
                                  .replace(/\bpuedes\b/gi, 'podés')
