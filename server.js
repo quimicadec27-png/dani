@@ -548,15 +548,20 @@ app.get('/api/crm/chat/conversaciones', async (req, res) => {
             }
         });
 
-        // 2. Obtener lista de clientes (máximo 2000 para la vista de chat)
+        // Si no hay mensajes de chat registrados, devolver lista vacía
+        if (lastMsgMap.size === 0) {
+            return res.json({ success: true, conversaciones: [] });
+        }
+
+        // 2. Obtener únicamente los clientes que TIENEN mensajes de chat registrados
+        const activeClientIds = Array.from(lastMsgMap.keys());
         const { data: clientes, error } = await supabase
             .from('clientes')
             .select('id, razon_social, whatsapp, contacto_nombre, creado_el')
-            .order('creado_el', { ascending: false })
-            .limit(2000);
+            .in('id', activeClientIds);
 
         if (error) throw error;
-        
+
         const conversacionesFormatted = (clientes || []).map(c => {
             const lastM = lastMsgMap.get(c.id);
             return {
