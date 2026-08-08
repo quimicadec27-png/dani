@@ -95,12 +95,12 @@
         '}',
         '.dani-msgs::-webkit-scrollbar{width:5px;}',
         '.dani-msgs::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px;}',
-        '.dm{max-width:87%;padding:11px 15px;border-radius:16px;font-size:.88rem;line-height:1.45;word-break:break-word;}',
-        '.dm-ai{align-self:flex-start;background:rgba(255,255,255,.05);color:#e2e8f0;}',
+        '.dm{max-width:87%;padding:11px 15px;border-radius:16px;font-size:.88rem;line-height:1.45;word-break:break-word;text-align:left!important;}',
+        '.dm-ai{align-self:flex-start;background:rgba(255,255,255,.05);color:#e2e8f0;text-align:left!important;}',
         '.dm-ai a{color:#f5c400;text-decoration:none!important;font-weight:600;transition:color .2s;}',
         '.dm-ai a:hover{color:#ffdb4d;text-decoration:none!important;}',
         '.dm-ai strong{color:#fff;}',
-        '.dm-user{align-self:flex-end;background:rgba(74,159,212,.15);color:#fff;',
+        '.dm-user{align-self:flex-end;background:rgba(74,159,212,.15);color:#fff;text-align:left!important;',
             'border:1px solid rgba(74,159,212,.3);border-bottom-right-radius:4px;}',
         '.dani-input-area{',
             'padding:13px;background:rgba(0,0,0,.2);',
@@ -618,8 +618,11 @@
         var mdLinks = [];
         var rawLinks = [];
 
+        // 0. Auto-completar https:// para enlaces escritos como quimicadec.com/... o www...
+        var processedText = text.replace(/(^|[\s>(])((?:www\.|quimicadec\.com)[^\s<)]+)/gi, '$1https://$2');
+
         // 1. Extraer enlaces Markdown [Label](URL) y reemplazarlos por placeholders
-        var tempHtml = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, function(match, label, url) {
+        var tempHtml = processedText.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, function(match, label, url) {
             mdLinks.push({ label: label, url: url });
             return '___MDLINK_' + (mdLinks.length - 1) + '___';
         });
@@ -638,7 +641,7 @@
 
         // Función para verificar si una URL es la del catálogo de productos
         function isCatalogUrl(url) {
-            return /quimicadec\.com\/nuestros-productos\/?$/i.test(url.trim());
+            return /quimicadec\.com\/(nuestros-productos|catalogo)\/?$/i.test(url.trim());
         }
 
         // Función para verificar si una URL es local (del mismo dominio o relativa)
@@ -653,7 +656,7 @@
             var label = link.label;
             var url = link.url;
             if (isCatalogUrl(url)) {
-                label = 'Nuestros Productos';
+                label = 'Catálogo de Productos';
                 url = 'https://quimicadec.com/nuestros-productos/';
             }
             var target = isLocalUrl(url) ? '_self' : '_blank';
@@ -666,7 +669,7 @@
             var url = rawLinks[parseInt(index, 10)];
             var label = url;
             if (isCatalogUrl(url)) {
-                label = 'Nuestros Productos';
+                label = 'Catálogo de Productos';
                 url = 'https://quimicadec.com/nuestros-productos/';
             }
             var target = isLocalUrl(url) ? '_self' : '_blank';
