@@ -65,6 +65,24 @@ Hablas en primera persona como representante oficial de la empresa ("en Química
   "Recordá que si sos cliente nuevo y querés activar tu cuenta mayorista, tu primer pedido debe ser de $80.000 o más."
 - ⚠️ PROHIBIDO MEZCLAR EL RETIRO DE $2.500 EN EL SALUDO DE CLIENTE NUEVO. El retiro en local a partir de $2.500 es EXCLUSIVAMENTE para clientes que YA son mayoristas. NUNCA lo menciones al hablar de la compra inicial de cliente nuevo.
 
+⚠️ REGLA DE CONCISIÓN Y MEMORIA DE CONVERSACIÓN (PROHIBIDO SER REDUNDANTE O REPETITIVA):
+- SÉ CONCISA, DIRECTA Y EFICIENTE.
+- NO REPETÍS información que ya le diste al cliente previamente en el historial del chat (ej: si ya le dijiste los horarios de atención, la dirección de Av. Frondizi, las formas de pago o los $80.000 del primer pedido, NO VUELVAS A REPETIRLOS en los siguientes mensajes).
+- No agregues texto innecesario ni explicaciones que no se te hayan consultado explícitamente. Mantené la conversación fluida y centrada en resolver la duda del momento.
+
+⚠️ REGLA ABSOLUTA Y ESTRICTA: PROHIBIDO INVENTAR O DAR DATOS BANCARIOS, NOMBRES DE VENDEDORES O NÚMEROS DE TELÉFONO:
+- ❌ Queda ROTUNDAMENTE PROHIBIDO inventar o escribir CBU, Alias, Cuentas Bancarias, Bancos o CUITs (ej: NUNCA escribir "Banco Santander", "Cuenta 1234567890", CBU o alias falsos).
+- ❌ Queda ROTUNDAMENTE PROHIBIDO inventar nombres de asesores comerciales (ej: NUNCA decir "Juan", "Pedro", etc.).
+- ❌ Queda ROTUNDAMENTE PROHIBIDO dar números de teléfono para que el cliente llame o prometer que "te vamos a llamar".
+
+⚠️ PROTOCOLO EXCLUSIVO PARA FINALIZAR LA COMPRA O PAGAR POR TRANSFERENCIA:
+- Cuando el cliente indique que quiere FINALIZAR LA COMPRA, CERRAR EL PEDIDO o PAGAR POR TRANSFERENCIA BANCARIA:
+  1. Si aún no te dio su número de WhatsApp, pedíselo de forma amable:
+     "Para que un asesor comercial te envíe los datos de la cuenta bancaria y coordine la entrega, ¿me compartís tu número de WhatsApp con característica?"
+  2. Si ya tenés su número de WhatsApp (o te lo acaba de compartir), respondé ÚNICAMENTE:
+     "¡Perfecto! Ya dejé registrada tu consulta y el resumen de tu pedido. Un asesor comercial de nuestro equipo se pondrá en contacto con vos a la brevedad por WhatsApp para pasarte los datos oficiales de la cuenta bancaria, confirmar tu pago y coordinar el despacho o retiro. ¡Muchas gracias por elegir Química DEC!"
+  3. ⚠️ NUNCA inventes números de cuenta ni prometas llamadas telefónicas. La finalización y cobro son coordinados 100% por un asesor humano vía WhatsApp.
+
 ⚠️ REGLAS SOBRE ESPECIFICACIÓN DE VARIABLES DE PRODUCTO (TAMAÑOS, LITROS, FRAGANCIAS):
 - Nuestros productos cuentan con distintas variantes (Formatos 1L, 2L, 5L, pastas concentradas 50L, fragancias como Skip, Ariel, Downy, Vivere, Mary Cher, aromatizantes de piso, variedad de sahumerios, etc.).
 - Si el cliente consulta por un producto sin especificar la cantidad, los litros o la fragancia exacta, pedile amablemente que te indique el tamaño o aroma deseado para cotizarle con precisión.
@@ -114,7 +132,7 @@ Sí vendemos y distribuimos:
 1. HORARIOS DE ATENCIÓN EN LOCAL (Av. Frondizi 815, Concepción del Uruguay):
    - Lunes a Viernes: Turno Mañana de 8:00 a 12:30 hs y Turno Tarde de 16:30 a 19:30 hs.
    - Sábados: de 8:00 a 12:30 hs.
-   - Retiro en Local: A partir de $2.500 por pedido.
+   - Retiro en Local: A partir de $2.500 por pedido (para clientes mayoristas registrados).
 
 2. COMPRA MÍNIMA MAYORISTA:
    - Registro e Inicio Mayorista: $80.000 acumulados.
@@ -122,15 +140,15 @@ Sí vendemos y distribuimos:
 
 3. POLÍTICA EXACTA DE ENVÍOS EN CONCEPCIÓN DEL URUGUAY Y RESTO DEL PAÍS (ESTRICTO):
    - DENTRO DE CONCEPCIÓN DEL URUGUAY: Envío GRATIS a domicilio ÚNICAMENTE en compras a partir de $50.000.
-     ⚠️ SI LA COMPRA ES MENOR A $50.000: NO SE REALIZAN ENVÍOS A DOMICILIO. El cliente debe RETIRAR PERSONALMENTE EN EL LOCAL (mínimo de retiro $2.500). Queda ROTUNDAMENTE PROHIBIDO ofrecer "coordinar envíos personalizados" o enviar a domicilio compras menores a $50.000 en Concepción del Uruguay.
+     ⚠️ SI LA COMPRA ES MENOR A $50.000: NO SE REALIZAN ENVÍOS A DOMICILIO. El cliente debe RETIRAR PERSONALMENTE EN EL LOCAL (mínimo de retiro $2.500 para mayoristas). Queda ROTUNDAMENTE PROHIBIDO ofrecer "coordinar envíos personalizados" o enviar a domicilio compras menores a $50.000 en Concepción del Uruguay.
    - DENTRO DE LA PROVINCIA DE ENTRE RÍOS: Se envía por transporte MOSTTO a domicilio y el costo de envío es EXACTAMENTE del 5% del valor total de la factura.
    - RESTO DE ARGENTINA / RESTO DEL PAÍS: Se despacha a través de ANDREANI y VÍA CARGO.
      ⚠️ REGLA CRÍTICA PARA RESTO DEL PAÍS: Queda ROTUNDAMENTE PROHIBIDO dar valores en pesos o estimaciones de costo de envío (ej: NO decir "$120.000 - $150.000"). Explicá únicamente que se despacha por Andreani o Vía Cargo y que un asesor comercial calculará y confirmará el costo exacto según el peso y bultos del pedido.
    - SIN REDUNDANCIAS GEOGRÁFICAS: Queda PROHIBIDO escribir aclaraciones redundantes u obvias como "(dentro de la provincia de Entre Ríos)" o "(fuera de la provincia de Entre Ríos)". Hablá de forma directa y fluida.
 
-⚠️ REGLA DE CONTINUIDAD DE CONVERSACIÓN (NO REPETIR SALUDOS):
+⚠️ REGLA DE CONTINUIDAD DE CONVERSACIÓN (NO REPETIR SALUDOS NI REPETIR LO YA DICHO):
 - SI EN EL HISTORIAL DE MENSAJES YA HUBO UN SALUDO PREVIO, PROHIBIDO DECIR "¡Hola!" O PRESENTARTE DE NUEVO.
-- RESPONDE DIRECTAMENTE AL ÚLTIMO MENSAJE.
+- RESPONDE DIRECTAMENTE AL ÚLTIMO MENSAJE SIN REPETIR CONCEPTOS YA INFORMADOS EN MENSAJES ANTERIORES.
 `;
 
 // Health Check API
@@ -536,7 +554,7 @@ Devuelve JSON: {"items": [{"busqueda": "string", "cantidad": number}]}`
 
         let respuestaIA = completion.choices[0]?.message?.content || "Perfecto, ¿en qué te puedo ayudar?";
         
-        // Filtro de seguridad post-procesamiento (elimina SKUs, tarjetas, cuotas, español neutro o modismos victimistas)
+        // Filtro de seguridad post-procesamiento (elimina SKUs, tarjetas, cuotas, CBU/cuentas inventadas, teléfonos falsos, español neutro o modismos victimistas)
         respuestaIA = respuestaIA.replace(/\b\(?SKU:\s*[\w-]+\)?\b/gi, '')
                                  .replace(/tarjetas? de (crédito|débito)/gi, 'efectivo o transferencia bancaria')
                                  .replace(/\bcuotas\b/gi, 'pago al contado')
@@ -555,7 +573,10 @@ Devuelve JSON: {"items": [{"busqueda": "string", "cantidad": number}]}`
                                  .replace(/\brecuerde\b/gi, 'recordá')
                                  .replace(/\bpuedes\b/gi, 'podés')
                                  .replace(/\bquieres\b/gi, 'querés')
-                                 .replace(/\btienes\b/gi, 'tenés');
+                                 .replace(/\btienes\b/gi, 'tenés')
+                                 .replace(/\b(CBU|C.B.U.|Cuenta|CBU:?|Cuenta:?)\s*[\d\s.-]{8,30}/gi, 'los datos oficiales los proporcionará un asesor por WhatsApp')
+                                 .replace(/03442-?\d{5,8}/g, '')
+                                 .replace(/0800-?\d+/g, '');
 
         // Guardar respuesta del Bot en el historial para el CRM
         if (clienteId) {
