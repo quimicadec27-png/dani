@@ -160,17 +160,21 @@ async function autoExtractAndUpdateLead(clienteId, clienteObj, textoUsuario) {
         let extractedNombre = null;
         let extractedWhatsapp = null;
 
-        // 1. Extraer Número de WhatsApp / Teléfono inteligente con Regex (evita confundir cantidades y precios)
-        // Busca secuencias como: 3442 586974, 3442-586974, +5493442586974, 5493442586974, 11 2345 6789, 3442586974
-        const phoneRegex = /(?:\+?54\s*9?\s*)?(?:11|[234678]\d{2,3})[\s.-]*\d{3,4}[\s.-]*\d{3,4}\b|\b549\d{9,10}\b|\b3442\d{6}\b/g;
+        // 1. Extraer Número de WhatsApp / Teléfono inteligente con Regex (secuencias de 8 a 13 dígitos)
+        // Soporta formatos como: 3442 586974, 3442-586974, +5493442586974, 5493442586974, 11 2345 6789, 3442586974
+        const phoneRegex = /(?:\+?54\s*9?\s*)?(?:[0-9][\s.-]*){8,13}/g;
         const matches = textoUsuario.match(phoneRegex);
         if (matches && matches.length > 0) {
-            let rawPhone = matches[0].replace(/[^0-9]/g, '');
-            if (rawPhone.length >= 8 && rawPhone.length <= 13) {
-                if (rawPhone.length === 10 && (rawPhone.startsWith('3') || rawPhone.startsWith('11') || rawPhone.startsWith('2') || rawPhone.startsWith('9'))) {
-                    rawPhone = '549' + rawPhone;
+            for (const matchStr of matches) {
+                let rawPhone = matchStr.replace(/[^0-9]/g, '');
+                // Verificar que la longitud esté entre 8 y 13 dígitos y no sea una fecha u otro número técnico
+                if (rawPhone.length >= 8 && rawPhone.length <= 13) {
+                    if (rawPhone.length === 10 && (rawPhone.startsWith('3') || rawPhone.startsWith('11') || rawPhone.startsWith('2') || rawPhone.startsWith('9'))) {
+                        rawPhone = '549' + rawPhone;
+                    }
+                    extractedWhatsapp = rawPhone;
+                    break;
                 }
-                extractedWhatsapp = rawPhone;
             }
         }
 
@@ -226,38 +230,30 @@ async function autoExtractAndUpdateLead(clienteId, clienteObj, textoUsuario) {
 async function isBotPausado(clienteId) {
     if (!clienteId) return false;
     try {
-        const { data: statusMsgs } = await supabase
+        const { data: msgs } = await supabase
             .from('mensajes_chat')
-            .select('texto, emisor')
+            .select('texto')
             .eq('cliente_id', clienteId)
+            .or('texto.ilike.%[BOT PAUSADO]%,texto.ilike.%[BOT REANUDADO]%')
             .order('creado_el', { ascending: false })
-            .limit(10);
+            .limit(1);
 
-        if (statusMsgs && statusMsgs.length > 0) {
-            for (const m of statusMsgs) {
-                if (m.texto && m.texto.includes('[BOT REANUDADO]')) {
-                    return false;
-                }
-                if (m.texto && m.texto.includes('[BOT PAUSADO]')) {
-                    return true;
-                }
-                if (m.emisor === 'vendedor') {
-                    return true;
-                }
-            }
+        if (msgs && msgs.length > 0) {
+            return msgs[0].texto.includes('[BOT PAUSADO]');
         }
     } catch(e) {}
     return false;
 }
 
 // =========================================================================
-// 1. CHAT EN VIVO: SINCRONIZACIÓN FLUIDA WEB + WHATSAPP Y CRM
+// 1. ENDPOINT DE CHAT EN VIVO E IA (Utilizado por la web y WhatsApp)
 // =========================================================================
-
 app.post('/api/whatsapp/incoming-ai', async (req, res) => {
     try {
-        const { phone, user_id, session_id, mensaje_texto, user_message, message, messages, contents } = req.body;
-        let textoProcesado = (mensaje_texto || user_message || message || '').trim();
+        const { phone, user_id, session_id, mensaje_texto, user_message, message, messages, contents, prompt } = req.body;
+        
+        // 1. Extraer el texto de la última consulta del usuario
+        let textoProcesado = (prompt || mensaje_texto || user_message || message || '').trim();
 
         // 1. Extraer si viene en formato OpenAI/Groq (messages)
         if (!textoProcesado && Array.isArray(messages) && messages.length > 0) {
@@ -287,10 +283,19 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
             leadNombre = `Lead Web #${shortId}`;
         }
 
-        // Buscar o registrar cliente en Supabase para que APAREZCA EN EL CRM EN VIVO
-        let { data: cliente } = await supabase.from('clientes').select('id, razon_social, whatsapp').eq('whatsapp', clientePhone).single();
+        // Buscar o registrar cliente en Supabase para que APAREZCA EN EL CRM EN VIVO (Buscando por whatsapp o cuit)
+        let { data: cliente } = await supabase
+            .from('clientes')
+            .select('id, razon_social, whatsapp, cuit')
+            .or(`whatsapp.eq.${clientePhone},cuit.eq.${clientePhone}`)
+            .single();
+
         if (!cliente) {
-            const { data: newC } = await supabase.from('clientes').insert([{ razon_social: leadNombre, whatsapp: clientePhone }]).select().single();
+            const { data: newC } = await supabase
+                .from('clientes')
+                .insert([{ razon_social: leadNombre, whatsapp: clientePhone, cuit: clientePhone }])
+                .select()
+                .single();
             cliente = newC;
         }
 
@@ -669,12 +674,16 @@ app.get('/api/crm/chat/mensajes/:clienteId', async (req, res) => {
         const { clienteId } = req.params;
         let targetUUID = clienteId;
 
-        // Si clienteId es un session_id web o teléfono, resolver al UUID correspondiente en clientes
+        // Si clienteId es un session_id web o teléfono, resolver al UUID correspondiente en clientes (buscando por whatsapp o cuit original)
         const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clienteId);
         if (!isUUID) {
-            const { data: cData } = await supabase.from('clientes').select('id').eq('whatsapp', clienteId).single();
-            if (cData && cData.id) {
-                targetUUID = cData.id;
+            const { data: cData } = await supabase
+                .from('clientes')
+                .select('id')
+                .or(`whatsapp.eq.${clienteId},cuit.eq.${clienteId}`)
+                .limit(1);
+            if (cData && cData.length > 0) {
+                targetUUID = cData[0].id;
             }
         }
 
