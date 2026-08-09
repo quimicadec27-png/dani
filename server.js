@@ -347,12 +347,11 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
             const estaPausado = await isBotPausado(clienteId);
             if (estaPausado) {
                 console.log(`[BOT PAUSADO] Cliente ${clienteId} tiene el bot deshabilitado. Se registró el mensaje para el vendedor humano.`);
-                const pauseMsg = "💬 Tu mensaje fue recibido por nuestro equipo comercial. Un asesor te responderá a la brevedad.";
                 return res.json({
                     success: true,
                     bot_pausado: true,
-                    respuesta_sugerida_ia: pauseMsg,
-                    choices: [{ message: { content: pauseMsg } }]
+                    respuesta_sugerida_ia: '',
+                    choices: [{ message: { content: '' } }]
                 });
             }
         }
@@ -741,14 +740,20 @@ app.get('/api/crm/chat/mensajes/:clienteId', async (req, res) => {
 // Responder como Vendedor Humano e Interrumpir/Reanudar Bot
 app.post('/api/crm/chat/enviar-mensaje-vendedor', async (req, res) => {
     try {
-        const { cliente_id, texto_mensaje, pausar_bot } = req.body;
+        const { cliente_id, texto_mensaje, pausar_bot, nombre_vendedor } = req.body;
         if (!cliente_id) return res.status(400).json({ error: 'Cliente requerido' });
 
         let textToInsert = texto_mensaje || '';
         if (texto_mensaje === '[CAMBIO DE ESTADO BOT]') {
             textToInsert = pausar_bot ? '[BOT PAUSADO]' : '[BOT REANUDADO]';
-        } else if (pausar_bot) {
-            textToInsert = `${texto_mensaje}\n[BOT PAUSADO]`;
+        } else {
+            // Prepend vendor name tag if provided
+            const nameTag = nombre_vendedor ? `[VENDEDOR:${nombre_vendedor}]` : '';
+            if (pausar_bot) {
+                textToInsert = `${nameTag}${texto_mensaje}\n[BOT PAUSADO]`;
+            } else {
+                textToInsert = `${nameTag}${texto_mensaje}`;
+            }
         }
 
         await supabase.from('mensajes_chat').insert([{ cliente_id: cliente_id, emisor: 'vendedor', texto: textToInsert }]);

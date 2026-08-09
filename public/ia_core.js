@@ -460,7 +460,9 @@
         callGroq(text)
             .then(function (reply) {
                 hideTyping(typingId);
-                appendMsg(reply, 'ai');
+                if (reply) {
+                    appendMsg(reply, 'ai');
+                }
             })
             .catch(function (err) {
                 console.error('Dani principal/Groq error:', err);
@@ -543,6 +545,10 @@
             return r.json();
         })
         .then(function (data) {
+            // Si el bot está pausado, no mostrar mensaje automático
+            if (data.bot_pausado) {
+                return null;
+            }
             // El CRM responde con { choices: [{message:{content:...}}], respuesta_sugerida_ia: ... }
             var reply = '';
             if (data.choices && data.choices.length > 0) {
@@ -729,63 +735,52 @@
     var knownVendorMsgTexts = {};
     function pollVendorMessages() {
         try {
-            console.log('[Dani Poll] >>> INICIO POLL');
             var sessionId = localStorage.getItem('dani_session_id');
-            console.log('[Dani Poll] sessionId:', sessionId);
-            if (!sessionId) {
-                console.warn('[Dani Poll] No session ID en localStorage');
-                return;
-            }
+            if (!sessionId) return;
 
             var msgsContainer = document.getElementById('dani-msgs');
-            console.log('[Dani Poll] msgsContainer:', msgsContainer ? 'OK' : 'NULL');
-            if (!msgsContainer) {
-                console.warn('[Dani Poll] DOM #dani-msgs no encontrado');
-                return;
-            }
+            if (!msgsContainer) return;
 
             var pollUrl = 'https://crm.quimicadec.com/api/crm/chat/mensajes/' + encodeURIComponent(sessionId);
-            console.log('[Dani Poll] Fetching:', pollUrl);
 
             fetch(pollUrl)
                 .then(function (r) {
-                    console.log('[Dani Poll] HTTP status:', r.status);
                     if (!r.ok) return null;
                     return r.json();
                 })
                 .then(function (data) {
-                    if (!data) { console.warn('[Dani Poll] data es null'); return; }
-                    console.log('[Dani Poll] Recibidos:', (data.mensajes || []).length, 'mensajes');
+                    if (!data) return;
                     if (data && data.success && Array.isArray(data.mensajes)) {
-                        var newCount = 0;
                         data.mensajes.forEach(function(m) {
                             if (m.emisor === 'vendedor') {
                                 var cleanTxt = (m.texto || '').replace(/\n?\[BOT PAUSADO\]/g, '').replace(/\n?\[BOT REANUDADO\]/g, '').trim();
+                                // Parsear nombre del vendedor si existe tag [VENDEDOR:nombre]
+                                var vendorName = 'Asesor Comercial';
+                                var nameMatch = cleanTxt.match(/^\[VENDEDOR:([^\]]+)\]/);
+                                if (nameMatch) {
+                                    vendorName = nameMatch[1].trim();
+                                    cleanTxt = cleanTxt.replace(/^\[VENDEDOR:[^\]]+\]/, '').trim();
+                                }
                                 if (cleanTxt && cleanTxt !== '[CAMBIO DE ESTADO BOT]' && !knownVendorMsgTexts[m.id]) {
-                                    newCount++;
-                                    console.log('[Dani Poll] NUEVO msg:', cleanTxt.substring(0, 50));
-                                    var ok = appendMsg('👤 **Asesor Comercial:**\n' + cleanTxt, 'ai');
+                                    var ok = appendMsg('👤 **' + vendorName + ':**\n' + cleanTxt, 'ai');
                                     if (ok) {
                                         knownVendorMsgTexts[m.id] = true;
                                         var win = document.getElementById('ai-chat-window');
                                         if (win && !win.classList.contains('dani-active')) {
                                             win.classList.add('dani-active');
                                         }
-                                        pushToHistory('model', '👤 **Asesor Comercial:**\n' + cleanTxt);
+                                        pushToHistory('model', '👤 **' + vendorName + ':**\n' + cleanTxt);
                                     }
                                 }
                             }
                         });
-                        if (newCount > 0) {
-                            console.log('[Dani Poll] ✅ Renderizados ' + newCount + ' nuevos');
-                        }
                     }
                 })
                 .catch(function (err) {
-                    console.error('[Dani Poll] FETCH ERROR:', err.message || err);
+                    console.error('[Dani Poll] Error:', err.message || err);
                 });
         } catch (e) {
-            console.error('[Dani Poll] CRASH:', e.message, e.stack);
+            console.error('[Dani Poll] Crash:', e.message);
         }
     }
 
@@ -795,13 +790,11 @@
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', function() {
             initDani();
-            console.log('[Dani] Widget inicializado. Ejecutando primer poll...');
             pollVendorMessages();
             setInterval(pollVendorMessages, 3000);
         });
     } else {
         initDani();
-        console.log('[Dani] Widget inicializado (DOM ready). Ejecutando primer poll...');
         pollVendorMessages();
         setInterval(pollVendorMessages, 3000);
     }
