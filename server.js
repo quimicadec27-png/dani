@@ -714,10 +714,12 @@ app.get('/api/crm/chat/mensajes/:clienteId', async (req, res) => {
         // Si clienteId es un session_id web o teléfono, resolver al UUID correspondiente en clientes (buscando por whatsapp o cuit original)
         const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clienteId);
         if (!isUUID) {
+            // Aplicar la misma truncación que incoming-ai (substring 0,20) para que coincida con el whatsapp almacenado
+            const truncatedId = clienteId.substring(0, 20);
             const { data: cData } = await supabase
                 .from('clientes')
                 .select('id')
-                .or(`whatsapp.eq.${clienteId},cuit.eq.${clienteId}`)
+                .or(`whatsapp.eq.${truncatedId},cuit.eq.${truncatedId}`)
                 .limit(1);
             if (cData && cData.length > 0) {
                 targetUUID = cData[0].id;
