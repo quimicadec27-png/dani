@@ -459,12 +459,12 @@
 
         callGroq(text)
             .then(function (reply) {
-                removeEl(typingId);
+                hideTyping(typingId);
                 appendMsg(reply, 'ai');
             })
             .catch(function (err) {
                 console.error('Dani principal/Groq error:', err);
-                removeEl(typingId);
+                hideTyping(typingId);
                 appendMsg('Tuve un problema técnico momentáneo. Podés escribirnos directamente por WhatsApp: https://wa.me/5493442586974', 'ai');
             })
             .finally(function () {
