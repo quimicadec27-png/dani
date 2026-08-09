@@ -728,64 +728,65 @@
     // ---------------------------------------------------------
     var knownVendorMsgTexts = {};
     function pollVendorMessages() {
-        var sessionId = localStorage.getItem('dani_session_id');
-        if (!sessionId) {
-            console.warn('[Dani Poll] No session ID en localStorage');
-            return;
-        }
+        try {
+            console.log('[Dani Poll] >>> INICIO POLL');
+            var sessionId = localStorage.getItem('dani_session_id');
+            console.log('[Dani Poll] sessionId:', sessionId);
+            if (!sessionId) {
+                console.warn('[Dani Poll] No session ID en localStorage');
+                return;
+            }
 
-        var msgsContainer = document.getElementById('dani-msgs');
-        if (!msgsContainer) {
-            console.warn('[Dani Poll] DOM #dani-msgs no encontrado aún');
-            return;
-        }
+            var msgsContainer = document.getElementById('dani-msgs');
+            console.log('[Dani Poll] msgsContainer:', msgsContainer ? 'OK' : 'NULL');
+            if (!msgsContainer) {
+                console.warn('[Dani Poll] DOM #dani-msgs no encontrado');
+                return;
+            }
 
-        var pollUrl = 'https://crm.quimicadec.com/api/crm/chat/mensajes/' + encodeURIComponent(sessionId);
+            var pollUrl = 'https://crm.quimicadec.com/api/crm/chat/mensajes/' + encodeURIComponent(sessionId);
+            console.log('[Dani Poll] Fetching:', pollUrl);
 
-        fetch(pollUrl)
-            .then(function (r) {
-                if (!r.ok) {
-                    console.error('[Dani Poll] HTTP error:', r.status, r.statusText);
-                    return null;
-                }
-                return r.json();
-            })
-            .then(function (data) {
-                if (!data) return;
-                if (data && data.success && Array.isArray(data.mensajes)) {
-                    var vendorCount = 0;
-                    var newCount = 0;
-                    var msgs = data.mensajes;
-                    msgs.forEach(function(m) {
-                        if (m.emisor === 'vendedor') {
-                            vendorCount++;
-                            var cleanTxt = (m.texto || '').replace(/\n?\[BOT PAUSADO\]/g, '').replace(/\n?\[BOT REANUDADO\]/g, '').trim();
-                            if (cleanTxt && cleanTxt !== '[CAMBIO DE ESTADO BOT]' && !knownVendorMsgTexts[m.id]) {
-                                newCount++;
-                                console.log('[Dani Poll] Nuevo msg vendedor:', cleanTxt.substring(0, 50));
-                                var ok = appendMsg('👤 **Asesor Comercial:**\n' + cleanTxt, 'ai');
-                                console.log('[Dani Poll] appendMsg resultado:', ok);
-                                if (ok) {
-                                    knownVendorMsgTexts[m.id] = true;
-                                    var win = document.getElementById('ai-chat-window');
-                                    if (win && !win.classList.contains('dani-active')) {
-                                        win.classList.add('dani-active');
+            fetch(pollUrl)
+                .then(function (r) {
+                    console.log('[Dani Poll] HTTP status:', r.status);
+                    if (!r.ok) return null;
+                    return r.json();
+                })
+                .then(function (data) {
+                    if (!data) { console.warn('[Dani Poll] data es null'); return; }
+                    console.log('[Dani Poll] Recibidos:', (data.mensajes || []).length, 'mensajes');
+                    if (data && data.success && Array.isArray(data.mensajes)) {
+                        var newCount = 0;
+                        data.mensajes.forEach(function(m) {
+                            if (m.emisor === 'vendedor') {
+                                var cleanTxt = (m.texto || '').replace(/\n?\[BOT PAUSADO\]/g, '').replace(/\n?\[BOT REANUDADO\]/g, '').trim();
+                                if (cleanTxt && cleanTxt !== '[CAMBIO DE ESTADO BOT]' && !knownVendorMsgTexts[m.id]) {
+                                    newCount++;
+                                    console.log('[Dani Poll] NUEVO msg:', cleanTxt.substring(0, 50));
+                                    var ok = appendMsg('👤 **Asesor Comercial:**\n' + cleanTxt, 'ai');
+                                    if (ok) {
+                                        knownVendorMsgTexts[m.id] = true;
+                                        var win = document.getElementById('ai-chat-window');
+                                        if (win && !win.classList.contains('dani-active')) {
+                                            win.classList.add('dani-active');
+                                        }
+                                        pushToHistory('model', '👤 **Asesor Comercial:**\n' + cleanTxt);
                                     }
-                                    pushToHistory('model', '👤 **Asesor Comercial:**\n' + cleanTxt);
                                 }
                             }
+                        });
+                        if (newCount > 0) {
+                            console.log('[Dani Poll] ✅ Renderizados ' + newCount + ' nuevos');
                         }
-                    });
-                    if (newCount > 0) {
-                        console.log('[Dani Poll] Renderizados ' + newCount + ' mensajes nuevos de vendedor');
                     }
-                } else {
-                    console.warn('[Dani Poll] Respuesta inesperada:', JSON.stringify(data).substring(0, 200));
-                }
-            })
-            .catch(function (err) {
-                console.error('[Dani Poll] Error en fetch:', err.message || err);
-            });
+                })
+                .catch(function (err) {
+                    console.error('[Dani Poll] FETCH ERROR:', err.message || err);
+                });
+        } catch (e) {
+            console.error('[Dani Poll] CRASH:', e.message, e.stack);
+        }
     }
 
     // ---------------------------------------------------------
