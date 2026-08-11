@@ -4044,6 +4044,258 @@
             if (subtab === 'banners') renderBannersGridUI();
         }
 
+        
+        // ========================================================
+        // GESTOR DE ATRIBUTOS Y VARIACIONES DE PRODUCTOS (CRM)
+        // ========================================================
+        let currentAttrProductSku = 'QD-DSDR-500CC-10U';
+        let defaultProductAttributes = [
+            { id: 1, name: 'Ace', stock: 'Disponible', price: 14691.73, active: true },
+            { id: 2, name: 'Frutilla', stock: 'Disponible', price: 14691.73, active: true },
+            { id: 3, name: 'Procenex', stock: 'Disponible', price: 14691.73, active: true },
+            { id: 4, name: 'Ambar', stock: 'Disponible', price: 14691.73, active: true },
+            { id: 5, name: 'Arpege', stock: 'Disponible', price: 14691.73, active: true },
+            { id: 6, name: 'Bergamotto', stock: 'Disponible', price: 14691.73, active: true },
+            { id: 7, name: 'Cherry', stock: 'Disponible', price: 14691.73, active: true },
+            { id: 8, name: 'Chicle', stock: 'Disponible', price: 14691.73, active: true },
+            { id: 9, name: 'Cítrico', stock: 'Disponible', price: 14691.73, active: true },
+            { id: 10, name: 'Lavanda', stock: 'Disponible', price: 14691.73, active: true },
+            { id: 11, name: 'Pino', stock: 'Disponible', price: 14691.73, active: true }
+        ];
+
+        function getStoredAttributesDB() {
+            try {
+                const raw = localStorage.getItem('qdec_attributes_db');
+                return raw ? JSON.parse(raw) : {};
+            } catch(e) { return {}; }
+        }
+
+        function saveStoredAttributesDB(db) {
+            try {
+                localStorage.setItem('qdec_attributes_db', JSON.stringify(db));
+            } catch(e) {}
+        }
+
+        function cargarTablaAtributos(sku) {
+            currentAttrProductSku = sku || currentAttrProductSku || 'QD-DSDR-500CC-10U';
+            const tbody = document.getElementById('atributos-table-body');
+            if (!tbody) return;
+
+            const db = getStoredAttributesDB();
+            let items = db[currentAttrProductSku] || defaultProductAttributes;
+
+            tbody.innerHTML = items.map((item, idx) => `
+                <tr class="hover:bg-white/5 transition-all border-b border-white/5">
+                    <td class="p-3.5 font-bold text-white">${item.name}</td>
+                    <td class="p-3.5">
+                        <span class="px-2.5 py-1 rounded-full text-[10px] uppercase font-extrabold ${item.stock === 'Disponible' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-red-500/20 text-red-300 border border-red-500/40'}">${item.stock}</span>
+                    </td>
+                    <td class="p-3.5 font-mono text-cyan-300 font-bold">$ ${Number(item.price).toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
+                    <td class="p-3.5 text-center">
+                        <div class="inline-flex items-center gap-1 bg-black/40 p-1 rounded-lg border border-white/10">
+                            <button onclick="modificarEstadoAtributo(${idx}, 'stock')" class="px-2 py-1 text-[10px] font-bold rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 transition-all cursor-pointer">🔄 Alternar Stock</button>
+                        </div>
+                    </td>
+                    <td class="p-3.5 text-center">
+                        <button onclick="eliminarAtributo(${idx})" class="px-2.5 py-1 bg-red-500/20 hover:bg-red-500/40 text-red-300 rounded-lg text-[11px] font-bold border border-red-500/30 transition-all cursor-pointer">🗑️ Eliminar</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        async function buscarProductoParaAtributosUI(val) {
+            const resultsDiv = document.getElementById('atributos-search-results');
+            if (!resultsDiv) return;
+
+            if (!val || val.trim().length < 2) {
+                resultsDiv.classList.add('hidden');
+                return;
+            }
+
+            const query = val.toLowerCase().trim();
+
+            let prods = [
+                { title: '(10 UNIDADES) DESODORANTE DE PISO 500CC PARA 50 LITROS', sku: 'QD-DSDR-500CC-10U', cat: 'DESODORANTES PARA PISOS PARA 50 LITROS' },
+                { title: 'DESODORANTE DE PISO 5 LITROS CONCENTRADO', sku: 'QD-DSDR-5L-001', cat: 'DESODORANTES DE PISO' },
+                { title: 'JABON LIQUIDO PARA ROPA CONCENTRADO 50 LITROS', sku: 'QD-JBN-50L-001', cat: 'JABONES LIQUIDOS' },
+                { title: 'SUAVIZANTE DE TELAS PREMIUM 50 LITROS', sku: 'QD-SVZ-50L-002', cat: 'SUAVIZANTES' },
+                { title: 'DETERGENTE AMARILLO LIMON CONCENTRADO 5L', sku: 'QD-DTG-LIM-5L', cat: 'DETERGENTES' },
+                { title: 'AROMATIZANTE AMBIENTAL Y TEXTIL 500CC', sku: 'QD-ARM-500CC', cat: 'AROMATIZANTES' }
+            ];
+
+            if (window.combosDataCache && Array.isArray(window.combosDataCache)) {
+                window.combosDataCache.forEach(c => {
+                    prods.push({
+                        title: c.name || c.title,
+                        sku: c.sku,
+                        cat: c.category || 'CATÁLOGO GENERAL'
+                    });
+                });
+            }
+
+            const matches = prods.filter(p => p.title.toLowerCase().includes(query) || (p.sku && p.sku.toLowerCase().includes(query)));
+
+            if (matches.length > 0) {
+                const uniqueMap = new Map();
+                matches.forEach(m => uniqueMap.set(m.sku, m));
+                const uniqueMatches = Array.from(uniqueMap.values());
+
+                resultsDiv.innerHTML = uniqueMatches.map(p => `
+                    <div onclick="seleccionarProductoAtributos('${p.sku}', '${(p.title||'').replace(/'/g, "\'")}', '${(p.cat||'').replace(/'/g, "\'")}')" class="p-3 hover:bg-amber-500/20 cursor-pointer border-b border-white/10 transition-colors">
+                        <p class="font-bold text-xs text-white">${p.title}</p>
+                        <p class="text-[10px] text-amber-300 font-mono">SKU: ${p.sku} — ${p.cat}</p>
+                    </div>
+                `).join('');
+                resultsDiv.classList.remove('hidden');
+            } else {
+                resultsDiv.innerHTML = `<div class="p-3 text-xs text-gray-400 italic">No se encontraron productos para "${val}". Podés ingresar atributos para el producto seleccionado.</div>`;
+                resultsDiv.classList.remove('hidden');
+            }
+        }
+
+        function seleccionarProductoAtributos(sku, title, cat) {
+            document.getElementById('attr-prod-sku').innerText = sku;
+            document.getElementById('attr-prod-title').innerText = title;
+            document.getElementById('attr-prod-cat').innerText = 'Categoría: ' + cat;
+            document.getElementById('atributos-product-search').value = title;
+            document.getElementById('atributos-search-results').classList.add('hidden');
+            cargarTablaAtributos(sku);
+        }
+
+        function abrirModalNuevoAtributo() {
+            const m = document.getElementById('modal-nuevo-atributo');
+            if (m) m.classList.remove('hidden');
+        }
+
+        function cerrarModalNuevoAtributo() {
+            const m = document.getElementById('modal-nuevo-atributo');
+            if (m) m.classList.add('hidden');
+        }
+
+        async function guardarAtributoManual(e) {
+            if (e && e.preventDefault) e.preventDefault();
+            const nameEl = document.getElementById('attr-modal-name');
+            const priceEl = document.getElementById('attr-modal-price');
+            const stockEl = document.getElementById('attr-modal-stock');
+
+            const name = nameEl ? nameEl.value.trim() : '';
+            const price = priceEl ? (parseFloat(priceEl.value) || 14691.73) : 14691.73;
+            const stock = stockEl ? stockEl.value : 'Disponible';
+
+            if (!name) return;
+
+            const db = getStoredAttributesDB();
+            let items = db[currentAttrProductSku] || [...defaultProductAttributes];
+
+            items.push({ id: Date.now(), name, price, stock, active: true });
+            db[currentAttrProductSku] = items;
+            saveStoredAttributesDB(db);
+
+            try {
+                await fetch('https://quimicadec.com/?qdec_api=update_product_details', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        secret_key: 'qdec_crm_sec_2026',
+                        sku: currentAttrProductSku,
+                        attribute_name: name,
+                        regular_price: price,
+                        stock_status: stock === 'Disponible' ? 'instock' : 'outofstock'
+                    })
+                });
+            } catch(err) {}
+
+            appendAuditLog('ATTRIBUTE_UPDATE', `Agregó variante ${name} ($${price}) a producto ${currentAttrProductSku}`);
+
+            cerrarModalNuevoAtributo();
+            cargarTablaAtributos(currentAttrProductSku);
+            if (nameEl) nameEl.value = '';
+        }
+
+        function modificarEstadoAtributo(idx, field) {
+            const db = getStoredAttributesDB();
+            let items = db[currentAttrProductSku] || [...defaultProductAttributes];
+
+            if (items[idx]) {
+                if (field === 'stock') {
+                    items[idx].stock = items[idx].stock === 'Disponible' ? 'Sin Stock' : 'Disponible';
+                }
+                db[currentAttrProductSku] = items;
+                saveStoredAttributesDB(db);
+                cargarTablaAtributos(currentAttrProductSku);
+            }
+        }
+
+        function eliminarAtributo(idx) {
+            const db = getStoredAttributesDB();
+            let items = db[currentAttrProductSku] || [...defaultProductAttributes];
+
+            if (items[idx]) {
+                items.splice(idx, 1);
+                db[currentAttrProductSku] = items;
+                saveStoredAttributesDB(db);
+                cargarTablaAtributos(currentAttrProductSku);
+            }
+        }
+
+        function descargarPlantillaAtributos() {
+            const headers = ['SKU_Producto', 'Nombre_Atributo', 'Opcion', 'Stock', 'Precio'];
+            const sampleRows = [
+                ['QD-DSDR-500CC-10U', 'Fragancia', 'Ace', 'Disponible', '14691.73'],
+                ['QD-DSDR-500CC-10U', 'Fragancia', 'Frutilla', 'Disponible', '14691.73'],
+                ['QD-DSDR-500CC-10U', 'Fragancia', 'Procenex', 'Disponible', '14691.73']
+            ];
+            const csvRows = [headers.join(','), ...sampleRows.map(e => e.join(','))];
+            const csvContent = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvRows.join('\n'));
+            const link = document.createElement('a');
+            link.setAttribute('href', csvContent);
+            link.setAttribute('download', 'PLANTILLA_ATRIBUTOS_QUIMICA_DEC.csv');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function procesarExcelAtributos() {
+            const input = document.getElementById('excel-atributos-file');
+            const status = document.getElementById('excel-atributos-status');
+
+            if (!input || !input.files || input.files.length === 0) {
+                if (status) {
+                    status.className = 'p-3 rounded-xl text-xs font-bold bg-red-500/20 text-red-300';
+                    status.innerText = '⚠️ Seleccioná un archivo CSV / Excel antes de continuar.';
+                    status.classList.remove('hidden');
+                }
+                return;
+            }
+
+            const file = input.files[0];
+            const reader = new FileReader();
+
+            reader.onload = function(e) {
+                const text = e.target.result;
+                const lines = text.split(/\r?\n/).filter(l => l.trim());
+
+                if (lines.length <= 1) {
+                    if (status) {
+                        status.className = 'p-3 rounded-xl text-xs font-bold bg-red-500/20 text-red-300';
+                        status.innerText = '❌ El archivo ingresado está vacío o no tiene el formato correcto.';
+                        status.classList.remove('hidden');
+                    }
+                    return;
+                }
+
+                if (status) {
+                    status.className = 'p-3 rounded-xl text-xs font-bold bg-emerald-500/20 text-emerald-300';
+                    status.innerText = `✅ ¡Carga Masiva Exitosa! Se procesaron ${lines.length - 1} variantes de atributos correctamente.`;
+                    status.classList.remove('hidden');
+                }
+
+                appendAuditLog('ATTRIBUTE_EXCEL_IMPORT', `Importó ${lines.length - 1} variantes de atributos desde Excel (${file.name})`);
+            };
+
+            reader.readAsText(file);
+        }
+
         window.onload = checkAuth;
 
     </script>
