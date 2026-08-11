@@ -500,6 +500,10 @@
                                 <span class="material-symbols-outlined text-sm text-purple-400">view_carousel</span> 🎁 Combos Emprendedores
                             </button>
 
+                            <button id="btn-subtab-atributos" onclick="switchCatSubTab('atributos')" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all text-gray-400 hover:bg-white/5">
+                                <span class="material-symbols-outlined text-sm text-amber-400">tune</span> 🧩 Gestor de Atributos
+                            </button>
+
                             <button id="btn-subtab-ofertas" onclick="switchCatSubTab('ofertas')" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all text-gray-400 hover:bg-white/5">
                                 <span class="material-symbols-outlined text-sm text-amber-400">local_offer</span> 🏷️ Ofertas Semanales
                             </button>
@@ -644,6 +648,88 @@
                                             </div>
                                             <div id="autolink-res" class="hidden text-xs font-bold p-2.5 rounded-lg border"></div>
                                         </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                                                        <!-- SUB-TAB: GESTOR DE ATRIBUTOS Y VARIACIONES -->
+                            <div id="subtab-content-atributos" class="hidden space-y-6">
+                                <div class="space-y-4">
+                                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                                        <div>
+                                            <h4 class="font-title text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                                                <span class="material-symbols-outlined text-[18px]">tune</span> 🧩 Gestor de Atributos y Variaciones de Productos
+                                            </h4>
+                                            <p class="text-[11px] text-gray-400 mt-0.5">Buscá un producto para gestionar sus fragancias, tamaños, formatos, stock y precios por variante.</p>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <button onclick="descargarPlantillaAtributos()" class="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 text-[11px] font-bold rounded-xl flex items-center gap-1 transition-all shadow shrink-0 cursor-pointer">
+                                                <span class="material-symbols-outlined text-sm">download</span> Plantilla Excel
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- 🔍 BUSCADOR DE PRODUCTO CON VARIACIONES -->
+                                    <div class="relative">
+                                        <label class="text-[10px] font-bold text-amber-300 uppercase block mb-1">🔍 Buscar Producto por Nombre o SKU:</label>
+                                        <input type="text" id="atributos-product-search" oninput="buscarProductoParaAtributosUI(this.value)" placeholder="✏️ Escribí nombre (ej: DESODORANTE DE PISO 500CC, QD-DSDR)..." class="w-full bg-slate-900 border border-amber-500/40 rounded-xl px-4 py-2.5 text-xs text-white placeholder-gray-400 focus:outline-none focus:border-amber-400 font-bold shadow-inner">
+                                        <div id="atributos-search-results" class="hidden absolute top-full left-0 right-0 z-50 bg-slate-900 border border-amber-500/40 rounded-xl shadow-2xl overflow-hidden max-h-48 overflow-y-auto mt-1"></div>
+                                    </div>
+
+                                    <!-- FICHA DEL PRODUCTO SELECCIONADO Y TABLA DE OPCIONES DISPONIBLES -->
+                                    <div id="atributos-detalles-panel" class="space-y-4">
+                                        <div class="glass-panel p-4 rounded-2xl border border-white/10 flex flex-col md:flex-row items-center justify-between gap-4">
+                                            <div>
+                                                <span id="attr-prod-sku" class="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">QD-DSDR-500CC-10U</span>
+                                                <h3 id="attr-prod-title" class="font-title text-sm font-bold text-white uppercase mt-1">(10 UNIDADES) DESODORANTE DE PISO 500CC PARA 50 LITROS</h3>
+                                                <p id="attr-prod-cat" class="text-[11px] text-gray-400">Categoría: DESODORANTES PARA PISOS PARA 50 LITROS</p>
+                                            </div>
+                                            <div class="flex items-center gap-2">
+                                                <span class="px-3 py-1 bg-brand-yellow/10 border border-brand-yellow/30 text-brand-yellow font-bold text-xs rounded-xl">Opciones Disponibles</span>
+                                            </div>
+                                        </div>
+
+                                        <!-- TABLA ESTILO IMAGEN 1 DE LA SOLICITUD -->
+                                        <div class="glass-panel rounded-2xl overflow-hidden border border-white/10 shadow-2xl">
+                                            <div class="p-4 bg-black/40 border-b border-white/10 flex justify-between items-center">
+                                                <h5 class="text-xs font-bold text-white uppercase flex items-center gap-1.5">
+                                                    <span class="material-symbols-outlined text-amber-400 text-sm">checklist</span> Opciones Disponibles (Variantes)
+                                                </h5>
+                                                <button onclick="abrirModalNuevoAtributo()" class="px-3 py-1.5 bg-brand-yellow text-primary-dark font-extrabold text-xs uppercase rounded-xl flex items-center gap-1 hover:bg-yellow-400 transition-all cursor-pointer">
+                                                    <span class="material-symbols-outlined text-sm">add</span> + AGREGAR FRAGANCIA / OPCIÓN
+                                                </button>
+                                            </div>
+
+                                            <table class="w-full text-left text-xs">
+                                                <thead class="bg-black/60 text-gray-300 uppercase font-title font-bold border-b border-white/10">
+                                                    <tr>
+                                                        <th class="p-3.5">FRAGANCIA / ATRIBUTO</th>
+                                                        <th class="p-3.5">STOCK</th>
+                                                        <th class="p-3.5">PRECIO</th>
+                                                        <th class="p-3.5 text-center">ESTADO / CANTIDAD</th>
+                                                        <th class="p-3.5 text-center">ACCIONES</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="atributos-table-body" class="divide-y divide-white/5">
+                                                    <!-- Filas cargadas dinámicamente -->
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <!-- 📥 CARGA MASIVA EXCEL / CSV DE ATRIBUTOS -->
+                                    <div class="glass-panel p-5 rounded-2xl border border-white/10 space-y-3">
+                                        <h5 class="font-title text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                                            <span class="material-symbols-outlined text-sm">description</span> 📄 Carga Masiva por Excel / CSV de Atributos
+                                        </h5>
+                                        <p class="text-xs text-gray-400">Subí un archivo CSV/Excel estructurado para actualizar fragancias, tamaños, stock y precios masivamente.</p>
+                                        <div class="flex flex-col sm:flex-row items-center gap-3">
+                                            <input type="file" id="excel-atributos-file" accept=".csv, .xlsx, .xls" class="block w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-500/20 file:text-emerald-300 hover:file:bg-emerald-500/30 cursor-pointer">
+                                            <button onclick="procesarExcelAtributos()" class="px-5 py-2.5 bg-emerald-500 text-slate-950 font-title font-bold text-xs uppercase rounded-xl hover:bg-emerald-400 transition-all shrink-0 cursor-pointer">
+                                                🚀 Cargar Atributos Masivamente
+                                            </button>
+                                        </div>
+                                        <div id="excel-atributos-status" class="hidden p-3 rounded-xl text-xs font-bold"></div>
                                     </div>
                                 </div>
                             </div>
@@ -3195,7 +3281,7 @@
             container.innerHTML = `<div class="col-span-full text-center py-6 text-purple-300/60 text-xs font-bold animate-pulse">⏳ Cargando datos de combos desde WooCommerce...</div>`;
 
             try {
-                const resp = await fetch(`${API_URL}/combos`);
+                const resp = await fetch(`${API_URL}/combos?sec=qdec_crm_sec_2026`);
                 const data = await resp.json();
                 if (!data.success || !data.combos) {
                     container.innerHTML = `<div class="col-span-full text-center py-6 text-red-400 text-xs font-bold">❌ Error al obtener combos: ${data.error || 'Respuesta inválida'}</div>`;
