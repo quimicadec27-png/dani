@@ -3270,7 +3270,7 @@
                 activeBtn.classList.add('tab-active');
             }
 
-            if (tab === 'catalogo') cargarVisorCombos();
+            if (tab === 'catalogo') { cargarVisorCombos(); cargarCatalogoCompletoUI(); }
             if (tab === 'users') cargarListaUsuariosCRM();
             if (tab === 'audit') cargarRegistroAuditoriaCRM();
         }
@@ -4112,12 +4112,30 @@
                 return;
             }
 
-            const rawQuery = val.toLowerCase().trim();
-            // Split search query into individual word tokens for flexible fuzzy matching
-            const tokens = rawQuery.split(/\s+/).filter(t => t.length > 0);
+            // Asegurar que el catálogo de WooCommerce esté cargado
+            if (!window.combosDataCache) {
+                cargarCatalogoCompletoUI();
+            }
 
-            // Complete Catalog database of products with variations
+            const rawQuery = val.toLowerCase().trim();
+            // Normalizar plurales comunes (sahumerios -> sahumerio, desodorantes -> desodorante)
+            const rawTokens = rawQuery.split(/\s+/).filter(t => t.length > 0);
+            const tokens = rawTokens.map(t => {
+                let clean = t;
+                if (clean.length > 4 && clean.endsWith('es')) clean = clean.slice(0, -2);
+                else if (clean.length > 3 && clean.endsWith('s')) clean = clean.slice(0, -1);
+                return clean;
+            });
+
+            // Base de datos amplia de familias de productos del catálogo
             let prods = [
+                // Sahumerios, Perfumería y Aromatizantes
+                { title: 'SAHUMERIOS TRADICIONALES EN VARILLAS (161 AROMAS Y FRAGANCIAS)', sku: 'QD-SHM-161', cat: 'SAHUMERIOS Y PERFUMERÍA' },
+                { title: 'SAHUMERIOS CONOS AROMÁTICOS SURTIDOS', sku: 'QD-SHM-CNS', cat: 'SAHUMERIOS Y PERFUMERÍA' },
+                { title: 'PERFUMINAS CONCENTRADAS Y TEXTILES 500CC', sku: 'QD-PRF-500CC', cat: 'SAHUMERIOS Y PERFUMERÍA' },
+                { title: 'AROMATIZANTE AMBIENTAL Y TEXTIL 500CC', sku: 'QD-ARM-500CC', cat: 'AROMATIZANTES' },
+
+                // Desodorantes para pisos
                 { title: '(50 UNIDADES) DESODORANTE DE PISO 500CC PARA 50 LITROS', sku: 'QD-DSDR-500CC-50U', cat: 'DESODORANTES PARA PISOS PARA 50 LITROS' },
                 { title: '(10 UNIDADES) DESODORANTE DE PISO 500CC PARA 50 LITROS', sku: 'QD-DSDR-500CC-10U', cat: 'DESODORANTES PARA PISOS PARA 50 LITROS' },
                 { title: '(5 UNIDADES) DESODORANTE DE PISO 500CC PARA 50 LITROS', sku: 'QD-DSDR-500CC-5U', cat: 'DESODORANTES PARA PISOS PARA 50 LITROS' },
@@ -4127,16 +4145,31 @@
                 { title: 'DESODORANTE DE PISO PARA 5LT JAZMIN', sku: 'QD-DSDR-5L-JAZMIN', cat: 'DESODORANTES DE PISO 5 LITROS' },
                 { title: 'DESODORANTE DE PISO PARA 5LT EUCALIPTO', sku: 'QD-DSDR-5L-EUCALIPTO', cat: 'DESODORANTES DE PISO 5 LITROS' },
                 { title: 'DESODORANTE DE PISO 5 LITROS CONCENTRADO', sku: 'QD-DSDR-5L-001', cat: 'DESODORANTES DE PISO' },
+
+                // Jabones, Detergentes y Suavizantes
                 { title: 'JABON LIQUIDO PARA ROPA CONCENTRADO 50 LITROS', sku: 'QD-JBN-50L-001', cat: 'JABONES LIQUIDOS' },
+                { title: 'JABON LIQUIDO TIPO ARIEL / SKIP 5 LITROS', sku: 'QD-JBN-5L-PREM', cat: 'JABONES LIQUIDOS' },
                 { title: 'SUAVIZANTE DE TELAS PREMIUM 50 LITROS', sku: 'QD-SVZ-50L-002', cat: 'SUAVIZANTES' },
+                { title: 'SUAVIZANTE DE TELAS VIVEX 5 LITROS', sku: 'QD-SVZ-5L-001', cat: 'SUAVIZANTES' },
                 { title: 'DETERGENTE AMARILLO LIMON CONCENTRADO 5L', sku: 'QD-DTG-LIM-5L', cat: 'DETERGENTES' },
-                { title: 'AROMATIZANTE AMBIENTAL Y TEXTIL 500CC', sku: 'QD-ARM-500CC', cat: 'AROMATIZANTES' },
-                { title: 'LAVANDINA CONCENTRADA EN GEL 5L', sku: 'QD-LVD-GEL-5L', cat: 'LAVANDINAS' },
+                { title: 'DETERGENTE CIF 500ML LIMON Y LIMA', sku: 'QD-DTG-CIF-500ML', cat: 'DETERGENTES' },
+
+                // Limpiadores Cremosos, Desengrasantes y Lavandinas
+                { title: 'CIF CREMA MULTIUSO 375G Y 750G (VARIOS AROMAS)', sku: 'QD-CIF-CRM', cat: 'LIMPIADORES CREMOSOS' },
                 { title: 'DESENGRASANTE MULTIUSO NARANJA 5L', sku: 'QD-DSN-NAR-5L', cat: 'DESENGRASANTES' },
+                { title: 'LAVANDINA CONCENTRADA EN GEL 5L', sku: 'QD-LVD-GEL-5L', cat: 'LAVANDINAS' },
+
+                // Automotor y Siliconas
+                { title: 'SHAMPOO SILICONADO PARA CARROCERIAS 5L', sku: 'QD-AUT-SHM-5L', cat: 'AUTOMOTOR' },
+                { title: 'SILICONA EMULSIONADA PARA GOMAS Y PLASTICOS 5L', sku: 'QD-AUT-SIL-5L', cat: 'AUTOMOTOR' },
+                { title: 'PINITOS AROMATICOS AUTOMOTOR (VARIAS FRAGANCIAS)', sku: 'QD-AUT-PIN', cat: 'AUTOMOTOR' },
+
+                // Piletas y Químicos
                 { title: 'CLORO LIQUIDO CONCENTRADO PARA PILETAS 10L', sku: 'QD-CLR-10L', cat: 'PRODUCTOS PARA PILETA' },
                 { title: 'ALGUICIDA Y CLARIFICANTE PARA PILETAS 5L', sku: 'QD-ALG-5L', cat: 'PRODUCTOS PARA PILETA' }
             ];
 
+            // Incorporar productos cargados en vivo desde WooCommerce
             if (window.combosDataCache && Array.isArray(window.combosDataCache)) {
                 window.combosDataCache.forEach(c => {
                     prods.push({
@@ -4147,7 +4180,7 @@
                 });
             }
 
-            // Fuzzy Token Matcher: Every token typed must be present in title, sku, or cat
+            // Algoritmo Fuzzy Token: Cada token (normalizado) debe coincidir parcialmente
             const matches = prods.filter(p => {
                 const combined = `${p.title || ''} ${p.sku || ''} ${p.cat || ''}`.toLowerCase();
                 return tokens.every(token => combined.includes(token));
@@ -4166,7 +4199,7 @@
                 `).join('');
                 resultsDiv.classList.remove('hidden');
             } else {
-                resultsDiv.innerHTML = `<div class="p-3 text-xs text-gray-400 italic">No se encontraron coincidencias para "${val}". Intenta buscar palabras claves como "desodorante", "piso", "jabon".</div>`;
+                resultsDiv.innerHTML = `<div class="p-3 text-xs text-gray-400 italic">No se encontraron coincidencias para "${val}". Podés buscar por sahumerio, jabón, desodorante, lavandina, etc.</div>`;
                 resultsDiv.classList.remove('hidden');
             }
         }
@@ -4312,6 +4345,19 @@
             };
 
             reader.readAsText(file);
+        }
+
+        
+        // Auto-cargar catálogo completo desde WooCommerce al iniciar CRM
+        async function cargarCatalogoCompletoUI() {
+            if (window.combosDataCache && window.combosDataCache.length > 0) return;
+            try {
+                const resp = await fetch(`${API_URL}/combos?sec=qdec_crm_sec_2026`);
+                const data = await resp.json();
+                if (data && data.combos) {
+                    window.combosDataCache = data.combos;
+                }
+            } catch(e) {}
         }
 
         window.onload = checkAuth;
