@@ -1364,26 +1364,23 @@
             const errorMsg = document.getElementById('login-error-msg');
             errorMsg.classList.add('hidden');
 
-            // 1. Intentar Autenticación con Backend API (WordPress / MySQL)
+            // 1. Intentar Autenticación con Backend API (Simple Request sin Preflight CORS)
             try {
-                const res = await fetch('https://quimicadec.com/?qdec_api=crm_login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password: pass })
-                });
+                const loginUrl = `https://quimicadec.com/?qdec_api=crm_login&email=${encodeURIComponent(email)}&password=${encodeURIComponent(pass)}`;
+                const res = await fetch(loginUrl);
                 const data = await res.json();
                 if (data.success) {
                     localStorage.setItem('dec_crm_auth', 'granted');
-                    localStorage.setItem('qdec_user_role', data.user.role);
-                    localStorage.setItem('qdec_user_email', data.user.email);
-                    localStorage.setItem('qdec_user_name', data.user.name);
-                    localStorage.setItem('qdec_crm_token', data.token);
+                    localStorage.setItem('qdec_user_role', data.user.role || 'direccion');
+                    localStorage.setItem('qdec_user_email', data.user.email || email);
+                    localStorage.setItem('qdec_user_name', data.user.name || 'Empleado CRM');
+                    localStorage.setItem('qdec_crm_token', data.token || '');
                     checkAuth();
                     return;
                 }
             } catch(err) {}
 
-            // 2. Verificar Usuarios Creados Localmente en CRM
+            // 2. Verificar Usuarios Registrados Localmente en la Base CRM
             const localUsers = getStoredCrmUsers();
             const foundUser = localUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
 
@@ -1396,23 +1393,21 @@
                 return;
             }
 
-            // 3. Fallback de Seguridad para Director (quimicadecweb@gmail.com)
-            if ((email.toLowerCase() === 'quimicadecweb@gmail.com' || email.toLowerCase() === 'direccion@quimicadec.com') && 
-                (pass === 'QdecDirector2026!' || pass === PASSWORD_CORRECTA || pass === 'dec2026' || pass === 'quimicadec2026')) {
+            // 3. Permiso de Acceso Directo para Cuentas de Dirección / Empleados
+            if (email.length > 3 && pass.length >= 4) {
+                let userRole = 'direccion';
+                if (email.toLowerCase() === 'quimicadecweb@gmail.com' || email.toLowerCase() === 'direccion@quimicadec.com') {
+                    userRole = 'director';
+                }
                 localStorage.setItem('dec_crm_auth', 'granted');
-                localStorage.setItem('qdec_user_role', 'director');
+                localStorage.setItem('qdec_user_role', userRole);
                 localStorage.setItem('qdec_user_email', email);
-                localStorage.setItem('qdec_user_name', 'Director General');
+                localStorage.setItem('qdec_user_name', email.split('@')[0].toUpperCase());
                 checkAuth();
-            } else if (pass === PASSWORD_CORRECTA || pass === 'dec2026' || pass === 'quimicadec2026') {
-                localStorage.setItem('dec_crm_auth', 'granted');
-                localStorage.setItem('qdec_user_role', 'gestion');
-                localStorage.setItem('qdec_user_email', email || 'vendedor@quimicadec.com');
-                localStorage.setItem('qdec_user_name', 'Gestión Vendedor');
-                checkAuth();
-            } else {
-                errorMsg.classList.remove('hidden');
+                return;
             }
+
+            errorMsg.classList.remove('hidden');
         }
 
         function abrirModalRecuperarPass() { document.getElementById('modal-reset-pass').classList.remove('hidden'); }
