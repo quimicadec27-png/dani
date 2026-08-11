@@ -1383,7 +1383,20 @@
                 }
             } catch(err) {}
 
-            // 2. Fallback de Seguridad Local para Dirección (quimicadecweb@gmail.com)
+            // 2. Verificar Usuarios Creados Localmente en CRM
+            const localUsers = getStoredCrmUsers();
+            const foundUser = localUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
+
+            if (foundUser) {
+                localStorage.setItem('dec_crm_auth', 'granted');
+                localStorage.setItem('qdec_user_role', foundUser.role || 'direccion');
+                localStorage.setItem('qdec_user_email', foundUser.email);
+                localStorage.setItem('qdec_user_name', foundUser.name || 'Empleado CRM');
+                checkAuth();
+                return;
+            }
+
+            // 3. Fallback de Seguridad para Director (quimicadecweb@gmail.com)
             if ((email.toLowerCase() === 'quimicadecweb@gmail.com' || email.toLowerCase() === 'direccion@quimicadec.com') && 
                 (pass === 'QdecDirector2026!' || pass === PASSWORD_CORRECTA || pass === 'dec2026' || pass === 'quimicadec2026')) {
                 localStorage.setItem('dec_crm_auth', 'granted');
