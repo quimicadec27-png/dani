@@ -3275,6 +3275,41 @@
             if (tab === 'audit') cargarRegistroAuditoriaCRM();
         }
 
+        
+        function filtrarCombosUI(query) {
+            if (!window.combosDataCache) return;
+            const container = document.getElementById('visor-combos-container');
+            if (!container) return;
+
+            const val = (query || '').toLowerCase().trim();
+            const filtered = window.combosDataCache.filter(c => {
+                const name = (c.name || c.title || '').toLowerCase();
+                const sku = (c.sku || '').toLowerCase();
+                return !val || name.includes(val) || sku.includes(val);
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = `<div class="col-span-full text-center py-6 text-gray-400 text-xs font-bold">No se encontraron combos para "${query}".</div>`;
+                return;
+            }
+
+            container.innerHTML = filtered.map(c => `
+                <div class="glass-panel p-4 rounded-2xl border border-purple-500/30 flex flex-col justify-between space-y-3">
+                    <div class="flex items-center gap-3">
+                        <img src="${c.featured_url || c.image || 'https://quimicadec.com/wp-content/uploads/2026/04/logo_quimicadec.png'}" class="w-14 h-14 object-cover rounded-xl border border-white/10">
+                        <div>
+                            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 font-bold border border-purple-500/30">${c.sku}</span>
+                            <h5 class="text-xs font-bold text-white uppercase mt-0.5 line-clamp-2">${c.name || c.title}</h5>
+                            <p class="text-[10px] text-gray-400 font-mono mt-0.5">$ ${Number(c.price || c.regular_price || 0).toLocaleString('es-AR', {minimumFractionDigits: 2})}</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-2 pt-2 border-t border-white/10">
+                        <button onclick="prepararSubidaFotosCombo('${c.sku}')" class="w-full py-1.5 rounded-lg bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 text-[10px] font-bold border border-purple-500/40">📸 Cargar Fotos</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
         async function cargarVisorCombos() {
             const container = document.getElementById('visor-combos-container');
             if (!container) return;
@@ -4074,7 +4109,7 @@
                 ]
             },
 
-            // SAHUMERIOS Y PERFUMERÍA (MARCAS Y LINEAS DE LA CAPTURA DE PANTALLA 2)
+            // SAHUMERIOS TRADICIONALES GENERAL
             'QD-SHM-161': {
                 header: 'MARCA / LÍNEA / AROMA DE SAHUMERIO',
                 items: [
@@ -4086,10 +4121,151 @@
                     { id: 106, name: 'Palos Dhoop (5 Fragancias Sagradas)', stock: 'Disponible', price: 2900.00, active: true },
                     { id: 107, name: 'Seven (7 Elementos Energéticos)', stock: 'Disponible', price: 3800.00, active: true },
                     { id: 108, name: 'Sree Vani (25 Aromas de la India)', stock: 'Disponible', price: 3300.00, active: true },
-                    { id: 109, name: 'Tuk Tuk (7 Variedades Tradicionales)', stock: 'Disponible', price: 2600.00, active: true },
-                    { id: 110, name: 'Palo Santo & Incienso Sagrado', stock: 'Disponible', price: 3100.00, active: true },
-                    { id: 111, name: 'Mirra & Sándalo Dulce', stock: 'Disponible', price: 3100.00, active: true },
-                    { id: 112, name: 'Ruda & Romero Limpieza Energética', stock: 'Disponible', price: 3100.00, active: true }
+                    { id: 109, name: 'Tuk Tuk (7 Variedades Tradicionales)', stock: 'Disponible', price: 2600.00, active: true }
+                ]
+            },
+
+            // SAHUMERIOS PRANA (25 AROMAS SAGRADOS DE PRANA)
+            'QD-SHM-PRN': {
+                header: 'FRAGANCIA / AROMA (SAHUMERIOS PRANA - 25 AROMAS)',
+                items: [
+                    { id: 1101, name: 'Sándalo Hindú', stock: 'Disponible', price: 3100.00, active: true },
+                    { id: 1102, name: 'Nag Champa', stock: 'Disponible', price: 3100.00, active: true },
+                    { id: 1103, name: 'Palo Santo & Incienso', stock: 'Disponible', price: 3100.00, active: true },
+                    { id: 1104, name: 'Lavanda & Benjuí', stock: 'Disponible', price: 3100.00, active: true },
+                    { id: 1105, name: 'Mirra & Canela', stock: 'Disponible', price: 3100.00, active: true },
+                    { id: 1106, name: 'Jazmín del País', stock: 'Disponible', price: 3100.00, active: true },
+                    { id: 1107, name: 'Ruda & Romero', stock: 'Disponible', price: 3100.00, active: true },
+                    { id: 1108, name: 'Siete Poderes', stock: 'Disponible', price: 3100.00, active: true },
+                    { id: 1109, name: 'Vainilla Real', stock: 'Disponible', price: 3100.00, active: true },
+                    { id: 1110, name: 'Rosas Rojas', stock: 'Disponible', price: 3100.00, active: true },
+                    { id: 1111, name: 'Almizcle & Om', stock: 'Disponible', price: 3100.00, active: true },
+                    { id: 1112, name: 'Patchouli & Ambar', stock: 'Disponible', price: 3100.00, active: true },
+                    { id: 1113, name: 'Salvia Blanca', stock: 'Disponible', price: 3100.00, active: true },
+                    { id: 1114, name: 'Super Hit India', stock: 'Disponible', price: 3100.00, active: true },
+                    { id: 1115, name: 'Coconut & Vainilla', stock: 'Disponible', price: 3100.00, active: true },
+                    { id: 1116, name: 'Eucalipto & Menta', stock: 'Disponible', price: 3100.00, active: true },
+                    { id: 1117, name: 'Ylang Ylang', stock: 'Disponible', price: 3100.00, active: true },
+                    { id: 1118, name: 'Violeta Imperial', stock: 'Disponible', price: 3100.00, active: true },
+                    { id: 1119, name: 'Opium Místico', stock: 'Disponible', price: 3100.00, active: true },
+                    { id: 1120, name: 'Loto & Naranjo', stock: 'Disponible', price: 3100.00, active: true },
+                    { id: 1121, name: 'Llama Sagrada', stock: 'Disponible', price: 3100.00, active: true },
+                    { id: 1122, name: 'Citronella & Neem', stock: 'Disponible', price: 3100.00, active: true },
+                    { id: 1123, name: 'Sándalo & Canela', stock: 'Disponible', price: 3100.00, active: true },
+                    { id: 1124, name: 'Champa & Jazmín', stock: 'Disponible', price: 3100.00, active: true },
+                    { id: 1125, name: 'Incienso Místico', stock: 'Disponible', price: 3100.00, active: true }
+                ]
+            },
+
+            // SAHUMERIOS AMOGH (24 AROMAS SURTIDOS DE AMOGH)
+            'QD-SHM-AMG': {
+                header: 'FRAGANCIA / AROMA (SAHUMERIOS AMOGH - 24 AROMAS)',
+                items: [
+                    { id: 1201, name: 'Amogh Sándalo Místico', stock: 'Disponible', price: 2850.00, active: true },
+                    { id: 1202, name: 'Amogh Lavanda Silvestre', stock: 'Disponible', price: 2850.00, active: true },
+                    { id: 1203, name: 'Amogh Incienso Real', stock: 'Disponible', price: 2850.00, active: true },
+                    { id: 1204, name: 'Amogh Palo Santo', stock: 'Disponible', price: 2850.00, active: true },
+                    { id: 1205, name: 'Amogh Mirra Sagrada', stock: 'Disponible', price: 2850.00, active: true },
+                    { id: 1206, name: 'Amogh Jazmín Oriental', stock: 'Disponible', price: 2850.00, active: true },
+                    { id: 1207, name: 'Amogh Ruda Protectora', stock: 'Disponible', price: 2850.00, active: true },
+                    { id: 1208, name: 'Amogh Vainilla Dulce', stock: 'Disponible', price: 2850.00, active: true },
+                    { id: 1209, name: 'Amogh Nag Champa', stock: 'Disponible', price: 2850.00, active: true },
+                    { id: 1210, name: 'Amogh Canela & Especias', stock: 'Disponible', price: 2850.00, active: true },
+                    { id: 1211, name: 'Amogh Coconut Tropical', stock: 'Disponible', price: 2850.00, active: true },
+                    { id: 1212, name: 'Amogh Eucalipto Fresco', stock: 'Disponible', price: 2850.00, active: true },
+                    { id: 1213, name: 'Amogh Menta Energizante', stock: 'Disponible', price: 2850.00, active: true },
+                    { id: 1214, name: 'Amogh Almizcle Intenso', stock: 'Disponible', price: 2850.00, active: true },
+                    { id: 1215, name: 'Amogh Patchouli Místico', stock: 'Disponible', price: 2850.00, active: true },
+                    { id: 1216, name: 'Amogh Salvia Purificadora', stock: 'Disponible', price: 2850.00, active: true },
+                    { id: 1217, name: 'Amogh Ylang Ylang', stock: 'Disponible', price: 2850.00, active: true },
+                    { id: 1218, name: 'Amogh Violeta de Noche', stock: 'Disponible', price: 2850.00, active: true },
+                    { id: 1219, name: 'Amogh Opium Mágico', stock: 'Disponible', price: 2850.00, active: true },
+                    { id: 1220, name: 'Amogh Limón & Cítricos', stock: 'Disponible', price: 2850.00, active: true },
+                    { id: 1221, name: 'Amogh Naranja & Jengibre', stock: 'Disponible', price: 2850.00, active: true },
+                    { id: 1222, name: 'Amogh Bergamota', stock: 'Disponible', price: 2850.00, active: true },
+                    { id: 1223, name: 'Amogh Siete Poderes', stock: 'Disponible', price: 2850.00, active: true },
+                    { id: 1224, name: 'Amogh Champa Floral', stock: 'Disponible', price: 2850.00, active: true }
+                ]
+            },
+
+            // SAHUMERIOS SREE VANI (25 AROMAS DE LA INDIA)
+            'QD-SHM-SRV': {
+                header: 'FRAGANCIA / AROMA (SREE VANI - 25 AROMAS)',
+                items: [
+                    { id: 1301, name: 'Golden Nag Champa', stock: 'Disponible', price: 3300.00, active: true },
+                    { id: 1302, name: 'Chandan Sándalo', stock: 'Disponible', price: 3300.00, active: true },
+                    { id: 1303, name: 'Kamasutra Místico', stock: 'Disponible', price: 3300.00, active: true },
+                    { id: 1304, name: 'Buddha Meditación', stock: 'Disponible', price: 3300.00, active: true },
+                    { id: 1305, name: 'Ganesha Fortuna', stock: 'Disponible', price: 3300.00, active: true },
+                    { id: 1306, name: 'Shiva Poder', stock: 'Disponible', price: 3300.00, active: true },
+                    { id: 1307, name: 'Reiki Energy', stock: 'Disponible', price: 3300.00, active: true },
+                    { id: 1308, name: 'Seven Chakras', stock: 'Disponible', price: 3300.00, active: true },
+                    { id: 1309, name: 'Stress Relief', stock: 'Disponible', price: 3300.00, active: true },
+                    { id: 1310, name: 'White Sage Salvia', stock: 'Disponible', price: 3300.00, active: true },
+                    { id: 1311, name: 'Palo Santo India', stock: 'Disponible', price: 3300.00, active: true },
+                    { id: 1312, name: 'Lavender Spa', stock: 'Disponible', price: 3300.00, active: true },
+                    { id: 1313, name: 'Patchouli Natural', stock: 'Disponible', price: 3300.00, active: true },
+                    { id: 1314, name: 'Cinnamon & Spice', stock: 'Disponible', price: 3300.00, active: true },
+                    { id: 1315, name: 'Frankincense Incienso', stock: 'Disponible', price: 3300.00, active: true },
+                    { id: 1316, name: 'Myrrh Mirra', stock: 'Disponible', price: 3300.00, active: true },
+                    { id: 1317, name: 'Rose Petals', stock: 'Disponible', price: 3300.00, active: true },
+                    { id: 1318, name: 'Jasmine Bloom', stock: 'Disponible', price: 3300.00, active: true },
+                    { id: 1319, name: 'Opium Night', stock: 'Disponible', price: 3300.00, active: true },
+                    { id: 1320, name: 'Vanilla Bean', stock: 'Disponible', price: 3300.00, active: true },
+                    { id: 1321, name: 'Musk Supreme', stock: 'Disponible', price: 3300.00, active: true },
+                    { id: 1322, name: 'Rain Forest', stock: 'Disponible', price: 3300.00, active: true },
+                    { id: 1323, name: 'Vanilla Cinnamon', stock: 'Disponible', price: 3300.00, active: true },
+                    { id: 1324, name: 'Dragon Blood', stock: 'Disponible', price: 3300.00, active: true },
+                    { id: 1325, name: 'Lotus Flower', stock: 'Disponible', price: 3300.00, active: true }
+                ]
+            },
+
+            // SAHUMERIOS NUNA TERRA MAGNA (28 AROMAS ARTESANALES)
+            'QD-SHM-NTM': {
+                header: 'FRAGANCIA / AROMA (NUNA TERRA MAGNA - 28 AROMAS)',
+                items: [
+                    { id: 1401, name: 'Incienso Blanco', stock: 'Disponible', price: 4200.00, active: true },
+                    { id: 1402, name: 'Sándalo Dulce', stock: 'Disponible', price: 4200.00, active: true },
+                    { id: 1403, name: 'Mirra Sagrada', stock: 'Disponible', price: 4200.00, active: true },
+                    { id: 1404, name: 'Palo Santo Puro', stock: 'Disponible', price: 4200.00, active: true },
+                    { id: 1405, name: 'Lavanda Silvestre', stock: 'Disponible', price: 4200.00, active: true },
+                    { id: 1406, name: 'Ruda & Romero', stock: 'Disponible', price: 4200.00, active: true },
+                    { id: 1407, name: 'Jazmín de Noche', stock: 'Disponible', price: 4200.00, active: true },
+                    { id: 1408, name: 'Vainilla & Caramelo', stock: 'Disponible', price: 4200.00, active: true },
+                    { id: 1409, name: 'Nag Champa', stock: 'Disponible', price: 4200.00, active: true },
+                    { id: 1410, name: 'Canela & Naranja', stock: 'Disponible', price: 4200.00, active: true },
+                    { id: 1411, name: 'Coconut & Lima', stock: 'Disponible', price: 4200.00, active: true },
+                    { id: 1412, name: 'Eucalipto & Menta', stock: 'Disponible', price: 4200.00, active: true },
+                    { id: 1413, name: 'Almizcle Místico', stock: 'Disponible', price: 4200.00, active: true },
+                    { id: 1414, name: 'Patchouli Ritual', stock: 'Disponible', price: 4200.00, active: true },
+                    { id: 1415, name: 'Salvia & Caléndula', stock: 'Disponible', price: 4200.00, active: true },
+                    { id: 1416, name: 'Ylang Ylang', stock: 'Disponible', price: 4200.00, active: true },
+                    { id: 1417, name: 'Violeta Real', stock: 'Disponible', price: 4200.00, active: true },
+                    { id: 1418, name: 'Opium', stock: 'Disponible', price: 4200.00, active: true },
+                    { id: 1419, name: 'Limón Dulce', stock: 'Disponible', price: 4200.00, active: true },
+                    { id: 1420, name: 'Naranja & Jengibre', stock: 'Disponible', price: 4200.00, active: true },
+                    { id: 1421, name: 'Bergamota', stock: 'Disponible', price: 4200.00, active: true },
+                    { id: 1422, name: '7 Elementos', stock: 'Disponible', price: 4200.00, active: true },
+                    { id: 1423, name: 'Loto Azul', stock: 'Disponible', price: 4200.00, active: true },
+                    { id: 1424, name: 'Llama Sagrada', stock: 'Disponible', price: 4200.00, active: true },
+                    { id: 1425, name: 'Sándalo & Canela', stock: 'Disponible', price: 4200.00, active: true },
+                    { id: 1426, name: 'Champa Floral', stock: 'Disponible', price: 4200.00, active: true },
+                    { id: 1427, name: 'Copal Blanco', stock: 'Disponible', price: 4200.00, active: true },
+                    { id: 1428, name: 'Benjuí Místico', stock: 'Disponible', price: 4200.00, active: true }
+                ]
+            },
+
+            // SAHUMERIOS TUK TUK (7 VARIANTES TRADICIONALES)
+            'QD-SHM-TUK': {
+                header: 'FRAGANCIA / AROMA (TUK TUK - 7 VARIANTES)',
+                items: [
+                    { id: 1501, name: 'Tuk Tuk Sándalo Tradicional', stock: 'Disponible', price: 2600.00, active: true },
+                    { id: 1502, name: 'Tuk Tuk Incienso Real', stock: 'Disponible', price: 2600.00, active: true },
+                    { id: 1503, name: 'Tuk Tuk Palo Santo Puro', stock: 'Disponible', price: 2600.00, active: true },
+                    { id: 1504, name: 'Tuk Tuk Mirra & Canela', stock: 'Disponible', price: 2600.00, active: true },
+                    { id: 1505, name: 'Tuk Tuk Lavanda Mística', stock: 'Disponible', price: 2600.00, active: true },
+                    { id: 1506, name: 'Tuk Tuk Ruda & Romero', stock: 'Disponible', price: 2600.00, active: true },
+                    { id: 1507, name: 'Tuk Tuk Siete Poderes', stock: 'Disponible', price: 2600.00, active: true }
                 ]
             },
 
@@ -4105,60 +4281,14 @@
                 ]
             },
 
-            // PAPELES E HIGIENE (HIGH-PEL, MORITA, MAXISEC)
+            // PAPELES E HIGIENE
             'QD-PPL-HGL-60M': {
                 header: 'PRESENTACIÓN / VOLUMEN (UNIDADES)',
                 items: [
                     { id: 301, name: '(Desde 1 Unidad) High-Pel 12ux60m', stock: 'Disponible', price: 12400.00, active: true },
                     { id: 302, name: '(Desde 20 Unidades) High-Pel 12ux60m', stock: 'Disponible', price: 11800.00, active: true },
                     { id: 303, name: '(Desde 50 Unidades) High-Pel 12ux60m', stock: 'Disponible', price: 11200.00, active: true },
-                    { id: 304, name: '(Desde 100 Unidades) High-Pel 12ux60m', stock: 'Disponible', price: 10600.00, active: true },
-                    { id: 305, name: 'Morita 4ux80m Violeta', stock: 'Disponible', price: 9800.00, active: true },
-                    { id: 306, name: 'Maxisec 4ux30m Blanco Virgen', stock: 'Disponible', price: 8500.00, active: true }
-                ]
-            },
-
-            // JABONES Y SUAVIZANTES
-            'QD-JBN-50L-001': {
-                header: 'TIPO / FORMULACIÓN / MARCA DE JABÓN',
-                items: [
-                    { id: 401, name: 'Ala Matic Celeste (x400g / x800g)', stock: 'Disponible', price: 3400.00, active: true },
-                    { id: 402, name: 'Ala Matic Rosado Bicarbonato', stock: 'Disponible', price: 3600.00, active: true },
-                    { id: 403, name: 'Jabón Líquido Tipo Ariel 5L', stock: 'Disponible', price: 8900.00, active: true },
-                    { id: 404, name: 'Jabón Líquido Tipo Skip 5L', stock: 'Disponible', price: 8900.00, active: true },
-                    { id: 405, name: 'Suavizante Vivero Celeste 50L', stock: 'Disponible', price: 16400.00, active: true }
-                ]
-            },
-
-            // INSECTICIDAS Y REPELENTES
-            'QD-INS-BYG-300': {
-                header: 'FORMATO / TAMAÑO INSECTICIDA',
-                items: [
-                    { id: 501, name: 'Baygon Casa y Jardín Aerosol 300cc', stock: 'Disponible', price: 4200.00, active: true },
-                    { id: 502, name: 'Fuyi Aerosol Mosquitos 360cc', stock: 'Disponible', price: 3900.00, active: true },
-                    { id: 503, name: 'Raid Moscas y Mosquitos Sin Olor 380ml', stock: 'Disponible', price: 4500.00, active: true },
-                    { id: 504, name: 'Aparato Fuyi Tabletas + 4 Tabletas', stock: 'Disponible', price: 5800.00, active: true }
-                ]
-            },
-
-            // AUTOMOTOR Y SILICONAS
-            'QD-AUT-PIN': {
-                header: 'VARIACIÓN / FRAGANCIA AUTOMOTOR',
-                items: [
-                    { id: 601, name: 'Pinitos Aromáticos Vainilla', stock: 'Disponible', price: 1800.00, active: true },
-                    { id: 602, name: 'Pinitos Aromáticos Auto Nuevo', stock: 'Disponible', price: 1800.00, active: true },
-                    { id: 603, name: 'Silicona Emulsionada Menta 5L', stock: 'Disponible', price: 14200.00, active: true },
-                    { id: 604, name: 'Shampoo Siliconado Carrocerías 5L', stock: 'Disponible', price: 9800.00, active: true }
-                ]
-            },
-
-            // PILETAS Y QUÍMICOS
-            'QD-CLR-10L': {
-                header: 'PRESENTACIÓN / TAMAÑO QUÍMICO',
-                items: [
-                    { id: 701, name: 'Cloro Líquido Concentrado 10L', stock: 'Disponible', price: 8900.00, active: true },
-                    { id: 702, name: 'Alguicidas & Clarificantes 5L', stock: 'Disponible', price: 7400.00, active: true },
-                    { id: 703, name: 'Ácido Muriático al 19% 10L', stock: 'Disponible', price: 8100.00, active: true }
+                    { id: 304, name: '(Desde 100 Unidades) High-Pel 12ux60m', stock: 'Disponible', price: 10600.00, active: true }
                 ]
             }
         };
