@@ -1674,11 +1674,6 @@
                 cargarListaUsuariosCRM();
                 cargarRegistroAuditoriaCRM();
             }, 800);
-        } catch(err) {
-                statusDiv.classList.add('bg-emerald-500/20', 'text-emerald-300');
-                statusDiv.innerText = 'Usuario registrando localmente: ' + name;
-                setTimeout(() => { cerrarModalNuevoUsuarioCRM(); }, 1200);
-            }
         }
 
                 function toggleEmbudoSidebarCollapse(e) {
