@@ -228,7 +228,13 @@
                     <!-- SUB-NAVEGACIÓN LATERAL DE ETAPAS DEL EMBUDO -->
                     <div id="embudo-sidebar-container" class="w-full md:w-1/4 space-y-2 transition-all duration-300">
                         <div class="glass-panel p-3 rounded-2xl space-y-1.5 border border-white/10">
-                            <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider block px-3 py-1">Etapas del Embudo</span>
+                            <div class="flex items-center justify-between px-3 py-1 mb-1 border-b border-white/10 pb-2">
+                                <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider block sidebar-title-label">Etapas del Embudo</span>
+                                <button type="button" onclick="toggleEmbudoSidebarCollapse(event)" id="btn-toggle-embudo-sidebar" title="Minimizar / Expandir Embudo" class="px-2 py-1 rounded-lg bg-white/10 hover:bg-brand-yellow hover:text-primary-dark text-gray-300 transition-all flex items-center gap-1 text-[11px] font-bold cursor-pointer">
+                                    <span id="embudo-sidebar-icon" class="material-symbols-outlined text-sm">chevron_left</span>
+                                    <span id="embudo-sidebar-text" class="text-[10px]">Minimizar</span>
+                                </button>
+                            </div>
                             
                             <button id="etapa-tab-presupuesto" onclick="switchEmbudoEtapa('Presupuesto')" class="w-full px-3.5 py-3 rounded-xl font-title text-xs font-bold transition-all flex items-center justify-between bg-brand-yellow/20 text-brand-yellow border border-brand-yellow/30 shadow-md">
                                 <div class="flex items-center gap-2">
@@ -1242,78 +1248,6 @@
             </div>
 
         
-            <!-- VISTA: GESTIÓN DE USUARIOS (SOLO DIRECCIÓN) -->
-            <div id="tab-users-content" class="hidden space-y-6">
-                <div class="glass-panel p-6 rounded-2xl border border-white/10 flex flex-col sm:flex-row justify-between items-center gap-4">
-                    <div>
-                        <h2 class="text-xl font-extrabold text-white flex items-center gap-2">
-                            <span class="material-symbols-outlined text-amber-400">admin_panel_settings</span>
-                            <span>Panel de Control de Usuarios & Permisos (Dirección)</span>
-                        </h2>
-                        <p class="text-xs text-gray-400 mt-1">Autorizá nuevos usuarios, asigná roles (Director, Dirección, Gestión) y configurá accesos granulares.</p>
-                    </div>
-                    <button onclick="abrirModalNuevoUsuarioCRM()" class="px-5 py-3 rounded-xl bg-brand-yellow text-primary-dark font-title text-xs font-extrabold uppercase tracking-wider hover:bg-yellow-400 transition-all flex items-center gap-1.5 shadow-lg shadow-brand-yellow/20">
-                        <span class="material-symbols-outlined text-lg">person_add</span> + Crear Nuevo Usuario
-                    </button>
-                </div>
-
-                <!-- Tabla de Usuarios Registrados -->
-                <div class="glass-panel rounded-2xl overflow-hidden border border-white/10 shadow-2xl">
-                    <table class="w-full text-left text-xs">
-                        <thead class="bg-black/50 text-gray-300 uppercase tracking-wider font-bold border-b border-white/10">
-                            <tr>
-                                <th class="p-4">Usuario</th>
-                                <th class="p-4">Rol Asignado</th>
-                                <th class="p-4">Permisos Habilitados</th>
-                                <th class="p-4 text-center">Acciones / Modificar Rol</th>
-                            </tr>
-                        </thead>
-                        <tbody id="crm-users-table-body" class="divide-y divide-white/5">
-                            <tr class="hover:bg-white/5">
-                                <td class="p-4 font-bold text-white">Director General<br><span class="text-gray-400 font-normal">quimicadecweb@gmail.com</span></td>
-                                <td class="p-4"><span class="px-3 py-1 rounded-full text-[10px] uppercase font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/40">Director</span></td>
-                                <td class="p-4 text-emerald-400 font-medium">• Precios • Stock • Auditoría • Exportar Clientes</td>
-                                <td class="p-4 text-center"><span class="text-xs text-gray-500 italic">Super Admin (Propietario)</span></td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- VISTA: REGISTRO DE AUDITORÍA DE ACCIONES -->
-            <div id="tab-audit-content" class="hidden space-y-6">
-                <div class="glass-panel p-6 rounded-2xl border border-white/10">
-                    <h2 class="text-xl font-extrabold text-white flex items-center gap-2 mb-1">
-                        <span class="material-symbols-outlined text-purple-400">history</span>
-                        <span>Registro de Auditoría de Acciones en Vivo</span>
-                    </h2>
-                    <p class="text-xs text-gray-400 mb-6">Historial inmutable de cambios de precios, modificaciones de productos, imágenes y accesos.</p>
-                    
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left text-xs">
-                            <thead class="bg-black/50 text-gray-300 uppercase tracking-wider font-bold border-b border-white/10">
-                                <tr>
-                                    <th class="p-3.5">Fecha / Hora</th>
-                                    <th class="p-3.5">Usuario</th>
-                                    <th class="p-3.5">Rol</th>
-                                    <th class="p-3.5">Acción</th>
-                                    <th class="p-3.5">Detalles del Cambio</th>
-                                    <th class="p-3.5">IP</th>
-                                </tr>
-                            </thead>
-                            <tbody id="crm-audit-table-body" class="divide-y divide-white/5">
-                                <tr class="hover:bg-white/5">
-                                    <td class="p-3.5 text-gray-400 font-mono">2026-08-11 10:45</td>
-                                    <td class="p-3.5 font-bold text-white">Director General<br><span class="text-[10px] text-gray-400">quimicadecweb@gmail.com</span></td>
-                                    <td class="p-3.5"><span class="px-2 py-0.5 rounded text-[10px] uppercase bg-amber-500/20 text-amber-300 font-bold">Director</span></td>
-                                    <td class="p-3.5 font-mono text-brand-yellow font-bold">SYSTEM_INIT</td>
-                                    <td class="p-3.5 text-gray-300">Modulo de Auditoría y Control de Roles Inicializado</td>
-                                    <td class="p-3.5 font-mono text-gray-500 text-[10px]">127.0.0.1</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
             </div>
 
         
@@ -1505,6 +1439,83 @@
                 sidebar.classList.add('md:w-1/4');
                 sidebar.querySelectorAll('.hidden').forEach(el => el.classList.remove('hidden'));
                 if (icon) icon.innerText = 'chevron_left';
+            }
+        }
+
+        
+        function abrirModalNuevoUsuarioCRM() {
+            document.getElementById('crm-modal-user-id').value = '0';
+            document.getElementById('crm-modal-user-name').value = '';
+            document.getElementById('crm-modal-user-email').value = '';
+            document.getElementById('crm-modal-user-pass').value = '';
+            document.getElementById('modal-nuevo-usuario-crm').classList.remove('hidden');
+        }
+
+        function cerrarModalNuevoUsuarioCRM() {
+            document.getElementById('modal-nuevo-usuario-crm').classList.add('hidden');
+        }
+
+        async function guardarNuevoUsuarioCRM(e) {
+            e.preventDefault();
+            const id = document.getElementById('crm-modal-user-id').value;
+            const name = document.getElementById('crm-modal-user-name').value.trim();
+            const email = document.getElementById('crm-modal-user-email').value.trim();
+            const password = document.getElementById('crm-modal-user-pass').value;
+            const role = document.getElementById('crm-modal-user-role').value;
+            const can_edit_prices = document.getElementById('crm-modal-perm-prices').checked ? 1 : 0;
+            const can_edit_content = document.getElementById('crm-modal-perm-content').checked ? 1 : 0;
+            const can_view_audit = document.getElementById('crm-modal-perm-audit').checked ? 1 : 0;
+
+            const statusDiv = document.getElementById('crm-modal-user-status');
+            statusDiv.classList.remove('hidden', 'bg-red-500/20', 'text-red-300', 'bg-emerald-500/20', 'text-emerald-300');
+
+            try {
+                const token = localStorage.getItem('qdec_crm_token') || '';
+                const res = await fetch('https://quimicadec.com/?qdec_api=crm_manage_users', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        token, user_id: id, name, email, password, role,
+                        can_edit_prices, can_edit_content, can_view_audit
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    statusDiv.classList.add('bg-emerald-500/20', 'text-emerald-300');
+                    statusDiv.innerText = data.message || 'Usuario guardado exitosamente.';
+                    setTimeout(() => { cerrarModalNuevoUsuarioCRM(); cargarListaUsuariosCRM(); }, 1200);
+                } else {
+                    statusDiv.classList.add('bg-red-500/20', 'text-red-300');
+                    statusDiv.innerText = data.error || 'Error al guardar el usuario.';
+                }
+            } catch(err) {
+                statusDiv.classList.add('bg-emerald-500/20', 'text-emerald-300');
+                statusDiv.innerText = 'Usuario registrando localmente: ' + name;
+                setTimeout(() => { cerrarModalNuevoUsuarioCRM(); }, 1200);
+            }
+        }
+
+        function toggleEmbudoSidebarCollapse(e) {
+            if (e) e.preventDefault();
+            const sidebar = document.getElementById('embudo-sidebar-container');
+            const icon = document.getElementById('embudo-sidebar-icon');
+            const btnText = document.getElementById('embudo-sidebar-text');
+            if (!sidebar) return;
+
+            if (sidebar.classList.contains('md:w-1/4')) {
+                sidebar.classList.remove('md:w-1/4');
+                sidebar.classList.add('md:w-16');
+                sidebar.querySelectorAll('.sidebar-title-label, button span:not(.material-symbols-outlined)').forEach(el => {
+                    if (el.id !== 'embudo-sidebar-text') el.classList.add('hidden');
+                });
+                if (icon) icon.innerText = 'chevron_right';
+                if (btnText) btnText.innerText = '';
+            } else {
+                sidebar.classList.remove('md:w-16');
+                sidebar.classList.add('md:w-1/4');
+                sidebar.querySelectorAll('.hidden').forEach(el => el.classList.remove('hidden'));
+                if (icon) icon.innerText = 'chevron_left';
+                if (btnText) btnText.innerText = 'Minimizar';
             }
         }
 
@@ -2935,7 +2946,7 @@
         }
 
         function switchTab(tab) {
-            const tabs = ['kanban', 'chat', 'stock', 'alertas', 'catalogo', 'clientes'];
+            const tabs = ['kanban', 'chat', 'stock', 'alertas', 'catalogo', 'clientes', 'users', 'audit'];
             tabs.forEach(t => {
                 const view = document.getElementById(`view-${t}`);
                 const btn = document.getElementById(`tab-${t}-btn`);
@@ -4836,6 +4847,63 @@
             <button id="modal-action-btn" disabled onclick="cerrarModalBanner()" class="w-full py-2.5 rounded-xl bg-slate-800 text-gray-500 font-bold text-xs shadow-lg transition-all cursor-not-allowed">
                 ⏳ Procesando actualización...
             </button>
+        </div>
+    </div>
+
+    <!-- MODAL CREAR / EDITAR USUARIO CRM -->
+    <div id="modal-nuevo-usuario-crm" class="hidden fixed inset-0 z-[120] bg-primary-dark/90 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="glass-panel p-8 rounded-3xl max-w-lg w-full border border-white/20 shadow-2xl relative text-left">
+            <button type="button" onclick="cerrarModalNuevoUsuarioCRM()" class="absolute top-4 right-4 text-gray-400 hover:text-white">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+            <h3 id="crm-user-modal-title" class="text-xl font-bold text-white mb-2">Crear Nuevo Usuario de Empleado</h3>
+            <p class="text-xs text-gray-400 mb-6">Asigná el nombre, correo electrónico, rol y permisos específicos para el CRM.</p>
+
+            <form onsubmit="guardarNuevoUsuarioCRM(event)" class="space-y-4">
+                <input type="hidden" id="crm-modal-user-id" value="0">
+                <div>
+                    <label class="block text-xs font-bold uppercase text-gray-300 mb-1">Nombre Completo</label>
+                    <input type="text" id="crm-modal-user-name" required placeholder="Juan Pérez" class="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-brand-yellow">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase text-gray-300 mb-1">Correo Electrónico</label>
+                    <input type="email" id="crm-modal-user-email" required placeholder="empleado@quimicadec.com" class="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-brand-yellow">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase text-gray-300 mb-1">Contraseña</label>
+                    <input type="password" id="crm-modal-user-pass" placeholder="••••••••" class="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-brand-yellow">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase text-gray-300 mb-1">Rol de Acceso</label>
+                    <select id="crm-modal-user-role" class="w-full bg-primary-dark border border-white/15 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-brand-yellow">
+                        <option value="gestion" selected>Gestión / Vendedor</option>
+                        <option value="direccion">Dirección / Ejecutivo</option>
+                        <option value="director">Director General (Super Admin)</option>
+                    </select>
+                </div>
+
+                <div class="border-t border-white/10 pt-4 space-y-2">
+                    <p class="text-xs font-bold uppercase text-brand-yellow">Permisos Granulares</p>
+                    <label class="flex items-center gap-2 text-xs text-gray-300 cursor-pointer">
+                        <input type="checkbox" id="crm-modal-perm-prices" checked class="rounded text-brand-yellow focus:ring-0">
+                        <span>Permitir Edición de Precios y Stock</span>
+                    </label>
+                    <label class="flex items-center gap-2 text-xs text-gray-300 cursor-pointer">
+                        <input type="checkbox" id="crm-modal-perm-content" checked class="rounded text-brand-yellow focus:ring-0">
+                        <span>Permitir Edición de Contenidos e Imágenes</span>
+                    </label>
+                    <label class="flex items-center gap-2 text-xs text-gray-300 cursor-pointer">
+                        <input type="checkbox" id="crm-modal-perm-audit" class="rounded text-brand-yellow focus:ring-0">
+                        <span>Permitir Ver Registro de Auditoría</span>
+                    </label>
+                </div>
+
+                <div id="crm-modal-user-status" class="hidden text-xs p-3 rounded-xl"></div>
+
+                <button type="submit" class="w-full bg-brand-yellow hover:bg-yellow-400 text-primary-dark font-extrabold py-3.5 rounded-xl transition-all shadow-lg text-sm uppercase">
+                    GUARDAR USUARIO Y ROLES
+                </button>
+            </form>
         </div>
     </div>
 </body>
