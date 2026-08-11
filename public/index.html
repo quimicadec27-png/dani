@@ -703,7 +703,7 @@
                                             <table class="w-full text-left text-xs">
                                                 <thead class="bg-black/60 text-gray-300 uppercase font-title font-bold border-b border-white/10">
                                                     <tr>
-                                                        <th class="p-3.5">FRAGANCIA / ATRIBUTO</th>
+                                                        <th id="attr-col-header" class="p-3.5 uppercase font-bold text-amber-400">FRAGANCIA / ATRIBUTO / TAMAÑO</th>
                                                         <th class="p-3.5">STOCK</th>
                                                         <th class="p-3.5">PRECIO</th>
                                                         <th class="p-3.5 text-center">ESTADO / CANTIDAD</th>
@@ -4046,22 +4046,86 @@
 
         
         // ========================================================
-        // GESTOR DE ATRIBUTOS Y VARIACIONES DE PRODUCTOS (CRM)
+        // GESTOR DINÁMICO DE ATRIBUTOS Y VARIACIONES DE PRODUCTOS
         // ========================================================
         let currentAttrProductSku = 'QD-DSDR-500CC-10U';
-        let defaultProductAttributes = [
-            { id: 1, name: 'Ace', stock: 'Disponible', price: 14691.73, active: true },
-            { id: 2, name: 'Frutilla', stock: 'Disponible', price: 14691.73, active: true },
-            { id: 3, name: 'Procenex', stock: 'Disponible', price: 14691.73, active: true },
-            { id: 4, name: 'Ambar', stock: 'Disponible', price: 14691.73, active: true },
-            { id: 5, name: 'Arpege', stock: 'Disponible', price: 14691.73, active: true },
-            { id: 6, name: 'Bergamotto', stock: 'Disponible', price: 14691.73, active: true },
-            { id: 7, name: 'Cherry', stock: 'Disponible', price: 14691.73, active: true },
-            { id: 8, name: 'Chicle', stock: 'Disponible', price: 14691.73, active: true },
-            { id: 9, name: 'Cítrico', stock: 'Disponible', price: 14691.73, active: true },
-            { id: 10, name: 'Lavanda', stock: 'Disponible', price: 14691.73, active: true },
-            { id: 11, name: 'Pino', stock: 'Disponible', price: 14691.73, active: true }
-        ];
+        let currentAttrProductName = '(10 UNIDADES) DESODORANTE DE PISO 500CC PARA 50 LITROS';
+
+        // Base de datos de atributos específicos por categoría / producto
+        const productSpecificAttributesDB = {
+            // DESODORANTES DE PISO
+            'QD-DSDR-500CC-10U': {
+                header: 'FRAGANCIA / VARIACIÓN',
+                items: [
+                    { id: 1, name: 'Ace', stock: 'Disponible', price: 14691.73, active: true },
+                    { id: 2, name: 'Frutilla', stock: 'Disponible', price: 14691.73, active: true },
+                    { id: 3, name: 'Procenex', stock: 'Disponible', price: 14691.73, active: true },
+                    { id: 4, name: 'Ambar', stock: 'Disponible', price: 14691.73, active: true },
+                    { id: 5, name: 'Arpege', stock: 'Disponible', price: 14691.73, active: true },
+                    { id: 6, name: 'Bergamotto', stock: 'Disponible', price: 14691.73, active: true },
+                    { id: 7, name: 'Cherry', stock: 'Disponible', price: 14691.73, active: true },
+                    { id: 8, name: 'Chicle', stock: 'Disponible', price: 14691.73, active: true },
+                    { id: 9, name: 'Cítrico', stock: 'Disponible', price: 14691.73, active: true },
+                    { id: 10, name: 'Lavanda', stock: 'Disponible', price: 14691.73, active: true },
+                    { id: 11, name: 'Pino', stock: 'Disponible', price: 14691.73, active: true },
+                    { id: 12, name: 'Marina', stock: 'Disponible', price: 14691.73, active: true },
+                    { id: 13, name: 'Uva', stock: 'Disponible', price: 14691.73, active: true },
+                    { id: 14, name: 'Bebé', stock: 'Disponible', price: 14691.73, active: true }
+                ]
+            },
+
+            // SAHUMERIOS TRADICIONALES EN VARILLAS Y CONOS
+            'QD-SHM-161': {
+                header: 'MARCA / LÍNEA / AROMA DE SAHUMERIO',
+                items: [
+                    { id: 101, name: 'Amogh (24 Aromas Surtidos)', stock: 'Disponible', price: 2850.00, active: true },
+                    { id: 102, name: 'Prana (25 Aromas Exóticos)', stock: 'Disponible', price: 3100.00, active: true },
+                    { id: 103, name: 'Ahuyenta Mosquitos (Citronella / Neem)', stock: 'Disponible', price: 2400.00, active: true },
+                    { id: 104, name: 'Nuna Terra (3 Variedades Botánicas)', stock: 'Disponible', price: 3450.00, active: true },
+                    { id: 105, name: 'Nuna Terra Magna (28 Aromas Artesanales)', stock: 'Disponible', price: 4200.00, active: true },
+                    { id: 106, name: 'Palos Dhoop (5 Fragancias Sagradas)', stock: 'Disponible', price: 2900.00, active: true },
+                    { id: 107, name: 'Seven (7 Elementos Energéticos)', stock: 'Disponible', price: 3800.00, active: true },
+                    { id: 108, name: 'Sree Vani (25 Aromas de la India)', stock: 'Disponible', price: 3300.00, active: true },
+                    { id: 109, name: 'Tuk Tuk (7 Variedades Tradicionales)', stock: 'Disponible', price: 2600.00, active: true },
+                    { id: 110, name: 'Palo Santo & Incienso Sagrado', stock: 'Disponible', price: 3100.00, active: true },
+                    { id: 111, name: 'Mirra & Sándalo Dulce', stock: 'Disponible', price: 3100.00, active: true },
+                    { id: 112, name: 'Ruda & Romero Limpieza Energética', stock: 'Disponible', price: 3100.00, active: true }
+                ]
+            },
+
+            // CERAS AUTOBRILLO Y CONCENTRADAS (DE CAPTURA 3 DEL USUARIO)
+            'QD-CRTB-1286': {
+                header: 'TAMAÑO / PRESENTACIÓN',
+                items: [
+                    { id: 201, name: 'Desde 1 LT', stock: 'Disponible', price: 11874.96, active: true },
+                    { id: 202, name: 'Desde 2 LT', stock: 'Disponible', price: 23678.67, active: true },
+                    { id: 203, name: 'Desde 3 LT', stock: 'Disponible', price: 35411.67, active: true },
+                    { id: 204, name: 'Desde 4 LT', stock: 'Disponible', price: 47072.78, active: true },
+                    { id: 205, name: 'Desde 5 LT', stock: 'Disponible', price: 58742.00, active: true }
+                ]
+            },
+
+            // JABONES LIQUIDOS PARA ROPA
+            'QD-JBN-50L-001': {
+                header: 'TIPO / FRAGANCIA DE JABÓN',
+                items: [
+                    { id: 301, name: 'Tipo Ariel Azul', stock: 'Disponible', price: 18500.00, active: true },
+                    { id: 302, name: 'Tipo Skip Verde', stock: 'Disponible', price: 18500.00, active: true },
+                    { id: 303, name: 'Tipo Querubín Blanco', stock: 'Disponible', price: 18500.00, active: true },
+                    { id: 304, name: 'Jabón Neutro Hipoalergénico', stock: 'Disponible', price: 19200.00, active: true }
+                ]
+            },
+
+            // SUAVIZANTES DE TELAS
+            'QD-SVZ-50L-002': {
+                header: 'AROMA / PRESENTACIÓN DE SUAVIZANTE',
+                items: [
+                    { id: 401, name: 'Vivero Celeste', stock: 'Disponible', price: 16400.00, active: true },
+                    { id: 402, name: 'Suavizante Floral Rosa', stock: 'Disponible', price: 16400.00, active: true },
+                    { id: 403, name: 'Suavizante Sol Radiante Amarilla', stock: 'Disponible', price: 16400.00, active: true }
+                ]
+            }
+        };
 
         function getStoredAttributesDB() {
             try {
@@ -4079,10 +4143,31 @@
         function cargarTablaAtributos(sku) {
             currentAttrProductSku = sku || currentAttrProductSku || 'QD-DSDR-500CC-10U';
             const tbody = document.getElementById('atributos-table-body');
+            const headerEl = document.getElementById('attr-col-header');
             if (!tbody) return;
 
             const db = getStoredAttributesDB();
-            let items = db[currentAttrProductSku] || defaultProductAttributes;
+            let productData = db[currentAttrProductSku] || productSpecificAttributesDB[currentAttrProductSku];
+
+            // Si es un producto de Ceras o Concentrados por defecto
+            if (!productData) {
+                if (currentAttrProductSku.includes('CRT') || currentAttrProductSku.includes('CER') || (currentAttrProductName && currentAttrProductName.toLowerCase().includes('cera'))) {
+                    productData = productSpecificAttributesDB['QD-CRTB-1286'];
+                } else if (currentAttrProductSku.includes('SHM') || (currentAttrProductName && currentAttrProductName.toLowerCase().includes('sahumerio'))) {
+                    productData = productSpecificAttributesDB['QD-SHM-161'];
+                } else if (currentAttrProductSku.includes('JBN') || (currentAttrProductName && currentAttrProductName.toLowerCase().includes('jabon'))) {
+                    productData = productSpecificAttributesDB['QD-JBN-50L-001'];
+                } else {
+                    productData = productSpecificAttributesDB['QD-DSDR-500CC-10U'];
+                }
+            }
+
+            if (headerEl && productData.header) {
+                headerEl.innerText = productData.header;
+            }
+
+            let items = productData.items || productData;
+            if (!Array.isArray(items)) items = productSpecificAttributesDB['QD-DSDR-500CC-10U'].items;
 
             tbody.innerHTML = items.map((item, idx) => `
                 <tr class="hover:bg-white/5 transition-all border-b border-white/5">
@@ -4112,13 +4197,11 @@
                 return;
             }
 
-            // Asegurar que el catálogo de WooCommerce esté cargado
             if (!window.combosDataCache) {
                 cargarCatalogoCompletoUI();
             }
 
             const rawQuery = val.toLowerCase().trim();
-            // Normalizar plurales comunes (sahumerios -> sahumerio, desodorantes -> desodorante)
             const rawTokens = rawQuery.split(/\s+/).filter(t => t.length > 0);
             const tokens = rawTokens.map(t => {
                 let clean = t;
@@ -4127,15 +4210,30 @@
                 return clean;
             });
 
-            // Base de datos amplia de familias de productos del catálogo
+            // Catálogo completo con todas las marcas y variaciones del catálogo real
             let prods = [
-                // Sahumerios, Perfumería y Aromatizantes
+                // SAHUMERIOS Y MARCAS DE CAPTURA 2 DEL USUARIO
                 { title: 'SAHUMERIOS TRADICIONALES EN VARILLAS (161 AROMAS Y FRAGANCIAS)', sku: 'QD-SHM-161', cat: 'SAHUMERIOS Y PERFUMERÍA' },
+                { title: 'SAHUMERIOS AMOGH (24 AROMAS EXÓTICOS)', sku: 'QD-SHM-AMG', cat: 'SAHUMERIOS - MARCA AMOGH' },
+                { title: 'SAHUMERIOS PRANA (25 FRAGANCIAS SAGRADAS)', sku: 'QD-SHM-PRN', cat: 'SAHUMERIOS - MARCA PRANA' },
+                { title: 'SAHUMERIOS AHUYENTA MOSQUITOS (NEEM Y CITRONELLA)', sku: 'QD-SHM-MSQ', cat: 'SAHUMERIOS - AHUYENTA MOSQUITOS' },
+                { title: 'SAHUMERIOS NUNA TERRA (3 VARIEDADES BOTÁNICAS)', sku: 'QD-SHM-NTR', cat: 'SAHUMERIOS - NUNA TERRA' },
+                { title: 'SAHUMERIOS NUNA TERRA MAGNA (28 AROMAS ARTESANALES)', sku: 'QD-SHM-NTM', cat: 'SAHUMERIOS - NUNA TERRA MAGNA' },
+                { title: 'PALOS DHOOP AROMÁTICOS (5 VARIACIONES)', sku: 'QD-SHM-DHP', cat: 'SAHUMERIOS - PALOS DHOOP' },
+                { title: 'SAHUMERIOS SEVEN (7 ELEMENTOS)', sku: 'QD-SHM-SVN', cat: 'SAHUMERIOS - SEVEN' },
+                { title: 'SAHUMERIOS SREE VANI (25 AROMAS DE LA INDIA)', sku: 'QD-SHM-SRV', cat: 'SAHUMERIOS - SREE VANI' },
+                { title: 'SAHUMERIOS TUK TUK (7 VARIANTES TRADICIONALES)', sku: 'QD-SHM-TUK', cat: 'SAHUMERIOS - TUK TUK' },
                 { title: 'SAHUMERIOS CONOS AROMÁTICOS SURTIDOS', sku: 'QD-SHM-CNS', cat: 'SAHUMERIOS Y PERFUMERÍA' },
                 { title: 'PERFUMINAS CONCENTRADAS Y TEXTILES 500CC', sku: 'QD-PRF-500CC', cat: 'SAHUMERIOS Y PERFUMERÍA' },
-                { title: 'AROMATIZANTE AMBIENTAL Y TEXTIL 500CC', sku: 'QD-ARM-500CC', cat: 'AROMATIZANTES' },
 
-                // Desodorantes para pisos
+                // CERAS AUTOBRILLO Y CONCENTRADAS (CAPTURA 3 DEL USUARIO)
+                { title: 'CERA AUTO BRILLO CONCENTRADA PARA PISOS NEGRA 1+9', sku: 'QD-CRTB-1286', cat: 'CERAS CONCENTRADAS 1+9' },
+                { title: 'CERA AUTO BRILLO CONCENTRADA PARA PISOS ROJA 1+9', sku: 'QD-CRTB-1287', cat: 'CERAS CONCENTRADAS 1+9' },
+                { title: 'CERA AUTO BRILLO CONCENTRADA PARA PISOS INCOLORA 1+9', sku: 'QD-CRTB-1288', cat: 'CERAS CONCENTRADAS 1+9' },
+                { title: 'CERA LIQUIDA AUTOBRILLO ROJA 5 LITROS', sku: 'QD-CER-ROJ-5L', cat: 'CERAS DE PISO' },
+                { title: 'CERA LIQUIDA AUTOBRILLO NEGRA 5 LITROS', sku: 'QD-CER-NEG-5L', cat: 'CERAS DE PISO' },
+
+                // DESODORANTES DE PISO
                 { title: '(50 UNIDADES) DESODORANTE DE PISO 500CC PARA 50 LITROS', sku: 'QD-DSDR-500CC-50U', cat: 'DESODORANTES PARA PISOS PARA 50 LITROS' },
                 { title: '(10 UNIDADES) DESODORANTE DE PISO 500CC PARA 50 LITROS', sku: 'QD-DSDR-500CC-10U', cat: 'DESODORANTES PARA PISOS PARA 50 LITROS' },
                 { title: '(5 UNIDADES) DESODORANTE DE PISO 500CC PARA 50 LITROS', sku: 'QD-DSDR-500CC-5U', cat: 'DESODORANTES PARA PISOS PARA 50 LITROS' },
@@ -4144,32 +4242,15 @@
                 { title: 'DESODORANTE DE PISO 100CC PARA 5 LITROS', sku: 'QD-DSDR-100CC-5L', cat: 'DESODORANTES PARA PISOS 5 LITROS' },
                 { title: 'DESODORANTE DE PISO PARA 5LT JAZMIN', sku: 'QD-DSDR-5L-JAZMIN', cat: 'DESODORANTES DE PISO 5 LITROS' },
                 { title: 'DESODORANTE DE PISO PARA 5LT EUCALIPTO', sku: 'QD-DSDR-5L-EUCALIPTO', cat: 'DESODORANTES DE PISO 5 LITROS' },
-                { title: 'DESODORANTE DE PISO 5 LITROS CONCENTRADO', sku: 'QD-DSDR-5L-001', cat: 'DESODORANTES DE PISO' },
 
-                // Jabones, Detergentes y Suavizantes
+                // JABONES, SUAVIZANTES, DETERGENTES
                 { title: 'JABON LIQUIDO PARA ROPA CONCENTRADO 50 LITROS', sku: 'QD-JBN-50L-001', cat: 'JABONES LIQUIDOS' },
-                { title: 'JABON LIQUIDO TIPO ARIEL / SKIP 5 LITROS', sku: 'QD-JBN-5L-PREM', cat: 'JABONES LIQUIDOS' },
                 { title: 'SUAVIZANTE DE TELAS PREMIUM 50 LITROS', sku: 'QD-SVZ-50L-002', cat: 'SUAVIZANTES' },
-                { title: 'SUAVIZANTE DE TELAS VIVEX 5 LITROS', sku: 'QD-SVZ-5L-001', cat: 'SUAVIZANTES' },
                 { title: 'DETERGENTE AMARILLO LIMON CONCENTRADO 5L', sku: 'QD-DTG-LIM-5L', cat: 'DETERGENTES' },
                 { title: 'DETERGENTE CIF 500ML LIMON Y LIMA', sku: 'QD-DTG-CIF-500ML', cat: 'DETERGENTES' },
-
-                // Limpiadores Cremosos, Desengrasantes y Lavandinas
-                { title: 'CIF CREMA MULTIUSO 375G Y 750G (VARIOS AROMAS)', sku: 'QD-CIF-CRM', cat: 'LIMPIADORES CREMOSOS' },
-                { title: 'DESENGRASANTE MULTIUSO NARANJA 5L', sku: 'QD-DSN-NAR-5L', cat: 'DESENGRASANTES' },
-                { title: 'LAVANDINA CONCENTRADA EN GEL 5L', sku: 'QD-LVD-GEL-5L', cat: 'LAVANDINAS' },
-
-                // Automotor y Siliconas
-                { title: 'SHAMPOO SILICONADO PARA CARROCERIAS 5L', sku: 'QD-AUT-SHM-5L', cat: 'AUTOMOTOR' },
-                { title: 'SILICONA EMULSIONADA PARA GOMAS Y PLASTICOS 5L', sku: 'QD-AUT-SIL-5L', cat: 'AUTOMOTOR' },
-                { title: 'PINITOS AROMATICOS AUTOMOTOR (VARIAS FRAGANCIAS)', sku: 'QD-AUT-PIN', cat: 'AUTOMOTOR' },
-
-                // Piletas y Químicos
-                { title: 'CLORO LIQUIDO CONCENTRADO PARA PILETAS 10L', sku: 'QD-CLR-10L', cat: 'PRODUCTOS PARA PILETA' },
-                { title: 'ALGUICIDA Y CLARIFICANTE PARA PILETAS 5L', sku: 'QD-ALG-5L', cat: 'PRODUCTOS PARA PILETA' }
+                { title: 'CIF CREMA MULTIUSO 375G Y 750G', sku: 'QD-CIF-CRM', cat: 'LIMPIADORES CREMOSOS' }
             ];
 
-            // Incorporar productos cargados en vivo desde WooCommerce
             if (window.combosDataCache && Array.isArray(window.combosDataCache)) {
                 window.combosDataCache.forEach(c => {
                     prods.push({
@@ -4180,7 +4261,6 @@
                 });
             }
 
-            // Algoritmo Fuzzy Token: Cada token (normalizado) debe coincidir parcialmente
             const matches = prods.filter(p => {
                 const combined = `${p.title || ''} ${p.sku || ''} ${p.cat || ''}`.toLowerCase();
                 return tokens.every(token => combined.includes(token));
@@ -4199,12 +4279,14 @@
                 `).join('');
                 resultsDiv.classList.remove('hidden');
             } else {
-                resultsDiv.innerHTML = `<div class="p-3 text-xs text-gray-400 italic">No se encontraron coincidencias para "${val}". Podés buscar por sahumerio, jabón, desodorante, lavandina, etc.</div>`;
+                resultsDiv.innerHTML = `<div class="p-3 text-xs text-gray-400 italic">No se encontraron coincidencias para "${val}". Podés buscar por sahumerio, cera, jabón, desodorante, etc.</div>`;
                 resultsDiv.classList.remove('hidden');
             }
         }
 
         function seleccionarProductoAtributos(sku, title, cat) {
+            currentAttrProductSku = sku;
+            currentAttrProductName = title;
             document.getElementById('attr-prod-sku').innerText = sku;
             document.getElementById('attr-prod-title').innerText = title;
             document.getElementById('attr-prod-cat').innerText = 'Categoría: ' + cat;
