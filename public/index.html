@@ -4088,7 +4088,7 @@
 
         // Base de datos de atributos específicos por categoría / producto
         const productSpecificAttributesDB = {
-            // DESODORANTES DE PISO
+            // 1. DESODORANTES DE PISO (TODAS LAS PRESENTACIONES)
             'QD-DSDR-500CC-10U': {
                 header: 'FRAGANCIA / VARIACIÓN DE DESODORANTE',
                 items: [
@@ -4105,11 +4105,13 @@
                     { id: 11, name: 'Pino', stock: 'Disponible', price: 14691.73, active: true },
                     { id: 12, name: 'Marina', stock: 'Disponible', price: 14691.73, active: true },
                     { id: 13, name: 'Uva', stock: 'Disponible', price: 14691.73, active: true },
-                    { id: 14, name: 'Bebé', stock: 'Disponible', price: 14691.73, active: true }
+                    { id: 14, name: 'Bebé', stock: 'Disponible', price: 14691.73, active: true },
+                    { id: 15, name: 'Esmeralda', stock: 'Disponible', price: 14691.73, active: true },
+                    { id: 16, name: 'Tropicana', stock: 'Disponible', price: 14691.73, active: true }
                 ]
             },
 
-            // SAHUMERIOS TRADICIONALES GENERAL
+            // 2. SAHUMERIOS POR MARCA Y SUBCATEGORÍA
             'QD-SHM-161': {
                 header: 'MARCA / LÍNEA / AROMA DE SAHUMERIO',
                 items: [
@@ -4124,8 +4126,6 @@
                     { id: 109, name: 'Tuk Tuk (7 Variedades Tradicionales)', stock: 'Disponible', price: 2600.00, active: true }
                 ]
             },
-
-            // SAHUMERIOS PRANA (25 AROMAS SAGRADOS DE PRANA)
             'QD-SHM-PRN': {
                 header: 'FRAGANCIA / AROMA (SAHUMERIOS PRANA - 25 AROMAS)',
                 items: [
@@ -4156,8 +4156,6 @@
                     { id: 1125, name: 'Incienso Místico', stock: 'Disponible', price: 3100.00, active: true }
                 ]
             },
-
-            // SAHUMERIOS AMOGH (24 AROMAS SURTIDOS DE AMOGH)
             'QD-SHM-AMG': {
                 header: 'FRAGANCIA / AROMA (SAHUMERIOS AMOGH - 24 AROMAS)',
                 items: [
@@ -4187,8 +4185,6 @@
                     { id: 1224, name: 'Amogh Champa Floral', stock: 'Disponible', price: 2850.00, active: true }
                 ]
             },
-
-            // SAHUMERIOS SREE VANI (25 AROMAS DE LA INDIA)
             'QD-SHM-SRV': {
                 header: 'FRAGANCIA / AROMA (SREE VANI - 25 AROMAS)',
                 items: [
@@ -4219,8 +4215,6 @@
                     { id: 1325, name: 'Lotus Flower', stock: 'Disponible', price: 3300.00, active: true }
                 ]
             },
-
-            // SAHUMERIOS NUNA TERRA MAGNA (28 AROMAS ARTESANALES)
             'QD-SHM-NTM': {
                 header: 'FRAGANCIA / AROMA (NUNA TERRA MAGNA - 28 AROMAS)',
                 items: [
@@ -4254,8 +4248,6 @@
                     { id: 1428, name: 'Benjuí Místico', stock: 'Disponible', price: 4200.00, active: true }
                 ]
             },
-
-            // SAHUMERIOS TUK TUK (7 VARIANTES TRADICIONALES)
             'QD-SHM-TUK': {
                 header: 'FRAGANCIA / AROMA (TUK TUK - 7 VARIANTES)',
                 items: [
@@ -4269,7 +4261,7 @@
                 ]
             },
 
-            // CERAS AUTOBRILLO Y CONCENTRADAS (DE CAPTURA 3 DEL USUARIO)
+            // 3. CERAS AUTOBRILLO Y CONCENTRADAS (DE CAPTURA 3 DEL USUARIO)
             'QD-CRTB-1286': {
                 header: 'TAMAÑO / PRESENTACIÓN DE CERA',
                 items: [
@@ -4280,15 +4272,104 @@
                     { id: 205, name: 'Desde 5 LT', stock: 'Disponible', price: 58742.00, active: true }
                 ]
             },
+            'QD-CRTB-1287': {
+                header: 'TAMAÑO / PRESENTACIÓN DE CERA ROJA',
+                items: [
+                    { id: 211, name: 'Desde 1 LT', stock: 'Disponible', price: 11874.96, active: true },
+                    { id: 212, name: 'Desde 2 LT', stock: 'Disponible', price: 23678.67, active: true },
+                    { id: 213, name: 'Desde 3 LT', stock: 'Disponible', price: 35411.67, active: true },
+                    { id: 214, name: 'Desde 4 LT', stock: 'Disponible', price: 47072.78, active: true },
+                    { id: 215, name: 'Desde 5 LT', stock: 'Disponible', price: 58742.00, active: true }
+                ]
+            },
 
-            // PAPELES E HIGIENE
+            // 4. PAPELES E HIGIENE (HIGH-PEL, MORITA, MAXISEC)
             'QD-PPL-HGL-60M': {
-                header: 'PRESENTACIÓN / VOLUMEN (UNIDADES)',
+                header: 'PRESENTACIÓN / VOLUMEN (HIGH-PEL)',
                 items: [
                     { id: 301, name: '(Desde 1 Unidad) High-Pel 12ux60m', stock: 'Disponible', price: 12400.00, active: true },
                     { id: 302, name: '(Desde 20 Unidades) High-Pel 12ux60m', stock: 'Disponible', price: 11800.00, active: true },
                     { id: 303, name: '(Desde 50 Unidades) High-Pel 12ux60m', stock: 'Disponible', price: 11200.00, active: true },
                     { id: 304, name: '(Desde 100 Unidades) High-Pel 12ux60m', stock: 'Disponible', price: 10600.00, active: true }
+                ]
+            },
+            'QD-PPL-MRT-80M': {
+                header: 'PRESENTACIÓN / VOLUMEN (MORITA)',
+                items: [
+                    { id: 311, name: '(Desde 1 Unidad) Morita 4u x 80m Violeta', stock: 'Disponible', price: 9800.00, active: true },
+                    { id: 312, name: '(Desde 50 Unidades) Morita 4u x 80m Violeta', stock: 'Disponible', price: 9200.00, active: true },
+                    { id: 313, name: '(Desde 100 Unidades) Morita 12u x 80m', stock: 'Disponible', price: 8700.00, active: true },
+                    { id: 314, name: '(Desde 200 Unidades) Morita 4u x 80m Violeta', stock: 'Disponible', price: 8200.00, active: true }
+                ]
+            },
+
+            // 5. JABONES Y SUAVIZANTES (ALA, ARIEL, SKIP, VIVERO)
+            'QD-JBN-ALA-400G': {
+                header: 'TIPO / FORMULACIÓN (ALA POLVO)',
+                items: [
+                    { id: 401, name: 'Ala Lavado a Mano x400g Azul', stock: 'Disponible', price: 2900.00, active: true },
+                    { id: 402, name: 'Ala Lavado a Mano x400g Violeta Bicarbonato', stock: 'Disponible', price: 3100.00, active: true },
+                    { id: 403, name: 'Ala Lavado a Mano x800g Violeta', stock: 'Disponible', price: 5600.00, active: true },
+                    { id: 404, name: 'Ala Matic x400g Celeste', stock: 'Disponible', price: 3400.00, active: true },
+                    { id: 405, name: 'Ala Matic x400g Rosado Bicarbonato', stock: 'Disponible', price: 3600.00, active: true },
+                    { id: 406, name: 'Ala Matic x800g Rosado', stock: 'Disponible', price: 6800.00, active: true }
+                ]
+            },
+            'QD-JBN-50L-001': {
+                header: 'MARCA / TIPO (JABÓN LÍQUIDO 50L)',
+                items: [
+                    { id: 411, name: 'Tipo Ariel Azul Premium', stock: 'Disponible', price: 18500.00, active: true },
+                    { id: 412, name: 'Tipo Skip Verde Ropa Oscura/Color', stock: 'Disponible', price: 18500.00, active: true },
+                    { id: 413, name: 'Tipo Querubín Blanco Suave', stock: 'Disponible', price: 18500.00, active: true },
+                    { id: 414, name: 'Jabón Neutro Hipoalergénico', stock: 'Disponible', price: 19200.00, active: true }
+                ]
+            },
+
+            // 6. INSECTICIDAS Y REPELENTES (BAYGON, RAID, FUYI)
+            'QD-INS-BYG-300': {
+                header: 'PRESENTACIÓN / VARIACIÓN (BAYGON & RAID)',
+                items: [
+                    { id: 501, name: 'Baygon Casa y Jardín Aerosol x300cc', stock: 'Disponible', price: 4200.00, active: true },
+                    { id: 502, name: 'Baygon Mata Cucarachas Aerosol x300cc', stock: 'Disponible', price: 4200.00, active: true },
+                    { id: 503, name: 'Baygon Moscas y Mosquitos x300cc', stock: 'Disponible', price: 4200.00, active: true },
+                    { id: 504, name: 'Raid Moscas y Mosquitos Sin Olor x380ml', stock: 'Disponible', price: 4500.00, active: true },
+                    { id: 505, name: 'Raid Max Mata Hormigas x360cc', stock: 'Disponible', price: 4600.00, active: true },
+                    { id: 506, name: 'Fuyi Aerosol Insecticida x360cc', stock: 'Disponible', price: 3900.00, active: true },
+                    { id: 507, name: 'Aparato Fuyi Tabletas + 4 Tabletas', stock: 'Disponible', price: 5800.00, active: true }
+                ]
+            },
+
+            // 7. AUTOMOTOR Y SILICONAS (PINITOS, SILICONA, SHAMPOO)
+            'QD-AUT-PIN': {
+                header: 'FRAGANCIA / AROMA (PINITOS AUTOMOTOR)',
+                items: [
+                    { id: 601, name: 'Pinito Vainilla Clásica', stock: 'Disponible', price: 1800.00, active: true },
+                    { id: 602, name: 'Pinito Auto Nuevo', stock: 'Disponible', price: 1800.00, active: true },
+                    { id: 603, name: 'Pinito Frutilla Silvestre', stock: 'Disponible', price: 1800.00, active: true },
+                    { id: 604, name: 'Pinito Menta Fresca', stock: 'Disponible', price: 1800.00, active: true },
+                    { id: 605, name: 'Pinito Cítrico Deportivo', stock: 'Disponible', price: 1800.00, active: true },
+                    { id: 606, name: 'Pinito Lavanda Relajante', stock: 'Disponible', price: 1800.00, active: true }
+                ]
+            },
+            'QD-AUT-SIL-5L': {
+                header: 'PRESENTACIÓN / FRAGANCIA (SILICONA 5L)',
+                items: [
+                    { id: 611, name: 'Silicona Emulsionada Menta 5L', stock: 'Disponible', price: 14200.00, active: true },
+                    { id: 612, name: 'Silicona Emulsionada Limón 5L', stock: 'Disponible', price: 14200.00, active: true },
+                    { id: 613, name: 'Silicona Emulsionada Neutra 5L', stock: 'Disponible', price: 14200.00, active: true },
+                    { id: 614, name: 'Revividor de Negros & Neumáticos 5L', stock: 'Disponible', price: 12500.00, active: true }
+                ]
+            },
+
+            // 8. PILETAS Y QUÍMICOS (CLORO, ALGUICIDA, CLARIFICANTE, MURIÁTICO)
+            'QD-CLR-10L': {
+                header: 'TAMAÑO / PRESENTACIÓN QUÍMICA',
+                items: [
+                    { id: 701, name: 'Cloro Líquido Concentrado Bidón 10L', stock: 'Disponible', price: 8900.00, active: true },
+                    { id: 702, name: 'Cloro Líquido Concentrado Tambor 200L', stock: 'Disponible', price: 145000.00, active: true },
+                    { id: 703, name: 'Alguicidas & Clarificantes Bidón 5L', stock: 'Disponible', price: 7400.00, active: true },
+                    { id: 704, name: 'Peróxido de Hidrógeno 5L', stock: 'Disponible', price: 9200.00, active: true },
+                    { id: 705, name: 'Ácido Muriático al 19% 10L', stock: 'Disponible', price: 8100.00, active: true }
                 ]
             }
         };
