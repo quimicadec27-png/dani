@@ -4090,7 +4090,7 @@
                     <td class="p-3.5">
                         <span class="px-2.5 py-1 rounded-full text-[10px] uppercase font-extrabold ${item.stock === 'Disponible' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-red-500/20 text-red-300 border border-red-500/40'}">${item.stock}</span>
                     </td>
-                    <td class="p-3.5 font-mono text-cyan-300 font-bold">$ ${Number(item.price).toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
+                    <td class="p-3.5 font-mono text-white font-black text-sm drop-shadow-[0_0_8px_rgba(245,196,0,0.7)]">$ ${Number(item.price).toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
                     <td class="p-3.5 text-center">
                         <div class="inline-flex items-center gap-1 bg-black/40 p-1 rounded-lg border border-white/10">
                             <button onclick="modificarEstadoAtributo(${idx}, 'stock')" class="px-2 py-1 text-[10px] font-bold rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 transition-all cursor-pointer">🔄 Alternar Stock</button>
@@ -4107,20 +4107,34 @@
             const resultsDiv = document.getElementById('atributos-search-results');
             if (!resultsDiv) return;
 
-            if (!val || val.trim().length < 2) {
+            if (!val || val.trim().length < 1) {
                 resultsDiv.classList.add('hidden');
                 return;
             }
 
-            const query = val.toLowerCase().trim();
+            const rawQuery = val.toLowerCase().trim();
+            // Split search query into individual word tokens for flexible fuzzy matching
+            const tokens = rawQuery.split(/\s+/).filter(t => t.length > 0);
 
+            // Complete Catalog database of products with variations
             let prods = [
+                { title: '(50 UNIDADES) DESODORANTE DE PISO 500CC PARA 50 LITROS', sku: 'QD-DSDR-500CC-50U', cat: 'DESODORANTES PARA PISOS PARA 50 LITROS' },
                 { title: '(10 UNIDADES) DESODORANTE DE PISO 500CC PARA 50 LITROS', sku: 'QD-DSDR-500CC-10U', cat: 'DESODORANTES PARA PISOS PARA 50 LITROS' },
+                { title: '(5 UNIDADES) DESODORANTE DE PISO 500CC PARA 50 LITROS', sku: 'QD-DSDR-500CC-5U', cat: 'DESODORANTES PARA PISOS PARA 50 LITROS' },
+                { title: '(3 UNIDADES) DESODORANTE DE PISO 500CC PARA 50 LITROS', sku: 'QD-DSDR-500CC-3U', cat: 'DESODORANTES PARA PISOS PARA 50 LITROS' },
+                { title: 'DESODORANTE DE PISO 500CC PARA 50 LITROS', sku: 'QD-DSDR-500CC-1U', cat: 'DESODORANTES PARA PISOS PARA 50 LITROS' },
+                { title: 'DESODORANTE DE PISO 100CC PARA 5 LITROS', sku: 'QD-DSDR-100CC-5L', cat: 'DESODORANTES PARA PISOS 5 LITROS' },
+                { title: 'DESODORANTE DE PISO PARA 5LT JAZMIN', sku: 'QD-DSDR-5L-JAZMIN', cat: 'DESODORANTES DE PISO 5 LITROS' },
+                { title: 'DESODORANTE DE PISO PARA 5LT EUCALIPTO', sku: 'QD-DSDR-5L-EUCALIPTO', cat: 'DESODORANTES DE PISO 5 LITROS' },
                 { title: 'DESODORANTE DE PISO 5 LITROS CONCENTRADO', sku: 'QD-DSDR-5L-001', cat: 'DESODORANTES DE PISO' },
                 { title: 'JABON LIQUIDO PARA ROPA CONCENTRADO 50 LITROS', sku: 'QD-JBN-50L-001', cat: 'JABONES LIQUIDOS' },
                 { title: 'SUAVIZANTE DE TELAS PREMIUM 50 LITROS', sku: 'QD-SVZ-50L-002', cat: 'SUAVIZANTES' },
                 { title: 'DETERGENTE AMARILLO LIMON CONCENTRADO 5L', sku: 'QD-DTG-LIM-5L', cat: 'DETERGENTES' },
-                { title: 'AROMATIZANTE AMBIENTAL Y TEXTIL 500CC', sku: 'QD-ARM-500CC', cat: 'AROMATIZANTES' }
+                { title: 'AROMATIZANTE AMBIENTAL Y TEXTIL 500CC', sku: 'QD-ARM-500CC', cat: 'AROMATIZANTES' },
+                { title: 'LAVANDINA CONCENTRADA EN GEL 5L', sku: 'QD-LVD-GEL-5L', cat: 'LAVANDINAS' },
+                { title: 'DESENGRASANTE MULTIUSO NARANJA 5L', sku: 'QD-DSN-NAR-5L', cat: 'DESENGRASANTES' },
+                { title: 'CLORO LIQUIDO CONCENTRADO PARA PILETAS 10L', sku: 'QD-CLR-10L', cat: 'PRODUCTOS PARA PILETA' },
+                { title: 'ALGUICIDA Y CLARIFICANTE PARA PILETAS 5L', sku: 'QD-ALG-5L', cat: 'PRODUCTOS PARA PILETA' }
             ];
 
             if (window.combosDataCache && Array.isArray(window.combosDataCache)) {
@@ -4133,7 +4147,11 @@
                 });
             }
 
-            const matches = prods.filter(p => p.title.toLowerCase().includes(query) || (p.sku && p.sku.toLowerCase().includes(query)));
+            // Fuzzy Token Matcher: Every token typed must be present in title, sku, or cat
+            const matches = prods.filter(p => {
+                const combined = `${p.title || ''} ${p.sku || ''} ${p.cat || ''}`.toLowerCase();
+                return tokens.every(token => combined.includes(token));
+            });
 
             if (matches.length > 0) {
                 const uniqueMap = new Map();
@@ -4141,14 +4159,14 @@
                 const uniqueMatches = Array.from(uniqueMap.values());
 
                 resultsDiv.innerHTML = uniqueMatches.map(p => `
-                    <div onclick="seleccionarProductoAtributos('${p.sku}', '${(p.title||'').replace(/'/g, "\'")}', '${(p.cat||'').replace(/'/g, "\'")}')" class="p-3 hover:bg-amber-500/20 cursor-pointer border-b border-white/10 transition-colors">
+                    <div onclick="seleccionarProductoAtributos('${p.sku}', '${(p.title||'').replace(/'/g, "\\'")}', '${(p.cat||'').replace(/'/g, "\\'")}')" class="p-3 hover:bg-amber-500/20 cursor-pointer border-b border-white/10 transition-colors">
                         <p class="font-bold text-xs text-white">${p.title}</p>
                         <p class="text-[10px] text-amber-300 font-mono">SKU: ${p.sku} — ${p.cat}</p>
                     </div>
                 `).join('');
                 resultsDiv.classList.remove('hidden');
             } else {
-                resultsDiv.innerHTML = `<div class="p-3 text-xs text-gray-400 italic">No se encontraron productos para "${val}". Podés ingresar atributos para el producto seleccionado.</div>`;
+                resultsDiv.innerHTML = `<div class="p-3 text-xs text-gray-400 italic">No se encontraron coincidencias para "${val}". Intenta buscar palabras claves como "desodorante", "piso", "jabon".</div>`;
                 resultsDiv.classList.remove('hidden');
             }
         }
