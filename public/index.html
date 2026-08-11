@@ -179,13 +179,13 @@
                     <button id="tab-catalogo-btn" onclick="switchTab('catalogo')" class="tab-inactive px-4 py-2.5 rounded-xl font-title text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1">
                         <span class="material-symbols-outlined text-[16px] text-blue-400">edit_calendar</span> Catálogo e IA
                     </button>
-                                        <button id="tab-clientes-btn" onclick="switchTab('clientes')" class="tab-inactive px-4 py-2.5 rounded-xl font-title text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1">
+                                                            <button id="tab-clientes-btn" onclick="switchTab('clientes')" class="tab-inactive px-4 py-2.5 rounded-xl font-title text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1">
                         <span class="material-symbols-outlined text-[16px] text-purple-400">group</span> Clientes
                     </button>
-                    <button id="tab-users-btn" onclick="switchTab('users')" class="tab-inactive px-4 py-2.5 rounded-xl font-title text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1 bg-amber-500/10 border border-amber-500/30 text-amber-300">
+                    <button id="tab-users-btn" onclick="switchTab('users')" class="tab-inactive px-4 py-2.5 rounded-xl font-title text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1">
                         <span class="material-symbols-outlined text-[16px] text-amber-400">admin_panel_settings</span> Gestión de Usuarios
                     </button>
-                    <button id="tab-audit-btn" onclick="switchTab('audit')" class="tab-inactive px-4 py-2.5 rounded-xl font-title text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1 bg-purple-500/10 border border-purple-500/30 text-purple-300">
+                    <button id="tab-audit-btn" onclick="switchTab('audit')" class="tab-inactive px-4 py-2.5 rounded-xl font-title text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1">
                         <span class="material-symbols-outlined text-[16px] text-purple-400">history</span> Registro de Auditoría
                     </button>
                 </div>
@@ -1315,6 +1315,80 @@
                     </div>
                 </div>
             </div>
+
+        
+            <!-- VISTA: GESTIÓN DE USUARIOS -->
+            <section id="view-users" class="hidden space-y-6">
+                <div class="glass-panel p-6 rounded-2xl border border-white/10 flex flex-col sm:flex-row justify-between items-center gap-4 shadow-xl">
+                    <div>
+                        <h2 class="font-title text-xl font-bold uppercase text-white flex items-center gap-2">
+                            <span class="material-symbols-outlined text-amber-400">admin_panel_settings</span>
+                            <span>Gestión de Usuarios y Roles (Dirección)</span>
+                        </h2>
+                        <p class="text-xs text-gray-400 mt-1">Creá cuentas de empleados, asigná roles (Director, Dirección, Gestión) y configurá accesos.</p>
+                    </div>
+                    <button onclick="abrirModalNuevoUsuarioCRM()" class="px-5 py-3 rounded-xl bg-brand-yellow text-primary-dark font-title text-xs font-extrabold uppercase tracking-wider hover:bg-yellow-400 transition-all flex items-center gap-1.5 shadow-lg">
+                        <span class="material-symbols-outlined text-lg">person_add</span> + Crear Usuario
+                    </button>
+                </div>
+
+                <div class="glass-panel rounded-2xl overflow-hidden border border-white/10 shadow-2xl">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-black/50 text-gray-300 uppercase font-title font-bold border-b border-white/10">
+                            <tr>
+                                <th class="p-4">Usuario</th>
+                                <th class="p-4">Rol Asignado</th>
+                                <th class="p-4">Permisos Habilitados</th>
+                                <th class="p-4 text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="crm-users-table-body" class="divide-y divide-white/5">
+                            <tr class="hover:bg-white/5">
+                                <td class="p-4 font-bold text-white">Director General<br><span class="text-gray-400 font-normal">quimicadecweb@gmail.com</span></td>
+                                <td class="p-4"><span class="px-3 py-1 rounded-full text-[10px] uppercase font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">Director</span></td>
+                                <td class="p-4 text-emerald-400">• Precios • Stock • Auditoría • Exportar Clientes</td>
+                                <td class="p-4 text-center"><span class="text-xs text-gray-500 italic">Super Admin</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- VISTA: REGISTRO DE AUDITORÍA -->
+            <section id="view-audit" class="hidden space-y-6">
+                <div class="glass-panel p-6 rounded-2xl border border-white/10 shadow-xl">
+                    <h2 class="font-title text-xl font-bold uppercase text-white flex items-center gap-2 mb-1">
+                        <span class="material-symbols-outlined text-purple-400">history</span>
+                        <span>Registro de Auditoría de Acciones</span>
+                    </h2>
+                    <p class="text-xs text-gray-400 mb-6">Historial en tiempo real de cambios de precios, productos, imágenes, usuarios y accesos.</p>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-black/50 text-gray-300 uppercase font-title font-bold border-b border-white/10">
+                                <tr>
+                                    <th class="p-3.5">Fecha / Hora</th>
+                                    <th class="p-3.5">Usuario</th>
+                                    <th class="p-3.5">Rol</th>
+                                    <th class="p-3.5">Acción</th>
+                                    <th class="p-3.5">Detalles del Cambio</th>
+                                    <th class="p-3.5">IP</th>
+                                </tr>
+                            </thead>
+                            <tbody id="crm-audit-table-body" class="divide-y divide-white/5">
+                                <tr class="hover:bg-white/5">
+                                    <td class="p-3.5 text-gray-400 font-mono">2026-08-11 10:45</td>
+                                    <td class="p-3.5 font-bold text-white">Director General<br><span class="text-[10px] text-gray-400">quimicadecweb@gmail.com</span></td>
+                                    <td class="p-3.5"><span class="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-amber-500/20 text-amber-300">Director</span></td>
+                                    <td class="p-3.5 font-mono text-brand-yellow font-bold">SYSTEM_INIT</td>
+                                    <td class="p-3.5 text-gray-300">Módulo de Auditoría y Control Inicializado</td>
+                                    <td class="p-3.5 font-mono text-gray-500 text-[10px]">127.0.0.1</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
 
         </main>
 
