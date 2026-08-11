@@ -3004,7 +3004,7 @@
             if (tab === 'audit') cargarRegistroAuditoriaCRM();
         }
 
-        function cargarVisorCombos() {
+        async function cargarVisorCombos() {
             const container = document.getElementById('visor-combos-container');
             if (!container) return;
             container.innerHTML = `<div class="col-span-full text-center py-6 text-purple-300/60 text-xs font-bold animate-pulse">⏳ Cargando datos de combos desde WooCommerce...</div>`;
