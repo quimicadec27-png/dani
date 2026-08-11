@@ -187,6 +187,41 @@
         'div[class*="crm-plugin"],div[id*="crm-plugin"]{',
             'display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important;',
         '}',
+        
+        .dani-history-toggle{
+            background:rgba(255,255,255,0.06);
+            border:1px solid rgba(255,255,255,0.12);
+            color:#cbd5e1;
+            padding:6px 12px;
+            border-radius:10px;
+            font-size:0.75rem;
+            font-weight:600;
+            cursor:pointer;
+            transition:all 0.2s;
+            margin:6px auto 10px auto;
+            display:flex;
+            align-items:center;
+            gap:6px;
+            align-self:center;
+        }
+        .dani-history-toggle:hover{
+            background:rgba(245,196,0,0.15);
+            border-color:rgba(245,196,0,0.4);
+            color:#f5c400;
+        }
+        .dani-history-box{
+            display:none;
+            flex-direction:column;
+            gap:10px;
+            width:100%;
+            padding-bottom:10px;
+            border-bottom:1px dashed rgba(255,255,255,0.15);
+            margin-bottom:10px;
+        }
+        .dani-history-box.dani-history-visible{
+            display:flex;
+        }
+
         /* Auto-expandir subcategorías en el filtro para eliminar el doble clic */
         'div[class*="subcat"] ul, div[class*="subcat"] div, [class*="otras-subcat"] + div, details[class*="subcat"] > div {',
             'display:block!important;visibility:visible!important;opacity:1!important;',
@@ -260,36 +295,54 @@
             return;
         }
 
-        // Restaurar estado de la ventana (abierta/cerrada)
-        var savedOpen = sessionStorage.getItem('dani_chat_open');
-        if (savedOpen === 'true') {
-            win.classList.add('dani-active');
-        }
+        // NUNCA auto-abrir la ventana del chat en recargas ni pestañas (siempre empieza cerrada y limpia)
+        win.classList.remove('dani-active');
 
-        // Mostrar CTA si corresponde (usando sessionStorage para que se muestre en nuevas visitas o recargas)
+        // Mostrar CTA discreto solo si no fue descartado
         var ctaTimeout = null;
-        if (cta && sessionStorage.getItem('dani_cta_dismissed') !== 'true' && savedOpen !== 'true') {
+        if (cta && sessionStorage.getItem('dani_cta_dismissed') !== 'true') {
             ctaTimeout = setTimeout(function () {
-                cta.classList.add('dani-cta-visible');
-            }, 3000);
+                if (!win.classList.contains('dani-active')) {
+                    cta.classList.add('dani-cta-visible');
+                }
+            }, 4000);
         }
 
-        // Restaurar historial de conversación
+        // Restaurar historial en el contenedor desplegable "Ver conversación anterior"
+        var historyToggleBtn = document.getElementById('dani-history-toggle-btn');
+        var historyBox = document.getElementById('dani-history-box');
+
         var savedHistory = sessionStorage.getItem('dani_chat_history');
-        if (savedHistory) {
+        if (savedHistory && historyBox && historyToggleBtn) {
             try {
                 var parsed = JSON.parse(savedHistory);
                 if (parsed && parsed.length > 0) {
                     history = parsed;
-                    msgs.innerHTML = ''; // Limpiar el saludo por defecto
-                    for (var h = 0; h < history.length; h++) {
-                        var item = history[h];
+                    historyToggleBtn.style.display = 'flex';
+                    historyToggleBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px">history</span> Ver conversación anterior (' + parsed.length + ' mensajes)';
+                    
+                    historyBox.innerHTML = '';
+                    for (var h = 0; h < parsed.length; h++) {
+                        var item = parsed[h];
                         var sender = item.role === 'model' ? 'ai' : 'user';
-                        appendMsg(item.parts[0].text, sender);
+                        var d = document.createElement('div');
+                        d.className = 'dm dm-' + sender;
+                        d.innerHTML = formatMsgText(item.parts[0].text);
+                        historyBox.appendChild(d);
                     }
+
+                    historyToggleBtn.onclick = function() {
+                        var isVis = historyBox.classList.contains('dani-history-visible');
+                        if (isVis) {
+                            historyBox.classList.remove('dani-history-visible');
+                            historyToggleBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px">history</span> Ver conversación anterior (' + parsed.length + ' mensajes)';
+                        } else {
+                            historyBox.classList.add('dani-history-visible');
+                            historyToggleBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px">unfold_less</span> Ocultar conversación anterior';
+                        }
+                    };
                 }
             } catch (e) {
-                console.error('Dani: Error al restaurar historial', e);
                 history = [];
             }
         }
