@@ -4021,7 +4021,7 @@
         }
 
         function switchCatSubTab(subtab) {
-            const subtabs = ['combos', 'ofertas', 'banners', 'single', 'excel', 'ia', 'sync'];
+            const subtabs = ['combos', 'atributos', 'ofertas', 'banners', 'single', 'excel', 'ia', 'sync'];
             subtabs.forEach(s => {
                 const content = document.getElementById(`subtab-content-${s}`);
                 const btn = document.getElementById(`btn-subtab-${s}`);
@@ -4039,6 +4039,7 @@
             }
 
             if (subtab === 'combos') cargarVisorCombos();
+            if (subtab === 'atributos') cargarTablaAtributos();
             if (subtab === 'ofertas') cargarVisorOfertas();
             if (subtab === 'banners') renderBannersGridUI();
         }
