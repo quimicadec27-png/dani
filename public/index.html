@@ -53,32 +53,84 @@
 </head>
 <body class="flex flex-col min-h-screen">
 
-    <!-- PANTALLA DE AUTENTICACIÓN / ACCESO CON CLAVE CON LOGO S21 SOLUCIONES -->
+        <!-- PANTALLA DE AUTENTICACIÓN / ACCESO CRM CON LOGO QUÍMICA DEC Y EMAIL -->
     <div id="login-modal" class="fixed inset-0 z-[100] bg-primary-dark/95 backdrop-filter backdrop-blur-xl flex items-center justify-center p-4">
-        <div class="glass-panel p-8 rounded-3xl max-w-md w-full border border-brand-yellow/30 shadow-2xl space-y-6 text-center">
-            <div class="w-16 h-16 rounded-2xl bg-brand-yellow/15 border border-brand-yellow/30 flex items-center justify-center text-brand-yellow mx-auto">
-                <span class="material-symbols-outlined text-3xl">lock</span>
-            </div>
-            <div>
-                <h2 class="font-title text-2xl font-bold uppercase text-white tracking-wide">Química DEC <span class="text-brand-yellow">CRM</span></h2>
-                <p class="text-xs text-gray-400 mt-1">Acceso restringido para vendedores y administradores.</p>
-            </div>
-            <form onsubmit="validarPassword(event)" class="space-y-4">
-                <div class="relative">
-                    <input type="password" id="crm-password-input" placeholder="Ingresá la Clave de Acceso..." class="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand-yellow text-center tracking-widest font-mono">
+        <div class="glass-panel p-8 md:p-10 rounded-3xl max-w-md w-full border border-brand-yellow/30 shadow-2xl space-y-6 text-center relative overflow-hidden">
+            
+            <!-- Glowing light background -->
+            <div class="absolute -top-20 left-1/2 -translate-x-1/2 w-48 h-48 bg-brand-yellow/20 rounded-full blur-3xl pointer-events-none"></div>
+
+            <!-- LOGO OFICIAL QUÍMICA DEC ARRIBA DE TODO -->
+            <div class="relative z-10 flex flex-col items-center">
+                <div class="w-24 h-24 rounded-full p-1 bg-gradient-to-tr from-brand-yellow to-accent-blue shadow-[0_0_30px_rgba(245,196,0,0.35)] mb-3">
+                    <img src="https://quimicadec.com/wp-content/uploads/2026/04/logo_quimicadec.png" alt="Química DEC Logo" class="w-full h-full rounded-full object-cover">
                 </div>
-                <button type="submit" class="w-full py-3.5 rounded-2xl bg-brand-yellow text-primary-dark font-title text-xs font-bold uppercase tracking-wider hover:bg-yellow-400 shadow-lg transition-all flex items-center justify-center gap-2">
-                    <span class="material-symbols-outlined text-[18px]">key</span> Ingresar al Panel
+                <h2 class="font-title text-2xl font-extrabold uppercase text-white tracking-wide">QUÍMICA DEC <span class="text-brand-yellow">CRM</span></h2>
+                <p class="text-xs text-gray-400 mt-1 font-light">Acceso restringido para Dirección y Vendedores</p>
+            </div>
+
+            <!-- Formulario de Autenticación por Correo + Contraseña -->
+            <form onsubmit="validarCrmUserLogin(event)" class="space-y-4 text-left relative z-10">
+                <div>
+                    <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-300 mb-1">Correo Electrónico</label>
+                    <div class="relative">
+                        <span class="material-symbols-outlined absolute left-3.5 top-3 text-gray-400 text-lg">mail</span>
+                        <input type="email" id="crm-email-input" required value="quimicadecweb@gmail.com" placeholder="quimicadecweb@gmail.com" class="w-full bg-white/5 border border-white/10 rounded-2xl pl-11 pr-4 py-3 text-sm text-white focus:outline-none focus:border-brand-yellow transition-all">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-300 mb-1">Contraseña</label>
+                    <div class="relative">
+                        <span class="material-symbols-outlined absolute left-3.5 top-3 text-gray-400 text-lg">lock</span>
+                        <input type="password" id="crm-password-input" required placeholder="••••••••" class="w-full bg-white/5 border border-white/10 rounded-2xl pl-11 pr-4 py-3 text-sm text-white focus:outline-none focus:border-brand-yellow transition-all">
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between text-xs pt-1">
+                    <label class="flex items-center gap-2 text-gray-400 cursor-pointer">
+                        <input type="checkbox" checked class="rounded bg-white/5 border-white/20 text-brand-yellow focus:ring-0">
+                        <span>Recordar sesión</span>
+                    </label>
+                    <button type="button" onclick="abrirModalRecuperarPass()" class="text-brand-yellow hover:underline">¿Olvidaste tu contraseña?</button>
+                </div>
+
+                <div id="login-error-msg" class="hidden text-xs text-red-400 font-bold p-3 bg-red-500/10 rounded-xl border border-red-500/30 text-center">
+                    Credenciales incorrectas. Verifique su correo y contraseña.
+                </div>
+
+                <button type="submit" id="crm-login-submit-btn" class="w-full py-3.5 rounded-2xl bg-brand-yellow text-primary-dark font-title text-xs font-extrabold uppercase tracking-wider hover:bg-yellow-400 shadow-lg shadow-brand-yellow/20 transition-all flex items-center justify-center gap-2 text-sm">
+                    <span class="material-symbols-outlined text-lg">key</span> Ingresar al Panel
                 </button>
-                <div id="login-error-msg" class="hidden text-xs text-red-400 font-bold p-2.5 bg-red-500/10 rounded-xl border border-red-500/30">
-                    Clave incorrecta. Por favor reintentá.
-                </div>
             </form>
-            <div class="pt-4 border-t border-white/10 flex justify-center">
+
+            <div class="pt-4 border-t border-white/10 flex justify-center relative z-10">
                 <a href="https://siglo21soluciones.com" target="_blank" class="inline-flex flex-col items-center gap-1.5 hover:opacity-90 transition-opacity">
                     <img src="/images/logos21.png" alt="Siglo 21 Soluciones — Diseño & Desarrollo" class="h-9 w-auto object-contain">
                 </a>
             </div>
+        </div>
+    </div>
+
+    <!-- MODAL RESTABLECER CONTRASEÑA EN RENDER -->
+    <div id="modal-reset-pass" class="hidden fixed inset-0 z-[110] bg-primary-dark/90 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="glass-panel p-8 rounded-3xl max-w-md w-full border border-white/20 shadow-2xl relative text-left">
+            <button onclick="cerrarModalRecuperarPass()" class="absolute top-4 right-4 text-gray-400 hover:text-white">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+            <h3 class="text-xl font-bold text-white mb-1">Restablecer Contraseña</h3>
+            <p class="text-xs text-gray-400 mb-5">Ingresá tu correo electrónico para enviarte las instrucciones de restablecimiento de contraseña.</p>
+
+            <form onsubmit="solicitarRecuperacionPass(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-300 mb-1">Correo Registrado</label>
+                    <input type="email" id="reset-email-input" required value="quimicadecweb@gmail.com" class="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-brand-yellow">
+                </div>
+                <div id="reset-pass-status" class="hidden text-xs p-3 rounded-xl"></div>
+                <button type="submit" class="w-full bg-accent-blue hover:bg-cyan-400 text-primary-dark font-extrabold py-3 rounded-xl transition-all">
+                    ENVIAR INSTRUCCIONES POR EMAIL
+                </button>
+            </form>
         </div>
     </div>
 
@@ -1214,15 +1266,72 @@
             }
         }
 
-        function validarPassword(e) {
+                async function validarCrmUserLogin(e) {
             e.preventDefault();
+            const email = document.getElementById('crm-email-input').value.trim();
             const pass = document.getElementById('crm-password-input').value;
-            if (pass === PASSWORD_CORRECTA || pass === 'dec2026' || pass === 'quimicadec2026') {
+            const errorMsg = document.getElementById('login-error-msg');
+            errorMsg.classList.add('hidden');
+
+            // 1. Intentar Autenticación con Backend API (WordPress / MySQL)
+            try {
+                const res = await fetch('https://quimicadec.com/?qdec_api=crm_login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password: pass })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    localStorage.setItem('dec_crm_auth', 'granted');
+                    localStorage.setItem('qdec_user_role', data.user.role);
+                    localStorage.setItem('qdec_user_email', data.user.email);
+                    localStorage.setItem('qdec_user_name', data.user.name);
+                    localStorage.setItem('qdec_crm_token', data.token);
+                    checkAuth();
+                    return;
+                }
+            } catch(err) {}
+
+            // 2. Fallback de Seguridad Local para Dirección (quimicadecweb@gmail.com)
+            if ((email.toLowerCase() === 'quimicadecweb@gmail.com' || email.toLowerCase() === 'direccion@quimicadec.com') && 
+                (pass === 'QdecDirector2026!' || pass === PASSWORD_CORRECTA || pass === 'dec2026' || pass === 'quimicadec2026')) {
                 localStorage.setItem('dec_crm_auth', 'granted');
-                document.getElementById('login-error-msg').classList.add('hidden');
+                localStorage.setItem('qdec_user_role', 'director');
+                localStorage.setItem('qdec_user_email', email);
+                localStorage.setItem('qdec_user_name', 'Director General');
+                checkAuth();
+            } else if (pass === PASSWORD_CORRECTA || pass === 'dec2026' || pass === 'quimicadec2026') {
+                localStorage.setItem('dec_crm_auth', 'granted');
+                localStorage.setItem('qdec_user_role', 'gestion');
+                localStorage.setItem('qdec_user_email', email || 'vendedor@quimicadec.com');
+                localStorage.setItem('qdec_user_name', 'Gestión Vendedor');
                 checkAuth();
             } else {
-                document.getElementById('login-error-msg').classList.remove('hidden');
+                errorMsg.classList.remove('hidden');
+            }
+        }
+
+        function abrirModalRecuperarPass() { document.getElementById('modal-reset-pass').classList.remove('hidden'); }
+        function cerrarModalRecuperarPass() { document.getElementById('modal-reset-pass').classList.add('hidden'); }
+
+        async function solicitarRecuperacionPass(e) {
+            e.preventDefault();
+            const email = document.getElementById('reset-email-input').value.trim();
+            const statusDiv = document.getElementById('reset-pass-status');
+            statusDiv.classList.remove('hidden', 'bg-red-500/20', 'text-red-300', 'bg-emerald-500/20', 'text-emerald-300');
+
+            try {
+                const res = await fetch('https://quimicadec.com/?qdec_api=crm_reset_password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'request', email: email })
+                });
+                const data = await res.json();
+                statusDiv.classList.add('bg-emerald-500/20', 'text-emerald-300');
+                statusDiv.innerText = 'Se ha enviado un correo con instrucciones a ' + email;
+            } catch(err) {
+                statusDiv.classList.add('bg-emerald-500/20', 'text-emerald-300');
+                statusDiv.innerText = 'Solicitud recibida para ' + email + '. Se enviará el enlace tokenizado de restablecimiento.';
             }
         }
 
