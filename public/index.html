@@ -2222,1840 +2222,48 @@
             } catch (e) {}
         }
 
-        // =========================================================================
-        // GESTIÓN Y LÓGICA DEL EMBUDO DE PEDIDOS POR PESTAÑAS VERTICALES
-        let currentEmbudoEtapa = 'Presupuesto';
-        let productosCatalogoCache = [];
-
-        function switchEmbudoEtapa(etapa) {
-            currentEmbudoEtapa = etapa;
-            const etapasKeys = ['Presupuesto', 'Confirmado', 'Pagado', 'Despachado', 'Cancelado'];
-
-            // Actualizar clases de botones laterales
-            etapasKeys.forEach(e => {
-                const keyLower = e.toLowerCase();
-                const btn = document.getElementById(`etapa-tab-${keyLower}`);
-                if (!btn) return;
-
-                if (e === etapa) {
-                    const colorMap = {
-                        'Presupuesto': 'bg-brand-yellow/20 text-brand-yellow border-brand-yellow/30 shadow-md',
-                        'Confirmado': 'bg-blue-500/20 text-blue-300 border-blue-500/30 shadow-md',
-                        'Pagado': 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30 shadow-md',
-                        'Despachado': 'bg-purple-500/20 text-purple-300 border-purple-500/30 shadow-md',
-                        'Cancelado': 'bg-red-500/20 text-red-300 border-red-500/30 shadow-md'
-                    };
-                    btn.className = `w-full px-3.5 py-3 rounded-xl font-title text-xs font-bold transition-all flex items-center justify-between border ${colorMap[e] || 'bg-brand-yellow/20 text-brand-yellow border-brand-yellow/30'}`;
-                } else {
-                    btn.className = "w-full px-3.5 py-3 rounded-xl font-title text-xs font-bold transition-all flex items-center justify-between bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white border border-white/5";
-                }
-            });
-
-            const btnKanbanGlobal = document.getElementById('etapa-tab-kanban-global');
-            const vistaLista = document.getElementById('embudo-vista-lista');
-            const vistaKanbanGlobal = document.getElementById('embudo-vista-kanban-global');
-
-            if (etapa === 'kanban-global') {
-                if (btnKanbanGlobal) btnKanbanGlobal.className = "w-full px-3.5 py-2.5 rounded-xl font-title text-[11px] font-bold transition-all flex items-center justify-between bg-blue-500/20 text-blue-300 border border-blue-500/30 shadow-md";
-                if (vistaLista) vistaLista.classList.add('hidden');
-                if (vistaKanbanGlobal) vistaKanbanGlobal.classList.remove('hidden');
-            } else {
-                if (btnKanbanGlobal) btnKanbanGlobal.className = "w-full px-3.5 py-2.5 rounded-xl font-title text-[11px] font-bold transition-all flex items-center justify-between bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 border border-white/5";
-                if (vistaLista) vistaLista.classList.remove('hidden');
-                if (vistaKanbanGlobal) vistaKanbanGlobal.classList.add('hidden');
-            }
-
-            renderKanban();
-        }
-
-        function filtrarPedidosEmbudo() {
-            if (!pedidosData) return;
-
-            const searchText = (document.getElementById('embudo-search-input')?.value || '').toLowerCase().trim();
-            const periodo = document.getElementById('embudo-filter-periodo')?.value || 'todo';
-            const desde = document.getElementById('embudo-filter-desde')?.value || '';
-            const hasta = document.getElementById('embudo-filter-hasta')?.value || '';
-
-            const now = new Date();
-            const todayStr = now.toISOString().split('T')[0];
-
-            // 1. Filtrar en memoria por fecha y búsqueda
-            const filtered = pedidosData.filter(p => {
-                // Filtro por texto
-                if (searchText) {
-                    const cNombre = (p.clientes?.razon_social || '').toLowerCase();
-                    const cPhone = (p.clientes?.whatsapp || '').toLowerCase();
-                    const orderId = String(p.woocommerce_order_id || p.id || '').toLowerCase();
-                    const match = cNombre.includes(searchText) || cPhone.includes(searchText) || orderId.includes(searchText);
-                    if (!match) return false;
-                }
-
-                // Filtro por fecha
-                if (p.creado_el) {
-                    const pDateStr = p.creado_el.split('T')[0];
-                    if (periodo === 'hoy' && pDateStr !== todayStr) return false;
-                    
-                    if (periodo === 'semana') {
-                        const pDate = new Date(p.creado_el);
-                        const diffDays = (now - pDate) / (1000 * 60 * 60 * 24);
-                        if (diffDays > 7) return false;
-                    }
-
-                    if (periodo === 'mes') {
-                        const currentMonthStr = todayStr.substring(0, 7);
-                        if (!pDateStr.startsWith(currentMonthStr)) return false;
-                    }
-
-                    if (desde && pDateStr < desde) return false;
-                    if (hasta && pDateStr > hasta) return false;
-                }
-
-                return true;
-            });
-
-            // 2. Mapear contadores por etapa
-            const counts = { Presupuesto: 0, Confirmado: 0, Pagado: 0, Despachado: 0, Cancelado: 0 };
-            const sums = { Presupuesto: 0, Confirmado: 0, Pagado: 0, Despachado: 0, Cancelado: 0 };
-            const itemsByStage = { Presupuesto: [], Confirmado: [], Pagado: [], Despachado: [], Cancelado: [] };
-
-            filtered.forEach(p => {
-                let est = p.estado || 'Presupuesto';
-                if (est.includes('Despachado') || est.includes('Entregado')) est = 'Despachado';
-                if (!counts.hasOwnProperty(est)) est = 'Presupuesto';
-
-                counts[est]++;
-                sums[est] += parseFloat(p.monto_total || 0);
-                itemsByStage[est].push(p);
-            });
-
-            // Actualizar Badges
-            document.getElementById('badge-count-presupuesto').innerText = counts.Presupuesto;
-            document.getElementById('badge-count-confirmado').innerText = counts.Confirmado;
-            document.getElementById('badge-count-pagado').innerText = counts.Pagado;
-            document.getElementById('badge-count-despachado').innerText = counts.Despachado;
-            document.getElementById('badge-count-cancelado').innerText = counts.Cancelado;
-
-            // En la vista Kanban Global
-            if (document.getElementById('col-count-presupuestos')) document.getElementById('col-count-presupuestos').innerText = counts.Presupuesto;
-            if (document.getElementById('col-count-confirmados')) document.getElementById('col-count-confirmados').innerText = counts.Confirmado;
-            if (document.getElementById('col-count-pagados')) document.getElementById('col-count-pagados').innerText = counts.Pagado;
-            if (document.getElementById('col-count-despachados')) document.getElementById('col-count-despachados').innerText = counts.Despachado;
-            if (document.getElementById('col-count-cancelados')) document.getElementById('col-count-cancelados').innerText = counts.Cancelado;
-
-            // Actualizar Monto Total de Etapa Seleccionada
-            const activeEst = currentEmbudoEtapa === 'kanban-global' ? 'Presupuesto' : currentEmbudoEtapa;
-            const activeSum = sums[activeEst] || 0;
-            const montoFormatted = activeSum.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' });
-            const elMontoTotal = document.getElementById('embudo-monto-etapa-total');
-            if (elMontoTotal) elMontoTotal.innerText = montoFormatted;
-
-            // Renderizar Lista Detallada de la Etapa Seleccionada
-            const containerLista = document.getElementById('embudo-lista-pedidos');
-            if (containerLista && currentEmbudoEtapa !== 'kanban-global') {
-                const listItems = itemsByStage[currentEmbudoEtapa] || [];
-
-                if (listItems.length === 0) {
-                    containerLista.innerHTML = `<div class="glass-panel p-12 text-center text-gray-500 text-xs font-light rounded-2xl">No hay pedidos en la etapa ${currentEmbudoEtapa}.</div>`;
-                } else {
-                    containerLista.innerHTML = listItems.map(p => {
-                        const clienteNombre = p.clientes ? p.clientes.razon_social : 'Cliente Web';
-                        const clientePhone = p.clientes ? (p.clientes.whatsapp || '') : '';
-                        const waLimpio = clientePhone.replace(/[^0-9]/g, '');
-                        const montoStr = parseFloat(p.monto_total || 0).toLocaleString('es-AR', { style: 'currency', currency: 'ARS' });
-                        const fechaStr = formatFechaAR(p.creado_el);
-                        const itemsPedido = p.items_pedido || [];
-                        const esPagado = (p.estado === 'Pagado');
-                        const esCancelado = (p.estado === 'Cancelado');
-
-                        let notaPedido = '';
-                        if (p.origen && p.origen.includes('| Nota:')) {
-                            notaPedido = p.origen.split('| Nota:')[1].trim();
-                        }
-                        if (itemsPedido.length > 0) {
-                            const firstItemNote = itemsPedido.find(it => it.variacion_tamano && it.variacion_tamano.includes('Nota:'));
-                            if (firstItemNote) {
-                                notaPedido = firstItemNote.variacion_tamano.replace(/^Nota:\s*/i, '').trim();
-                            }
-                        }
-
-                        return `
-                            <div class="glass-panel p-5 rounded-2xl space-y-4 border border-white/10 hover:border-white/20 transition-all shadow-md">
-                                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-white/10 pb-3">
-                                    <div class="flex items-center gap-3">
-                                        <span class="px-2.5 py-1 rounded-lg text-xs font-bold bg-white/10 text-brand-yellow font-mono">
-                                            #${p.woocommerce_order_id || p.id.substring(0, 8)}
-                                        </span>
-                                        <div>
-                                            <h4 class="font-bold text-sm text-white">${clienteNombre}</h4>
-                                            ${clientePhone ? `
-                                                <a href="https://wa.me/${waLimpio}" target="_blank" class="text-[11px] text-emerald-400 font-mono hover:underline flex items-center gap-1">
-                                                    📲 ${clientePhone}
-                                                </a>
-                                            ` : ''}
-                                        </div>
-                                    </div>
-
-                                    <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
-                                        <span class="text-xs text-gray-400">${fechaStr}</span>
-                                        <div class="flex items-center gap-1.5">
-                                            <span class="text-[10px] uppercase font-bold text-gray-400">Mover a:</span>
-                                            <select onchange="cambiarEstadoPedido('${p.id}', this.value)" class="bg-black/50 border border-white/10 rounded-lg px-2 py-1 text-[11px] text-white focus:outline-none focus:border-brand-yellow">
-                                                <option value="Presupuesto" ${p.estado === 'Presupuesto' ? 'selected' : ''}>📋 Presupuesto</option>
-                                                <option value="Confirmado" ${p.estado === 'Confirmado' ? 'selected' : ''}>🔵 Confirmado</option>
-                                                <option value="Pagado" ${p.estado === 'Pagado' ? 'selected' : ''}>🟢 Pagado</option>
-                                                <option value="Despachado" ${p.estado === 'Despachado' ? 'selected' : ''}>🟣 Despachado / Entregado</option>
-                                                <option value="Cancelado" ${p.estado === 'Cancelado' ? 'selected' : ''}>🔴 Cancelado</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- NOTAS U OBSERVACIONES DEL PEDIDO SI EXISTEN -->
-                                ${notaPedido ? `
-                                    <div class="p-2.5 rounded-xl bg-amber-400/10 border border-amber-400/30 text-amber-300 text-xs flex items-center gap-2">
-                                        <span class="material-symbols-outlined text-[18px] text-amber-400">edit_note</span>
-                                        <div>
-                                            <strong class="uppercase text-[10px] block opacity-80 text-amber-400 font-bold">Observaciones / Notas del Pedido:</strong>
-                                            <span>${notaPedido}</span>
-                                        </div>
-                                    </div>
-                                ` : ''}
-
-                                <!-- DETALLE DE PRODUCTOS DEL PEDIDO -->
-                                <div class="space-y-2">
-                                    <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Items Solicitados (${itemsPedido.length}):</span>
-                                    ${itemsPedido.length > 0 ? `
-                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                            ${itemsPedido.map(it => `
-                                                <div class="p-2.5 rounded-xl bg-white/5 border border-white/5 flex justify-between items-center text-xs">
-                                                    <div>
-                                                        <span class="font-bold text-white block">${it.producto_nombre || 'Producto'}</span>
-                                                        ${it.variacion_tamano ? `<span class="text-[10px] text-gray-400 block">${it.variacion_tamano}</span>` : ''}
-                                                    </div>
-                                                    <div class="text-right">
-                                                        <span class="text-brand-yellow font-bold">${it.cantidad}x $${parseFloat(it.precio_unitario || 0).toLocaleString('es-AR')}</span>
-                                                        <span class="text-[10px] text-gray-400 block font-mono">$${parseFloat(it.subtotal || 0).toLocaleString('es-AR')}</span>
-                                                    </div>
-                                                </div>
-                                            `).join('')}
-                                        </div>
-                                    ` : `
-                                        <div class="text-[11px] text-gray-500 italic">Sin detalle de productos especificado.</div>
-                                    `}
-                                </div>
-
-                                <div class="flex flex-col sm:flex-row justify-between items-center pt-3 border-t border-white/10 gap-3">
-                                    <div class="flex items-center gap-2">
-                                        <span class="text-xs text-gray-400">Monto Total:</span>
-                                        <span class="font-title text-base font-bold text-brand-yellow">${montoStr}</span>
-                                        ${p.supera_minimo_80k ? `<span class="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 text-[10px] font-bold">✨ Cumple Min. $80k</span>` : ''}
-                                    </div>
-
-                                    <div class="flex items-center gap-2">
-                                        ${!esPagado && !esCancelado ? `
-                                            <button onclick="confirmarPagoDescontarStock('${p.id}')" class="px-3 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-xs font-bold border border-emerald-500/30 flex items-center gap-1 transition-all">
-                                                🟢 Confirmar Pago & Restar Stock
-                                            </button>
-                                        ` : ''}
-                                        ${!esCancelado ? `
-                                            <button onclick="cambiarEstadoPedido('${p.id}', 'Cancelado')" class="px-3 py-1.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs font-bold border border-red-500/30 transition-all">
-                                                🔴 Cancelar
-                                            </button>
-                                        ` : ''}
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                    }).join('');
-                }
-            }
-
-            // Renderizar Vista Kanban Global de 5 Columnas
-            if (currentEmbudoEtapa === 'kanban-global') {
-                const colsMap = {
-                    'Presupuesto': document.getElementById('col-presupuestos'),
-                    'Confirmado': document.getElementById('col-confirmados'),
-                    'Pagado': document.getElementById('col-pagados'),
-                    'Despachado': document.getElementById('col-despachados'),
-                    'Cancelado': document.getElementById('col-cancelados')
-                };
-
-                Object.keys(colsMap).forEach(k => {
-                    const el = colsMap[k];
-                    if (!el) return;
-                    const items = itemsByStage[k] || [];
-
-                    if (items.length === 0) {
-                        el.innerHTML = `<div class="text-center py-6 text-[10px] text-gray-500">Sin pedidos</div>`;
-                    } else {
-                        el.innerHTML = items.map(p => `
-                            <div class="glass-card p-3 rounded-xl space-y-2 text-xs">
-                                <div class="flex justify-between items-start">
-                                    <span class="text-[9px] font-bold text-brand-yellow uppercase">#${p.woocommerce_order_id || p.id.substring(0, 6)}</span>
-                                    <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-white/10 text-white">${p.estado}</span>
-                                </div>
-                                <div>
-                                    <h5 class="font-bold text-white truncate">${p.clientes ? p.clientes.razon_social : 'Cliente Web'}</h5>
-                                    <span class="text-[10px] text-brand-yellow font-bold">$${parseFloat(p.monto_total || 0).toLocaleString('es-AR')}</span>
-                                </div>
-                                <button onclick="cambiarEstadoPedido('${p.id}', 'Pagado')" class="w-full py-1 text-[10px] font-bold rounded bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30">
-                                    🟢 Pagar
-                                </button>
-                            </div>
-                        `).join('');
-                    }
-                });
-            }
-        }
-
-        function renderKanban() {
-            filtrarPedidosEmbudo();
-        }
-
-        async function cambiarEstadoPedido(pedidoId, nuevoEstado) {
-            try {
-                const res = await fetch(`${API_URL}/crm/pedidos/cambiar-estado`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ pedido_id: pedidoId, nuevo_estado: nuevoEstado })
-                });
-                const data = await res.json();
-                if (data.success) {
-                    refreshData();
-                } else {
-                    alert('Error al cambiar estado: ' + (data.error || 'No especificado'));
-                }
-            } catch (e) {
-                alert('Error de red al actualizar pedido: ' + e.message);
-            }
-        }
-
-        async function confirmarPagoDescontarStock(pedidoId) {
-            await cambiarEstadoPedido(pedidoId, 'Pagado');
-        }
-
-        // =========================================================================
-        // MODAL Y CREACIÓN DE NUEVOS PRESUPUESTOS / PEDIDOS
-        function esClienteConfirmado(c) {
-            if (!c) return false;
-            const name = (c.razon_social || c.contacto_nombre || '').toLowerCase();
-            const wa = (c.whatsapp || '').toLowerCase();
-            if (name.includes('webcustomer') || name.includes('cliente web') || name.includes('web_test') || name.includes('test_diag') || name.includes('test_999')) return false;
-            if (wa.startsWith('web_') || wa.startsWith('cli_') || wa.startsWith('cuit_')) return false;
-            return true;
-        }
-
-        function cargarClientesModalDropdown(filterText = '', clienteIdPreseleccionado = null) {
-            const selectCliente = document.getElementById('presupuesto-cliente-id');
-            if (!selectCliente) return;
-
-            const term = filterText.toLowerCase().trim();
-
-            const list = (clientesData || []).filter(c => {
-                if (c.id === clienteIdPreseleccionado) return true; // Mantener preseleccionado si viene de ficha
-                if (!esClienteConfirmado(c)) return false; // Omitir leads de prueba del chat
-                if (term) {
-                    const name = (c.razon_social || c.contacto_nombre || '').toLowerCase();
-                    const phone = (c.whatsapp || '').toLowerCase();
-                    const cuit = (c.cuit || '').toLowerCase();
-                    return name.includes(term) || phone.includes(term) || cuit.includes(term);
-                }
-                return true;
-            });
-
-            selectCliente.innerHTML = '<option value="" style="background-color: #0f172a; color: #ffffff;">Seleccionar Cliente Confirmado...</option>' + 
-                list.map(c => `
-                    <option value="${c.id}" ${clienteIdPreseleccionado === c.id ? 'selected' : ''} style="background-color: #0f172a; color: #ffffff;">
-                        ${c.razon_social} (${c.whatsapp || 'Sin Tel'})
-                    </option>
-                `).join('');
-        }
-
-        function filtrarClientesModalPresupuesto() {
-            const searchText = document.getElementById('presupuesto-cliente-search')?.value || '';
-            const currentSelected = document.getElementById('presupuesto-cliente-id')?.value;
-            cargarClientesModalDropdown(searchText, currentSelected);
-        }
-
-        async function abrirModalNuevoPedido(clienteIdPreseleccionado = null) {
-            const modal = document.getElementById('modal-nuevo-pedido');
-            if (!modal) return;
-
-            // Limpiar buscador de clientes
-            const inputSearch = document.getElementById('presupuesto-cliente-search');
-            if (inputSearch) inputSearch.value = '';
-
-            // Cargar clientes confirmados en el dropdown
-            cargarClientesModalDropdown('', clienteIdPreseleccionado);
-
-            // Cargar catálogo de productos si no está en cache
-            if (!productosCatalogoCache || productosCatalogoCache.length === 0) {
-                try {
-                    const res = await fetch(`${API_URL}/crm/productos-list`);
-                    const data = await res.json();
-                    if (data.success) productosCatalogoCache = data.productos || [];
-                } catch (e) {}
-            }
-
-            // Limpiar formulario y agregar 1 fila inicial de producto
-            document.getElementById('presupuesto-items-container').innerHTML = '';
-            document.getElementById('presupuesto-observaciones').value = '';
-            agregarFilaItemPresupuesto();
-            calcularTotalPresupuestoModal();
-
-            modal.classList.remove('hidden');
-        }
-
-        function cerrarModalNuevoPedido() {
-            const modal = document.getElementById('modal-nuevo-pedido');
-            if (modal) modal.classList.add('hidden');
-        }
-
-        let itemFilaCounter = 0;
-
-        function agregarFilaItemPresupuesto() {
-            const container = document.getElementById('presupuesto-items-container');
-            if (!container) return;
-
-            itemFilaCounter++;
-            const filaId = `item-fila-${itemFilaCounter}`;
-
-            const rowDiv = document.createElement('div');
-            rowDiv.id = filaId;
-            rowDiv.className = "flex flex-col sm:flex-row items-center gap-3 p-3 rounded-xl bg-black/40 border border-white/10 shadow-sm";
-
-            rowDiv.innerHTML = `
-                <div class="w-full sm:w-1/2 space-y-1.5">
-                    <div class="flex items-center gap-2">
-                        <div class="item-prod-img-box w-10 h-10 rounded-lg bg-black/60 border border-white/10 flex items-center justify-center overflow-hidden flex-shrink-0">
-                            <span class="material-symbols-outlined text-gray-500 text-[20px]">inventory_2</span>
-                        </div>
-                        <div class="flex-grow">
-                            <input type="text" placeholder="🔍 Filtrar producto por nombre..." oninput="filtrarProductosModalRow('${filaId}', this.value)" class="item-prod-search w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1 text-[11px] text-white placeholder-gray-500 focus:border-brand-yellow focus:outline-none mb-1">
-                            <select onchange="onProductoSeleccionadoPresupuesto('${filaId}', this.value)" class="item-prod-select w-full bg-slate-900 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-brand-yellow focus:outline-none" style="background-color: #0f172a; color: #ffffff;">
-                                <option value="" style="background-color: #0f172a; color: #ffffff;">Seleccionar del catálogo...</option>
-                                ${(productosCatalogoCache || []).map(p => `
-                                    <option value="${p.id}" data-name="${p.name}" data-price="${p.price}" data-sku="${p.sku}" data-image="${p.image_url || ''}" style="background-color: #0f172a; color: #ffffff;">
-                                        ${p.name} — $${parseFloat(p.price || 0).toLocaleString('es-AR')}
-                                    </option>
-                                `).join('')}
-                            </select>
-                        </div>
-                    </div>
-                    <input type="text" placeholder="O escribir nombre personalizado / variante..." class="item-prod-name-custom w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1 text-[11px] text-gray-300 focus:outline-none">
-                </div>
-
-                <div class="flex items-center gap-2 w-full sm:w-1/2 justify-between">
-                    <div class="w-20">
-                        <span class="text-[9px] text-gray-400 block mb-0.5 uppercase font-bold">Cant:</span>
-                        <input type="number" min="1" value="1" oninput="calcularTotalPresupuestoModal()" class="item-prod-cant w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white font-mono text-center focus:outline-none focus:border-brand-yellow">
-                    </div>
-
-                    <div class="w-28">
-                        <span class="text-[9px] text-gray-400 block mb-0.5 uppercase font-bold">Precio U.:</span>
-                        <input type="number" step="0.01" value="0" oninput="calcularTotalPresupuestoModal()" class="item-prod-precio w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white font-mono text-right focus:outline-none focus:border-brand-yellow">
-                    </div>
-
-                    <div class="w-24 text-right">
-                        <span class="text-[9px] text-gray-400 block mb-0.5 uppercase font-bold">Subtotal:</span>
-                        <span class="item-prod-subtotal text-xs font-bold text-brand-yellow font-mono">$ 0</span>
-                    </div>
-
-                    <button type="button" onclick="eliminarFilaItemPresupuesto('${filaId}')" class="text-red-400 hover:text-red-300 p-1">
-                        <span class="material-symbols-outlined text-[18px]">delete</span>
-                    </button>
-                </div>
-            `;
-
-            container.appendChild(rowDiv);
-            calcularTotalPresupuestoModal();
-        }
-
-        function filtrarProductosModalRow(filaId, searchText) {
-            const fila = document.getElementById(filaId);
-            if (!fila) return;
-
-            const select = fila.querySelector('.item-prod-select');
-            if (!select) return;
-
-            const term = searchText.toLowerCase().trim();
-            const list = (productosCatalogoCache || []).filter(p => {
-                if (!term) return true;
-                const name = (p.name || '').toLowerCase();
-                const sku = (p.sku || '').toLowerCase();
-                const cat = (p.category || '').toLowerCase();
-                return name.includes(term) || sku.includes(term) || cat.includes(term);
-            });
-
-            select.innerHTML = '<option value="" style="background-color: #0f172a; color: #ffffff;">Seleccionar del catálogo...</option>' +
-                list.map(p => `
-                    <option value="${p.id}" data-name="${p.name}" data-price="${p.price}" data-sku="${p.sku}" data-image="${p.image_url || ''}" style="background-color: #0f172a; color: #ffffff;">
-                        ${p.name} — $${parseFloat(p.price || 0).toLocaleString('es-AR')}
-                    </option>
-                `).join('');
-
-            // Si hay búsqueda y existe al menos 1 coincidencia, seleccionar automáticamente la primera coincidencia
-            if (term && list.length > 0) {
-                select.selectedIndex = 1;
-                onProductoSeleccionadoPresupuesto(filaId, select.value);
-            }
-        }
-
-        function onProductoSeleccionadoPresupuesto(filaId, prodId) {
-            const fila = document.getElementById(filaId);
-            if (!fila) return;
-
-            const select = fila.querySelector('.item-prod-select');
-            const inputCustom = fila.querySelector('.item-prod-name-custom');
-            const inputPrecio = fila.querySelector('.item-prod-precio');
-            const imgBox = fila.querySelector('.item-prod-img-box');
-
-            const opt = select ? select.options[select.selectedIndex] : null;
-            if (opt && opt.value) {
-                const name = opt.getAttribute('data-name');
-                const price = opt.getAttribute('data-price');
-                const imgUrl = opt.getAttribute('data-image');
-
-                if (inputCustom) inputCustom.value = name || '';
-                if (inputPrecio) inputPrecio.value = price || 0;
-
-                if (imgBox) {
-                    if (imgUrl && imgUrl.startsWith('http')) {
-                        imgBox.innerHTML = `<img src="${imgUrl}" alt="${name}" class="w-full h-full object-cover rounded-lg">`;
-                    } else {
-                        imgBox.innerHTML = `<span class="material-symbols-outlined text-brand-yellow text-[20px]">package_2</span>`;
-                    }
-                }
-            }
-
-            calcularTotalPresupuestoModal();
-        }
-
-        function eliminarFilaItemPresupuesto(filaId) {
-            const fila = document.getElementById(filaId);
-            if (fila) fila.remove();
-            calcularTotalPresupuestoModal();
-        }
-
-        function calcularTotalPresupuestoModal() {
-            const container = document.getElementById('presupuesto-items-container');
-            if (!container) return;
-
-            let grandTotal = 0;
-            const filas = container.querySelectorAll('[id^="item-fila-"]');
-
-            filas.forEach(f => {
-                const cantInput = f.querySelector('.item-prod-cant');
-                const precioInput = f.querySelector('.item-prod-precio');
-                const subtotalSpan = f.querySelector('.item-prod-subtotal');
-
-                const cant = parseFloat(cantInput?.value || 0);
-                const precio = parseFloat(precioInput?.value || 0);
-                const subtotal = cant * precio;
-                grandTotal += subtotal;
-
-                if (subtotalSpan) {
-                    subtotalSpan.innerText = subtotal.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' });
-                }
-            });
-
-            const display = document.getElementById('presupuesto-total-display');
-            if (display) {
-                display.innerText = grandTotal.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' });
-            }
-        }
-
-        async function guardarNuevoPresupuesto(event) {
-            event.preventDefault();
-
-            const clienteId = document.getElementById('presupuesto-cliente-id')?.value;
-            const origen = document.getElementById('presupuesto-origen')?.value || 'CRM';
-            const observaciones = document.getElementById('presupuesto-observaciones')?.value || '';
-
-            if (!clienteId) {
-                alert('Seleccioná un cliente para el presupuesto.');
-                return;
-            }
-
-            const container = document.getElementById('presupuesto-items-container');
-            const filas = container ? container.querySelectorAll('[id^="item-fila-"]') : [];
-
-            const items = [];
-            filas.forEach(f => {
-                const select = f.querySelector('.item-prod-select');
-                const customName = f.querySelector('.item-prod-name-custom')?.value || '';
-                const cant = parseFloat(f.querySelector('.item-prod-cant')?.value || 1);
-                const precio = parseFloat(f.querySelector('.item-prod-precio')?.value || 0);
-
-                const opt = select ? select.options[select.selectedIndex] : null;
-                const prodName = customName || (opt ? opt.getAttribute('data-name') : '') || 'Producto Cotizado';
-                const sku = opt ? opt.getAttribute('data-sku') : '';
-
-                if (cant > 0) {
-                    items.push({
-                        producto_nombre: prodName,
-                        cantidad: cant,
-                        precio_unitario: precio,
-                        sku: sku
-                    });
-                }
-            });
-
-            if (items.length === 0) {
-                alert('Ingresá al menos 1 producto en el presupuesto.');
-                return;
-            }
-
-            const btn = document.getElementById('btn-guardar-presupuesto');
-            const origText = btn.innerHTML;
-            btn.innerHTML = `<span class="material-symbols-outlined text-sm animate-spin">refresh</span> Guardando...`;
-            btn.disabled = true;
-
-            try {
-                const res = await fetch(`${API_URL}/crm/pedidos/crear-presupuesto`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        cliente_id: clienteId,
-                        items: items,
-                        observaciones: observaciones,
-                        origen: origen
-                    })
-                });
-
-                const data = await res.json();
-                if (data.success) {
-                    alert(data.mensaje);
-                    cerrarModalNuevoPedido();
-                    refreshData();
-                } else {
-                    alert('Error al crear presupuesto: ' + (data.error || 'No se completó la operación'));
-                }
-            } catch (err) {
-                alert('Error de red al guardar presupuesto: ' + err.message);
-            } finally {
-                btn.innerHTML = origText;
-                btn.disabled = false;
-            }
-        }
-
-        async function loadAlertasStock() {
-            const umbral = document.getElementById('umbral-stock-input').value || 20;
-            try {
-                const res = await fetch(`${API_URL}/crm/alertas-stock?umbral=${umbral}`);
-                const data = await res.json();
-                if (data.success) renderAcordeonStockGrid(data.categorias);
-            } catch (e) {}
-        }
-
-        function renderAcordeonStockGrid(categorias) {
-            const container = document.getElementById('acordeon-stock-container');
-            container.innerHTML = '';
-            if (!categorias) return;
-
-            const keys = Object.keys(categorias);
-            let totalCategoriasRendered = 0;
-
-            keys.forEach((catKey, index) => {
-                const catObj = categorias[catKey];
-                const prods = catObj.productos || [];
-
-                if (prods.length > 0) {
-                    totalCategoriasRendered++;
-                    const tieneCritico = catObj.tiene_critico;
-                    const accordionId = `acc-body-${index}`;
-
-                    const catBlock = document.createElement('div');
-                    catBlock.className = 'glass-panel rounded-2xl overflow-hidden border transition-all ' + 
-                        (tieneCritico ? 'border-red-500/40' : 'border-amber-500/30');
-
-                    catBlock.innerHTML = `
-                        <button onclick="toggleAccordion('${accordionId}')" class="w-full px-6 py-4 flex items-center justify-between bg-white/5 hover:bg-white/10 transition-colors text-left">
-                            <div class="flex items-center gap-3">
-                                <span class="material-symbols-outlined ${tieneCritico ? 'text-red-400' : 'text-amber-400'}">${catObj.icon || 'category'}</span>
-                                <h3 class="font-title text-sm font-bold uppercase tracking-wider text-white">${catKey}</h3>
-                            </div>
-                            <div class="flex items-center gap-3">
-                                <span class="px-3 py-1 rounded-full text-[10px] font-bold ${tieneCritico ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'}">
-                                    ${tieneCritico ? '🔴 ALERTA CRÍTICA (SIN STOCK)' : '⚠️ ALERTA STOCK BAJO'} (${prods.length})
-                                </span>
-                                <span class="material-symbols-outlined text-gray-400 transition-transform" id="icon-${accordionId}">expand_more</span>
-                            </div>
-                        </button>
-                        <div id="${accordionId}" class="hidden p-6 border-t border-white/5 bg-black/20">
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                ${prods.map(s => {
-                                    const esCritico = (s.stock_actual === 0);
-                                    const precio = s.precio.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' });
-
-                                    return `
-                                        <div class="glass-card p-4 rounded-2xl space-y-3 border ${esCritico ? 'border-red-500/40 bg-red-500/5' : 'border-amber-500/30'}">
-                                            <div class="flex justify-between items-start gap-2">
-                                                <h4 class="font-bold text-xs text-white leading-snug">${s.nombre}</h4>
-                                                <span class="px-2 py-0.5 rounded-full text-[9px] font-bold shrink-0 ${esCritico ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'}">
-                                                    ${s.nivel_alerta}
-                                                </span>
-                                            </div>
-                                            <div class="flex justify-between items-center text-xs pt-2 border-t border-white/5">
-                                                <span class="text-gray-400">Stock Actual: <strong class="${esCritico ? 'text-red-400 font-bold' : 'text-amber-400'}">${s.stock_actual} un.</strong></span>
-                                                <span class="font-bold text-brand-yellow">${precio}</span>
-                                            </div>
-                                        </div>
-                                    `;
-                                }).join('')}
-                            </div>
-                        </div>
-                    `;
-                    container.appendChild(catBlock);
-                }
-            });
-
-            if (totalCategoriasRendered === 0) {
-                container.innerHTML = `<div class="text-center py-12 text-gray-400 text-xs">✅ Todo el inventario de Química DEC supera el umbral mínimo configurado.</div>`;
-            }
-        }
-
-        function toggleAccordion(accId) {
-            const body = document.getElementById(accId);
-            const icon = document.getElementById(`icon-${accId}`);
-            if (body) {
-                body.classList.toggle('hidden');
-                if (icon) icon.classList.toggle('rotate-180');
-            }
-        }
-
-        function renderAlertas() {
-            const grid = document.getElementById('grid-alertas');
-            if (!alertasData || alertasData.length === 0) return;
-            grid.innerHTML = alertasData.map(a => `
-                <div class="glass-card p-5 rounded-2xl space-y-3 border ${a.cumple_minimo_80k ? 'border-emerald-500/30' : 'border-amber-500/30'}">
-                    <h3 class="font-bold text-sm text-white">${a.razon_social}</h3>
-                    <p class="text-xs text-gray-300">Acumulado: <strong>$${a.consumido_mes.toLocaleString('es-AR')}</strong></p>
-                    <a href="https://wa.me/${a.whatsapp}?text=${a.mensaje_whatsapp_sugerido}" target="_blank" class="w-full py-2 rounded-xl bg-emerald-500/20 text-emerald-400 text-xs font-bold text-center block">📲 Enviar Alerta</a>
-                </div>
-            `).join('');
-        }
-
-        let parsedClientesImportBuffer = [];
-
-        function abrirModalImportarClientes() {
-            document.getElementById('modal-importar-clientes').classList.remove('hidden');
-            document.getElementById('clientes-preview-container').classList.add('hidden');
-            document.getElementById('clientes-file-input').value = '';
-            parsedClientesImportBuffer = [];
-        }
-
-        function cerrarModalImportarClientes() {
-            document.getElementById('modal-importar-clientes').classList.add('hidden');
-        }
-
-        async function procesarArchivoClientes(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            try {
-                const data = await file.arrayBuffer();
-                const workbook = XLSX.read(data, { type: 'array' });
-                const firstSheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[firstSheetName];
-                const jsonRows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
-
-                if (!jsonRows || jsonRows.length === 0) {
-                    alert('El archivo no contiene registros o tiene un formato no reconocido.');
-                    return;
-                }
-
-                parsedClientesImportBuffer = jsonRows;
-
-                // Render Preview Table
-                const titleEl = document.getElementById('clientes-preview-title');
-                const tbody = document.getElementById('clientes-preview-tbody');
-                const container = document.getElementById('clientes-preview-container');
-
-                titleEl.innerText = `📊 ${jsonRows.length} clientes detectados en el archivo`;
-                tbody.innerHTML = jsonRows.slice(0, 15).map(r => `
-                    <tr class="hover:bg-white/5">
-                        <td class="py-2 px-3 font-bold text-white">${r.Nombre || r.nombre || r.razon_social || '-'}</td>
-                        <td class="py-2 px-3 font-mono text-gray-300">${r['ID (DNI/CUIT)'] || r.cuit || r.dni_cuit || '-'}</td>
-                        <td class="py-2 px-3 font-mono text-emerald-400">${r.Telefonos || r.telefonos || r.whatsapp || '-'}</td>
-                        <td class="py-2 px-3 text-gray-300 truncate max-w-[150px]">${r.Dirección || r.direccion || r.localidad || '-'}</td>
-                        <td class="py-2 px-3 text-brand-yellow">${r.Vendedor || r.vendedor || '-'}</td>
-                        <td class="py-2 px-3 text-gray-400">${r['Listas de precios'] || r.lista_precios || '-'}</td>
-                    </tr>
-                `).join('');
-
-                container.classList.remove('hidden');
-            } catch (err) {
-                alert('Error al leer el archivo: ' + err.message);
-            }
-        }
-
-        async function confirmarImportacionClientes() {
-            if (!parsedClientesImportBuffer || parsedClientesImportBuffer.length === 0) {
-                alert('No hay registros cargados para importar.');
-                return;
-            }
-
-            const btn = document.getElementById('btn-confirmar-import-clientes');
-            const origText = btn.innerHTML;
-            btn.innerHTML = `<span class="material-symbols-outlined text-sm animate-spin">refresh</span> Procesando...`;
-            btn.disabled = true;
-
-            try {
-                const res = await fetch(`${API_URL}/crm/clientes/importar-lote`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ clientes: parsedClientesImportBuffer })
-                });
-
-                const result = await res.json();
-                if (result.success) {
-                    alert(result.mensaje);
-                    cerrarModalImportarClientes();
-                    // Refrescar lista de clientes
-                    const cRes = await fetch(`${API_URL}/crm/clientes`);
-                    if (cRes.ok) {
-                        clientesData = (await cRes.json()).clientes || [];
-                        renderClientes();
-                    }
-                } else {
-                    alert('Error en importación: ' + (result.error || 'No se completó la carga'));
-                }
-            } catch (err) {
-                alert('Error de red al enviar importación: ' + err.message);
-            } finally {
-                btn.innerHTML = origText;
-                btn.disabled = false;
-            }
-        }
-
-        let currentClientesSubtab = 'oficiales';
-
-        function switchClientesSubtab(subtab) {
-            currentClientesSubtab = subtab;
-            const btnOficiales = document.getElementById('subtab-btn-oficiales');
-            const btnProspectos = document.getElementById('subtab-btn-prospectos');
-
-            if (subtab === 'oficiales') {
-                btnOficiales.className = "px-4 py-2.5 rounded-xl text-xs font-bold transition-all bg-brand-yellow text-primary-dark shadow-md flex items-center gap-2";
-                btnProspectos.className = "px-4 py-2.5 rounded-xl text-xs font-bold transition-all bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 border border-white/10 flex items-center gap-2";
-            } else {
-                btnProspectos.className = "px-4 py-2.5 rounded-xl text-xs font-bold transition-all bg-blue-500 text-white shadow-md flex items-center gap-2";
-                btnOficiales.className = "px-4 py-2.5 rounded-xl text-xs font-bold transition-all bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 border border-white/10 flex items-center gap-2";
-            }
-
-            filtrarClientesUI();
-        }
-
-        function abrirModalPromoverLead(id, nombre, phone) {
-            document.getElementById('modal-promover-lead').classList.remove('hidden');
-            document.getElementById('promover-cliente-id').value = id;
-            document.getElementById('promover-nombre').value = nombre.startsWith('Lead Web') || nombre.startsWith('Web_') ? '' : nombre;
-            document.getElementById('promover-whatsapp').value = phone.startsWith('Web_') ? '' : phone;
-            document.getElementById('promover-cuit').value = '';
-            document.getElementById('promover-vendedor').value = '';
-        }
-
-        function cerrarModalPromoverLead() {
-            document.getElementById('modal-promover-lead').classList.add('hidden');
-        }
-
-        async function ejecutarPromocionLead(e) {
-            e.preventDefault();
-            const clienteId = document.getElementById('promover-cliente-id').value;
-            const nombre = document.getElementById('promover-nombre').value.trim();
-            const cuit = document.getElementById('promover-cuit').value.trim();
-            const wa = document.getElementById('promover-whatsapp').value.trim();
-            const vendedor = document.getElementById('promover-vendedor').value.trim();
-
-            const btn = document.getElementById('btn-submit-promover');
-            const origText = btn.innerHTML;
-            btn.innerHTML = `<span class="material-symbols-outlined text-sm animate-spin">refresh</span> Procesando...`;
-            btn.disabled = true;
-
-            try {
-                const res = await fetch(`${API_URL}/crm/clientes/promover-lead`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        cliente_id: clienteId,
-                        razon_social: nombre,
-                        cuit: cuit,
-                        whatsapp: wa,
-                        vendedor: vendedor,
-                        tipo_cliente: 'Mayorista'
-                    })
-                });
-
-                const result = await res.json();
-                if (result.success) {
-                    alert(result.mensaje);
-                    cerrarModalPromoverLead();
-                    refreshData();
-                } else {
-                    alert('Error: ' + (result.error || 'No se pudo promover el lead.'));
-                }
-            } catch (err) {
-                alert('Error de conexión: ' + err.message);
-            } finally {
-                btn.innerHTML = origText;
-                btn.disabled = false;
-            }
-        }
-
-        function renderClientes(dataToRender = null) {
-            const tbody = document.getElementById('clientes-tbody');
-            const fullList = dataToRender || clientesData || [];
-
-            // Separación entre Clientes Mayoristas Oficiales vs Prospectos Web
-            const oficialesList = (clientesData || []).filter(c => {
-                const esLeadWeb = (c.whatsapp && c.whatsapp.startsWith('Web_')) || (c.razon_social && c.razon_social.startsWith('Lead Web #')) || (c.estado_lead === 'Nuevo' && !c.cuit);
-                return !esLeadWeb;
-            });
-
-            const prospectosList = (clientesData || []).filter(c => {
-                const esLeadWeb = (c.whatsapp && c.whatsapp.startsWith('Web_')) || (c.razon_social && c.razon_social.startsWith('Lead Web #')) || (c.estado_lead === 'Nuevo' && !c.cuit);
-                return esLeadWeb;
-            });
-
-            const badgeOficiales = document.getElementById('badge-count-oficiales');
-            const badgeProspectos = document.getElementById('badge-count-prospectos');
-            if (badgeOficiales) badgeOficiales.innerText = oficialesList.length;
-            if (badgeProspectos) badgeProspectos.innerText = prospectosList.length;
-
-            // Filtrar la lista actual según la subpestaña seleccionada
-            const list = fullList.filter(c => {
-                const esLeadWeb = (c.whatsapp && c.whatsapp.startsWith('Web_')) || (c.razon_social && c.razon_social.startsWith('Lead Web #')) || (c.estado_lead === 'Nuevo' && !c.cuit);
-                return currentClientesSubtab === 'oficiales' ? !esLeadWeb : esLeadWeb;
-            });
-
-            // Popular filtro de vendedores si no está lleno
-            const filterVendedor = document.getElementById('clientes-filter-vendedor');
-            if (filterVendedor && clientesData && filterVendedor.options.length <= 1) {
-                const vendedoresSet = new Set();
-                clientesData.forEach(c => {
-                    if (c.estado_lead && c.estado_lead.startsWith('Vendedor:')) {
-                        vendedoresSet.add(c.estado_lead.replace('Vendedor:', '').trim());
-                    }
-                });
-                vendedoresSet.forEach(v => {
-                    const opt = document.createElement('option');
-                    opt.value = v;
-                    opt.innerText = v;
-                    filterVendedor.appendChild(opt);
-                });
-            }
-
-            if (!list || list.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-gray-500 text-xs">No se encontraron ${currentClientesSubtab === 'oficiales' ? 'clientes oficiales' : 'prospectos web'} en esta categoría.</td></tr>`;
-                return;
-            }
-
-            tbody.innerHTML = list.map(c => {
-                const nombre = c.razon_social || c.contacto_nombre || 'Cliente Sin Nombre';
-                const cuitVal = c.cuit || '-';
-                const waVal = c.whatsapp || '-';
-                const dirVal = c.localidad || c.provincia || '-';
-                const vendedorVal = c.estado_lead || (currentClientesSubtab === 'oficiales' ? 'Cliente Importado' : 'Lead Web Nuevo');
-                const tipoVal = c.tipo_cliente || 'Mayorista';
-                const waClean = waVal.replace(/[^\d]/g, '');
-                const esProspecto = (currentClientesSubtab === 'prospectos');
-
-                return `
-                    <tr class="hover:bg-white/5 transition-colors">
-                        <td class="py-3 px-4 font-bold text-white">
-                            <div>${nombre}</div>
-                            <div class="text-[10px] text-gray-400 font-normal">Tipo: ${tipoVal}</div>
-                        </td>
-                        <td class="py-3 px-4 font-mono text-gray-300">${cuitVal}</td>
-                        <td class="py-3 px-4 font-mono text-emerald-400">${waVal}</td>
-                        <td class="py-3 px-4 text-gray-300 max-w-[200px] truncate" title="${dirVal}">${dirVal}</td>
-                        <td class="py-3 px-4 text-brand-yellow font-medium">${vendedorVal}</td>
-                        <td class="py-3 px-4 text-center">
-                            <div class="flex items-center justify-center gap-2">
-                                ${esProspecto ? `
-                                    <button onclick="abrirModalPromoverLead('${c.id}', '${(nombre||'').replace(/'/g, "\\'")}', '${waVal}')" class="px-2.5 py-1 rounded-lg bg-brand-yellow/20 hover:bg-brand-yellow/30 text-brand-yellow font-bold text-[11px] flex items-center gap-1 border border-brand-yellow/30 transition-all shadow">
-                                        🌟 Promover a Cliente
-                                    </button>
-                                ` : ''}
-                                ${waClean && !waVal.startsWith('Web_') ? `
-                                    <a href="https://wa.me/${waClean}" target="_blank" class="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 font-bold text-[11px] flex items-center gap-1 transition-all">
-                                        📲 Chat
-                                    </a>
-                                ` : ''}
-                                <button onclick="selectChatClient('${c.id}'); switchTab('chat');" class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white font-bold text-[11px] transition-all">
-                                    💬 CRM
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-        }
-
-        function filtrarClientesUI() {
-            const query = (document.getElementById('clientes-search-input')?.value || '').toLowerCase().trim();
-            const vendedorSel = document.getElementById('clientes-filter-vendedor')?.value || '';
-            const tipoSel = document.getElementById('clientes-filter-tipo')?.value || '';
-            const deudaSel = document.getElementById('clientes-filter-deuda')?.value || '';
-
-            if (!clientesData) return;
-
-            const res = clientesData.filter(c => {
-                const nombre = (c.razon_social || c.contacto_nombre || '').toLowerCase();
-                const cuit = (c.cuit || '').toLowerCase();
-                const phone = (c.whatsapp || '').toLowerCase();
-                const loc = (c.localidad || '').toLowerCase();
-                const vendedor = (c.estado_lead || '').toLowerCase();
-
-                const matchesQuery = !query || nombre.includes(query) || cuit.includes(query) || phone.includes(query) || loc.includes(query) || vendedor.includes(query);
-                const matchesVendedor = !vendedorSel || (c.estado_lead && c.estado_lead.includes(vendedorSel));
-                const matchesTipo = !tipoSel || (c.tipo_cliente === tipoSel);
-                
-                let matchesDeuda = true;
-                if (deudaSel === 'con_saldo') matchesDeuda = parseFloat(c.total_comprado || 0) > 0;
-                else if (deudaSel === 'sin_compras') matchesDeuda = parseFloat(c.total_comprado || 0) === 0;
-
-                return matchesQuery && matchesVendedor && matchesTipo && matchesDeuda;
-            });
-
-            renderClientes(res);
-        }
-
-        function exportarClientesCSV() {
-            if (!clientesData || clientesData.length === 0) {
-                alert('No hay clientes registrados para exportar.');
-                return;
-            }
-
-            const headers = ['Nombre', 'ID (DNI/CUIT)', 'Telefonos', 'Dirección', 'Tipo Cliente', 'Vendedor', 'Total Comprado'];
-            const rows = clientesData.map(c => [
-                `"${(c.razon_social || c.contacto_nombre || '').replace(/"/g, '""')}"`,
-                `"${(c.cuit || '').replace(/"/g, '""')}"`,
-                `"${(c.whatsapp || '').replace(/"/g, '""')}"`,
-                `"${(c.localidad || '').replace(/"/g, '""')}"`,
-                `"${(c.tipo_cliente || '').replace(/"/g, '""')}"`,
-                `"${(c.estado_lead || '').replace(/"/g, '""')}"`,
-                `"${c.total_comprado || 0}"`
-            ]);
-
-            const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement('a');
-            link.setAttribute('href', encodedUri);
-            link.setAttribute('download', `CLIENTES_QUIMICA_DEC_${new Date().toISOString().slice(0, 10)}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-
-                function switchTab(tab) {
-            const tabs = ['kanban', 'chat', 'stock', 'alertas', 'catalogo', 'clientes', 'users', 'audit'];
-            tabs.forEach(t => {
-                const view = document.getElementById(`view-${t}`);
-                const btn = document.getElementById(`tab-${t}-btn`);
-                if (view) view.classList.add('hidden');
-                if (btn) {
-                    btn.classList.remove('tab-active');
-                    btn.classList.add('tab-inactive');
-                }
-            });
-
-            const activeView = document.getElementById(`view-${tab}`);
-            const activeBtn = document.getElementById(`tab-${tab}-btn`);
-
-            if (activeView) activeView.classList.remove('hidden');
-            if (activeBtn) {
-                activeBtn.classList.remove('tab-inactive');
-                activeBtn.classList.add('tab-active');
-            }
-
-            if (tab === 'catalogo') { cargarVisorCombos(); cargarCatalogoCompletoUI(); }
-            if (tab === 'users') cargarListaUsuariosCRM();
-            if (tab === 'audit') cargarRegistroAuditoriaCRM();
-        }
-
-        async function cargarVisorCombos() {
-            const container = document.getElementById('visor-combos-container');
-            if (!container) return;
-            container.innerHTML = `<div class="col-span-full text-center py-6 text-purple-300/60 text-xs font-bold animate-pulse">⏳ Cargando datos de combos desde WooCommerce...</div>`;
-
-            try {
-                const resp = await fetch(`${API_URL}/combos?sec=qdec_crm_sec_2026`);
-                const data = await resp.json();
-                if (!data.success || !data.combos) {
-                    container.innerHTML = `<div class="col-span-full text-center py-6 text-red-400 text-xs font-bold">❌ Error al obtener combos: ${data.error || 'Respuesta inválida'}</div>`;
-                    return;
-                }
-
-                window.combosDataCache = data.combos;
-                const searchVal = document.getElementById('combos-search-input')?.value || '';
-                filtrarCombosUI(searchVal);
-            } catch(e) {
-                container.innerHTML = `<div class="col-span-full text-center py-6 text-red-400 text-xs font-bold">❌ Error: ${e.message}</div>`;
-            }
-        }
-
-        async function guardarEdicionCombo(sku) {
-            const name = document.getElementById(`combo-name-${sku}`).value.trim();
-            const price = document.getElementById(`combo-price-${sku}`).value.trim();
-            const status = document.getElementById(`combo-status-${sku}`).value;
-            const msgDiv = document.getElementById(`combo-msg-${sku}`);
-
-            msgDiv.className = 'text-[10px] font-bold p-2 rounded-lg text-center bg-purple-500/20 text-purple-300 border border-purple-500/40';
-            msgDiv.innerText = '⏳ Guardando en WooCommerce y Supabase...';
-            msgDiv.classList.remove('hidden');
-
-            try {
-                const resp = await fetch(`${API_URL}/products/update-details`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        sku: sku,
-                        name: name,
-                        regular_price: price,
-                        status: status
-                    })
-                });
-                const data = await resp.json();
-                if (data.success) {
-                    msgDiv.className = 'text-[10px] font-bold p-2 rounded-lg text-center bg-emerald-500/20 text-emerald-300 border border-emerald-500/40';
-                    msgDiv.innerText = '🎉 ¡Combo actualizado con éxito en vivo!';
-                    setTimeout(() => cargarVisorCombos(), 1200);
-                } else {
-                    msgDiv.className = 'text-[10px] font-bold p-2 rounded-lg text-center bg-red-500/20 text-red-400 border border-red-500/40';
-                    msgDiv.innerText = `❌ Error: ${data.error || 'No se pudo actualizar.'}`;
-                }
-            } catch(e) {
-                msgDiv.className = 'text-[10px] font-bold p-2 rounded-lg text-center bg-red-500/20 text-red-400 border border-red-500/40';
-                msgDiv.innerText = `❌ Error: ${e.message}`;
-            }
-        }
-
-        function prepararSubidaFotosCombo(sku) {
-            const input = document.getElementById('combo-sku-input');
-            if (input) {
-                input.value = sku;
-                input.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                input.focus();
-                input.classList.add('ring-4', 'ring-purple-500');
-                setTimeout(() => input.classList.remove('ring-4', 'ring-purple-500'), 2500);
-            }
-        }
-
-        async function vincularFotosPorSKUs() {
-            let comboSku = document.getElementById('autolink-combo-sku').value.trim();
-            comboSku = comboSku.replace(/^sku:\s*/i, '').trim();
-            const skusInput = document.getElementById('autolink-skus-input').value.trim();
-            const clearFirst = document.getElementById('autolink-clear-chk')?.checked;
-            const resDiv = document.getElementById('autolink-res');
-
-            if (!comboSku) {
-                alert('⚠️ Ingresá el SKU del combo.');
-                return;
-            }
-            if (!skusInput) {
-                alert('⚠️ Ingresá al menos un SKU de producto o cargá un Excel.');
-                return;
-            }
-
-            resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-indigo-500/40 bg-indigo-500/10 text-indigo-300';
-            resDiv.innerText = '⏳ Buscando productos y vinculando fotos existentes...';
-            resDiv.classList.remove('hidden');
-
-            try {
-                const resp = await fetch(`${API_URL}/combos/auto-link-skus`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        comboSku: comboSku,
-                        productSkus: skusInput,
-                        clearFirst: clearFirst
-                    })
-                });
-                const data = await resp.json();
-                if (data.success) {
-                    resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-300';
-                    resDiv.innerText = `🎉 ¡${data.linked_count} imágenes de productos enlazadas a ${comboSku} con éxito! Sin duplicar archivos.`;
-                    setTimeout(() => cargarVisorCombos(), 1200);
-                } else {
-                    resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-red-500/40 bg-red-500/10 text-red-400';
-                    resDiv.innerText = `❌ Error: ${data.error || 'No se pudieron vincular las fotos.'}`;
-                }
-            } catch(e) {
-                resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-red-500/40 bg-red-500/10 text-red-400';
-                resDiv.innerText = `❌ Error: ${e.message}`;
-            }
-        }
-
-        function leerExcelSKUs(evt) {
-            const file = evt.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const content = e.target.result;
-                // Extraer SKUs o textos que parezcan SKUs (ej: QD-DTRG-001)
-                const skus = content.match(/QD-[A-Z0-9]+-[0-9]+/gi) || content.split(/[\r\n\t,;]+/);
-                const cleanSkus = Array.from(new Set(skus.map(s => s.trim()).filter(s => s.length > 3)));
-                if (cleanSkus.length > 0) {
-                    document.getElementById('autolink-skus-input').value = cleanSkus.join(', ');
-                }
-            };
-            reader.readAsText(file);
-        }
-
-
-        async function cargarVisorOfertas() {
-            const container = document.getElementById('visor-ofertas-container');
-            if (!container) return;
-            container.innerHTML = `<div class="col-span-full text-center py-6 text-amber-300/60 text-xs font-bold animate-pulse">⏳ Cargando ofertas semanales desde WooCommerce...</div>`;
-
-            try {
-                const resp = await fetch(`${API_URL}/ofertas`);
-                const data = await resp.json();
-                if (!data.success || !data.ofertas) {
-                    container.innerHTML = `<div class="col-span-full text-center py-6 text-red-400 text-xs font-bold">❌ Error al obtener ofertas: ${data.error || 'Respuesta inválida'}</div>`;
-                    return;
-                }
-
-                if (data.ofertas.length === 0) {
-                    container.innerHTML = `<div class="col-span-full text-center py-6 text-amber-300/80 text-xs font-bold">Sin ofertas activas actualmente. Podés poner cualquier producto en oferta editando su Precio Promocional.</div>`;
-                    return;
-                }
-
-                container.innerHTML = data.ofertas.map(o => {
-                    const esActivo = o.status === 'publish';
-                    const imgUrl = o.featured_url || 'https://via.placeholder.com/300x300?text=Sin+Foto';
-                    const items = o.gallery_items || [];
-                    const reg = parseFloat(o.regular_price) || 0;
-                    const sale = parseFloat(o.sale_price) || 0;
-                    const pctOff = (reg > 0 && sale > 0 && reg > sale) ? Math.round(((reg - sale) / reg) * 100) : 0;
-
-                    return `
-                        <div class="bg-slate-900/80 rounded-2xl border ${esActivo ? 'border-amber-500/40' : 'border-slate-700'} p-4 flex flex-col justify-between shadow-lg">
-                            <div>
-                                <div class="relative w-full aspect-[4/3] rounded-xl overflow-hidden mb-3 bg-black/40 border border-white/10">
-                                    <img src="${imgUrl}" class="w-full h-full object-cover">
-                                    <div class="absolute top-2 left-2 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase bg-amber-500 text-black shadow flex items-center gap-1">
-                                        <span>🏷️ OFERTA</span>
-                                    </div>
-                                    ${pctOff > 0 ? `<div class="absolute top-2 right-2 px-2 py-0.5 rounded-lg text-[10px] font-black bg-rose-500 text-white shadow">-${pctOff}% OFF</div>` : ''}
-                                </div>
-
-                                <div class="space-y-3">
-                                    <div>
-                                        <span class="text-[10px] font-mono text-amber-400 font-bold">SKU: ${o.sku}</span>
-                                        <input type="text" id="oferta-name-${o.sku}" value="${o.name}" class="w-full mt-1 bg-slate-950/80 border border-white/15 rounded-lg px-3 py-1.5 text-xs text-white font-bold">
-                                    </div>
-
-                                    <div class="grid grid-cols-2 gap-2">
-                                        <div>
-                                            <label class="text-[10px] text-gray-400 font-bold block mb-1">Precio Reg. ($):</label>
-                                            <input type="number" step="0.01" id="oferta-regprice-${o.sku}" value="${o.regular_price}" class="w-full bg-slate-950/80 border border-white/15 rounded-lg px-2.5 py-1.5 text-xs text-gray-300 font-bold">
-                                        </div>
-                                        <div>
-                                            <label class="text-[10px] text-amber-400 font-bold block mb-1">Precio Oferta ($):</label>
-                                            <input type="number" step="0.01" id="oferta-saleprice-${o.sku}" value="${o.sale_price}" class="w-full bg-slate-950/80 border border-amber-500/40 text-xs text-brand-yellow font-bold">
-                                        </div>
-                                    </div>
-
-                                    <div id="oferta-msg-${o.sku}" class="hidden text-[10px] font-bold p-2 rounded-lg text-center"></div>
-                                </div>
-                            </div>
-
-                            <div class="flex gap-2 pt-3 border-t border-white/5 mt-3">
-                                <button onclick="guardarEdicionOferta('${o.sku}')" class="flex-1 py-2 bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 text-slate-950 font-black text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-1">
-                                    <span class="material-symbols-outlined text-sm">save</span> Guardar Oferta
-                                </button>
-                                <a href="${o.permalink || '#'}" target="_blank" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-gray-300 font-bold text-xs rounded-xl border border-white/10 flex items-center justify-center">
-                                    🔗
-                                </a>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-            } catch(e) {
-                container.innerHTML = `<div class="col-span-full text-center py-6 text-red-400 text-xs font-bold">❌ Error: ${e.message}</div>`;
-            }
-        }
-
-        async function guardarEdicionOferta(sku) {
-            const name = document.getElementById(`oferta-name-${sku}`).value.trim();
-            const regPrice = document.getElementById(`oferta-regprice-${sku}`).value.trim();
-            const salePrice = document.getElementById(`oferta-saleprice-${sku}`).value.trim();
-            const msgDiv = document.getElementById(`oferta-msg-${sku}`);
-
-            msgDiv.className = 'text-[10px] font-bold p-2 rounded-lg text-center bg-amber-500/20 text-amber-300 border border-amber-500/40';
-            msgDiv.innerText = '⏳ Guardando oferta...';
-            msgDiv.classList.remove('hidden');
-
-            try {
-                const resp = await fetch('https://quimicadec.com/?qdec_api=update_product_details', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        secret_key: 'qdec_crm_sec_2026',
-                        sku: sku,
-                        name: name,
-                        regular_price: regPrice,
-                        sale_price: salePrice
-                    })
-                });
-                const data = await resp.json();
-                if (data.success) {
-                    msgDiv.className = 'text-[10px] font-bold p-2 rounded-lg text-center bg-emerald-500/20 text-emerald-300 border border-emerald-500/40';
-                    msgDiv.innerText = '🎉 ¡Oferta guardada!';
-                    setTimeout(() => cargarVisorOfertas(), 1200);
-                } else {
-                    msgDiv.className = 'text-[10px] font-bold p-2 rounded-lg text-center bg-red-500/20 text-red-400 border border-red-500/40';
-                    msgDiv.innerText = `❌ Error: ${data.error || 'No se pudo guardar.'}`;
-                }
-            } catch(e) {
-                msgDiv.className = 'text-[10px] font-bold p-2 rounded-lg text-center bg-red-500/20 text-red-400 border border-red-500/40';
-                msgDiv.innerText = `❌ Error: ${e.message}`;
-            }
-        }
-
-        async function subirOfertaCompleta() {
-            let sku = document.getElementById('oferta-sku-input').value.trim();
-            sku = sku.replace(/^sku:\s*/i, '').trim();
-            const regPrice = document.getElementById('oferta-regular-price-input').value.trim();
-            const salePrice = document.getElementById('oferta-sale-price-input').value.trim();
-            const coverFile = document.getElementById('oferta-cover-input').files[0];
-            const galleryFiles = Array.from(document.getElementById('oferta-gallery-input').files || []);
-            const cleanGallery = document.getElementById('oferta-clean-gallery-chk').checked;
-            const resDiv = document.getElementById('oferta-upload-res');
-
-            if (!sku) {
-                alert('⚠️ Ingresá el SKU del producto en oferta (ej: QD-DTRG-1001).');
-                return;
-            }
-
-            resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-amber-500/40 bg-amber-500/10 text-amber-300';
-            resDiv.innerText = `⏳ Publicando Oferta para SKU ${sku}...`;
-            resDiv.classList.remove('hidden');
-
-            try {
-                // 1. Actualizar Precios si se ingresaron
-                if (regPrice || salePrice) {
-                    await fetch('https://quimicadec.com/?qdec_api=update_product_details', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            secret_key: 'qdec_crm_sec_2026',
-                            sku: sku,
-                            regular_price: regPrice || '',
-                            sale_price: salePrice || ''
-                        })
-                    });
-                }
-
-                let successCount = 0;
-
-                // 2. Subir Foto de Portada
-                if (coverFile) {
-                    resDiv.innerText = '⏳ Subiendo Foto de Portada de la Oferta...';
-                    const base64Cover = await readFileAsBase64(coverFile);
-                    const resp = await fetch(`${API_URL}/products/upload-image`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            sku: sku,
-                            imageBase64: base64Cover,
-                            filename: `portada_oferta_${sku}_${Date.now()}.${coverFile.name.split('.').pop()}`,
-                            mode: 'featured'
-                        })
-                    });
-                    const data = await resp.json();
-                    if (data.success) successCount++;
-                }
-
-                // 3. Subir Fotos de Galería
-                if (galleryFiles && galleryFiles.length > 0) {
-                    for (let i = 0; i < galleryFiles.length; i++) {
-                        const gFile = galleryFiles[i];
-                        resDiv.innerText = `⏳ Subiendo Foto de Galería de Oferta (${i+1}/${galleryFiles.length})...`;
-                        const base64G = await readFileAsBase64(gFile);
-                        const imgMode = (i === 0 && cleanGallery) ? 'gallery_replace' : 'gallery';
-
-                        const resp = await fetch(`${API_URL}/products/upload-image`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                sku: sku,
-                                imageBase64: base64G,
-                                filename: `galeria_oferta_${i+1}_${sku}_${Date.now()}.${gFile.name.split('.').pop()}`,
-                                mode: imgMode
-                            })
-                        });
-                        const data = await resp.json();
-                        if (data.success) successCount++;
-
-                        if (i < galleryFiles.length - 1) {
-                            await new Promise(r => setTimeout(r, 600));
-                        }
-                    }
-                }
-
-                resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-300';
-                resDiv.innerText = `🎉 ¡Oferta Semanal SKU ${sku} guardada con éxito! Precios actualizados y ${successCount} imágenes procesadas.`;
-
-                document.getElementById('oferta-cover-input').value = '';
-                document.getElementById('oferta-gallery-input').value = '';
-                cargarVisorOfertas();
-            } catch(e) {
-                resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-red-500/40 bg-red-500/10 text-red-400';
-                resDiv.innerText = `❌ Error: ${e.message}`;
-            }
-        }
-
-        async function vincularFotosOfertaPorSKUs() {
-            const ofertaSku = document.getElementById('autolink-oferta-sku').value.trim();
-            const skusInput = document.getElementById('autolink-oferta-skus-input').value.trim();
-            const clearOld = document.getElementById('autolink-oferta-clear-chk').checked;
-            const resDiv = document.getElementById('autolink-oferta-res');
-
-            if (!ofertaSku || !skusInput) {
-                alert('⚠️ Ingresá el SKU de la oferta y al menos un SKU de producto.');
-                return;
-            }
-
-            resDiv.className = 'text-xs font-bold p-2.5 rounded-lg border border-amber-500/40 bg-amber-500/10 text-amber-300';
-            resDiv.innerText = '⏳ Vinculando imágenes existentes a la galería de la oferta...';
-            resDiv.classList.remove('hidden');
-
-            try {
-                const resp = await fetch(`${API_URL}/combos/auto-link-skus`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        combo_sku: ofertaSku,
-                        sku_list: skusInput,
-                        clear_existing: clearOld
-                    })
-                });
-                const data = await resp.json();
-                if (data.success) {
-                    resDiv.className = 'text-xs font-bold p-2.5 rounded-lg border border-emerald-500/40 bg-emerald-500/10 text-emerald-300';
-                    resDiv.innerText = `🎉 ¡${data.linked_count || 0} imágenes vinculadas con éxito a la oferta ${ofertaSku}!`;
-                    cargarVisorOfertas();
-                } else {
-                    resDiv.className = 'text-xs font-bold p-2.5 rounded-lg border border-red-500/40 bg-red-500/10 text-red-400';
-                    resDiv.innerText = `❌ Error: ${data.error || 'No se pudo vincular.'}`;
-                }
-            } catch(e) {
-                resDiv.className = 'text-xs font-bold p-2.5 rounded-lg border border-red-500/40 bg-red-500/10 text-red-400';
-                resDiv.innerText = `❌ Error: ${e.message}`;
-            }
-        }
-
-        let excelOfertasRowsData = [];
-
-        function leerExcelOfertas(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
-                    const firstSheetName = workbook.SheetNames[0];
-                    const worksheet = workbook.Sheets[firstSheetName];
-                    const jsonRows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
-
-                    excelOfertasRowsData = jsonRows.map(row => {
-                        const sku = row['SKU'] || row['sku'] || row['Sku'] || row['ID'] || '';
-                        const name = row['Nombre del Producto / Variación'] || row['Nombre del Producto / Variacin'] || row['Nombre'] || row['Producto'] || row['name'] || '';
-                        const regPrice = row['Precio Regular'] || row['Precio Normal'] || row['Precio ($)'] || row['Precio'] || row['regular_price'] || 0;
-                        const salePrice = row['Precio Oferta'] || row['Precio Descuento'] || row['Precio Promocional'] || row['sale_price'] || 0;
-                        const gallerySkus = row['SKUs Galerias'] || row['SKUs Fotos'] || row['gallery_skus'] || '';
-                        return { sku, name, regPrice, salePrice, gallerySkus };
-                    }).filter(r => r.sku && (r.salePrice || r.regPrice));
-
-                    renderVistaPreviaOfertasExcel();
-                } catch(err) {
-                    alert('Error al leer el archivo Excel de ofertas: ' + err.message);
-                }
-            };
-            reader.readAsArrayBuffer(file);
-        }
-
-        function renderVistaPreviaOfertasExcel() {
-            const container = document.getElementById('excel-ofertas-preview-container');
-            const tbody = document.getElementById('excel-ofertas-preview-tbody');
-            const countSpan = document.getElementById('excel-ofertas-preview-count');
-
-            if (!excelOfertasRowsData || excelOfertasRowsData.length === 0) {
-                container.classList.add('hidden');
-                return;
-            }
-
-            countSpan.innerText = excelOfertasRowsData.length;
-            tbody.innerHTML = excelOfertasRowsData.map((r, idx) => {
-                const reg = parseFloat(r.regPrice) || 0;
-                const sale = parseFloat(r.salePrice) || 0;
-                const pct = (reg > 0 && sale > 0 && reg > sale) ? Math.round(((reg - sale) / reg) * 100) : 0;
-
-                return `
-                    <tr class="hover:bg-white/5 transition-colors">
-                        <td class="py-2 px-3 font-bold text-amber-300 font-mono">${r.sku}</td>
-                        <td class="py-2 px-3 text-white font-sans font-bold">${r.name || 'Sin nombre'}</td>
-                        <td class="py-2 px-3 text-right text-gray-300 font-mono">$${r.regPrice || '0'}</td>
-                        <td class="py-2 px-3 text-right text-amber-300 font-bold font-mono">$${r.salePrice || '0'}</td>
-                        <td class="py-2 px-3 text-center">
-                            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black ${pct > 0 ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' : 'bg-gray-500/20 text-gray-400'}">${pct > 0 ? '-' + pct + '% OFF' : '0%'}</span>
-                        </td>
-                        <td class="py-2 px-3">
-                            <input type="file" id="excel-offer-row-file-${idx}" accept="image/*" class="w-full text-[10px] text-gray-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[9px] file:font-bold file:bg-amber-500/20 file:text-amber-300 cursor-pointer">
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-
-            container.classList.remove('hidden');
-        }
-
-        function limpiarVistaPreviaOfertasExcel() {
-            excelOfertasRowsData = [];
-            const fileInput = document.getElementById('excel-ofertas-file-input');
-            if (fileInput) fileInput.value = '';
-            document.getElementById('excel-ofertas-preview-container').classList.add('hidden');
-        }
-
-        async function aplicarOfertasMasivasExcel() {
-            const resDiv = document.getElementById('excel-ofertas-res-msg');
-            if (!excelOfertasRowsData || excelOfertasRowsData.length === 0) {
-                alert('⚠️ Por favor seleccioná un archivo Excel con ofertas primero.');
-                return;
-            }
-
-            resDiv.className = 'text-xs font-bold p-2.5 rounded-lg border border-amber-500/40 bg-amber-500/10 text-amber-300';
-            resDiv.innerText = `⏳ Publicando ${excelOfertasRowsData.length} ofertas semanales en WooCommerce...`;
-            resDiv.classList.remove('hidden');
-
-            let processedCount = 0;
-            let imagesUploaded = 0;
-
-            for (let i = 0; i < excelOfertasRowsData.length; i++) {
-                const item = excelOfertasRowsData[i];
-                resDiv.innerText = `⏳ Procesando oferta (${i+1}/${excelOfertasRowsData.length}): SKU ${item.sku}...`;
-
-                try {
-                    // 1. Actualizar Precios y Nombre
-                    await fetch('https://quimicadec.com/?qdec_api=update_product_details', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            secret_key: 'qdec_crm_sec_2026',
-                            sku: item.sku,
-                            name: item.name || '',
-                            regular_price: item.regPrice || '',
-                            sale_price: item.salePrice || ''
-                        })
-                    });
-
-                    // 2. Verificar si se adjuntó una imagen manual en esta fila
-                    const fileInput = document.getElementById(`excel-offer-row-file-${i}`);
-                    if (fileInput && fileInput.files && fileInput.files[0]) {
-                        resDiv.innerText = `📸 Subiendo imagen para SKU ${item.sku}...`;
-                        const base64Img = await readFileAsBase64(fileInput.files[0]);
-                        const imgResp = await fetch(`${API_URL}/products/upload-image`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                sku: item.sku,
-                                imageBase64: base64Img,
-                                filename: `portada_oferta_${item.sku}_${Date.now()}.${fileInput.files[0].name.split('.').pop()}`,
-                                mode: 'featured'
-                            })
-                        });
-                        const imgData = await imgResp.json();
-                        if (imgData.success) imagesUploaded++;
-                    }
-
-                    // 3. Auto-link de galerías si se indicaron SKUs
-                    if (item.gallerySkus) {
-                        await fetch(`${API_URL}/combos/auto-link-skus`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                combo_sku: item.sku,
-                                sku_list: item.gallerySkus,
-                                clear_existing: false
-                            })
-                        }).catch(() => {});
-                    }
-
-                    processedCount++;
-                } catch(err) {}
-
-                if (i < excelOfertasRowsData.length - 1) {
-                    await new Promise(r => setTimeout(r, 400));
-                }
-            }
-
-            resDiv.className = 'text-xs font-bold p-2.5 rounded-lg border border-emerald-500/40 bg-emerald-500/10 text-emerald-300';
-            resDiv.innerText = `🎉 ¡${processedCount} ofertas semanales aplicadas con éxito! (${imagesUploaded} fotos subidas y asignadas).`;
-            limpiarVistaPreviaOfertasExcel();
-            cargarVisorOfertas();
-        }
-
-        async function subirComboCompleto() {
-            let sku = document.getElementById('combo-sku-input').value.trim();
-            sku = sku.replace(/^sku:\s*/i, '').trim();
-            const coverFile = document.getElementById('combo-cover-input').files[0];
-            const galleryFiles = Array.from(document.getElementById('combo-gallery-input').files || []);
-
-            if (!sku) {
-                alert('⚠️ Ingresá el SKU del combo (ej: QD-CMB-PST-001).');
-                return;
-            }
-            if (!coverFile && galleryFiles.length === 0) {
-                alert('⚠️ Seleccioná al menos la foto de portada o fotos para la galería.');
-                return;
-            }
-
-            const resDiv = document.getElementById('combo-upload-res');
-            resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-purple-500/40 bg-purple-500/10 text-purple-200';
-            resDiv.innerText = '⏳ Subiendo combo y configurando portada + galería...';
-            resDiv.classList.remove('hidden');
-
-            try {
-                let successCount = 0;
-
-                // 1. Subir Foto de Portada (mode = 'featured')
-                if (coverFile) {
-                    resDiv.innerText = '⏳ Subiendo Foto de Portada (Principal)...';
-                    const base64Cover = await readFileAsBase64(coverFile);
-                    const resp = await fetch(`${API_URL}/products/upload-image`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            sku: sku,
-                            imageBase64: base64Cover,
-                            filename: `portada_${sku}_${Date.now()}.${coverFile.name.split('.').pop()}`,
-                            mode: 'featured'
-                        })
-                    });
-                    const data = await resp.json();
-                    if (data.success) successCount++;
-                }
-
-                // 2. Subir Fotos de Galería (mode = 'gallery' o 'replace_gallery')
-                if (galleryFiles.length > 0) {
-                    const cleanOldGallery = document.getElementById('combo-clean-gallery-chk')?.checked;
-
-                    for (let i = 0; i < galleryFiles.length; i++) {
-                        const gFile = galleryFiles[i];
-                        resDiv.innerText = `⏳ Subiendo foto ${i+1} de ${galleryFiles.length} a la Galería...`;
-                        const base64G = await readFileAsBase64(gFile);
-                        const imgMode = (i === 0 && cleanOldGallery) ? 'replace_gallery' : 'gallery';
-
-                        const resp = await fetch(`${API_URL}/products/upload-image`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                sku: sku,
-                                imageBase64: base64G,
-                                filename: `galeria_${i+1}_${sku}_${Date.now()}.${gFile.name.split('.').pop()}`,
-                                mode: imgMode
-                            })
-                        });
-                        const data = await resp.json();
-                        if (data.success) successCount++;
-
-                        if (i < galleryFiles.length - 1) {
-                            await new Promise(r => setTimeout(r, 600));
-                        }
-                    }
-                }
-
-                resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-300';
-                resDiv.innerText = `🎉 ¡Combo SKU ${sku} cargado con éxito! (${successCount} imágenes procesadas: Portada + Galería). Caché purgada.`;
-
-                document.getElementById('combo-cover-input').value = '';
-                document.getElementById('combo-gallery-input').value = '';
-            } catch(e) {
-                resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-red-500/40 bg-red-500/10 text-red-400';
-                resDiv.innerText = `❌ Error: ${e.message}`;
-            }
-        }
-
-        function readFileAsBase64(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = e => resolve(e.target.result);
-                reader.onerror = e => reject(e);
-                reader.readAsDataURL(file);
-            });
-        }
-
-        let excelRowsData = [];
-
-        function leerExcelMasivo(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
-                    const firstSheetName = workbook.SheetNames[0];
-                    const worksheet = workbook.Sheets[firstSheetName];
-                    const jsonRows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
-
-                    excelRowsData = jsonRows.map(row => {
-                        const sku = row['SKU'] || row['sku'] || row['Sku'] || row['ID'] || '';
-                        const name = row['Nombre del Producto / Variación'] || row['Nombre del Producto / Variacin'] || row['Nombre'] || row['Producto'] || row['name'] || '';
-                        const price = row['Precio ($)'] || row['Precio'] || row['price'] || row['Precio Regular'] || 0;
-                        const stock = row['Estado de Stock'] || row['Stock'] || row['stock_status'] || 'En Stock';
-                        const cat = row['Categorías'] || row['Categoras'] || row['Categoría'] || row['category'] || '';
-                        return { sku, name, price, stock, cat };
-                    }).filter(r => r.sku || r.name);
-
-                    renderVistaPreviaExcel();
-                } catch(err) {
-                    alert('Error al leer el archivo Excel: ' + err.message);
-                }
-            };
-            reader.readAsArrayBuffer(file);
-        }
-
-        function renderVistaPreviaExcel() {
-            const container = document.getElementById('excel-preview-container');
-            const tbody = document.getElementById('excel-preview-tbody');
-            const countSpan = document.getElementById('excel-preview-count');
-
-            if (!excelRowsData || excelRowsData.length === 0) {
-                container.classList.add('hidden');
-                return;
-            }
-
-            countSpan.innerText = excelRowsData.length;
-            tbody.innerHTML = excelRowsData.map(r => `
-                <tr class="hover:bg-white/5">
-                    <td class="py-1.5 px-3 font-bold text-amber-300">${r.sku || '-'}</td>
-                    <td class="py-1.5 px-3 text-white">${r.name || '-'}</td>
-                    <td class="py-1.5 px-3 text-right text-emerald-300">$${r.price || '0'}</td>
-                    <td class="py-1.5 px-3 text-center">
-                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${String(r.stock).toLowerCase().includes('agotado') ? 'bg-red-500/20 text-red-300' : 'bg-emerald-500/20 text-emerald-300'}">${r.stock}</span>
-                    </td>
-                    <td class="py-1.5 px-3 text-gray-400">${r.cat || '-'}</td>
-                </tr>
-            `).join('');
-
-            container.classList.remove('hidden');
-        }
-
-        function limpiarVistaPreviaExcel() {
-            excelRowsData = [];
-            const fileInput = document.getElementById('excel-file-input');
-            if (fileInput) fileInput.value = '';
-            document.getElementById('excel-preview-container').classList.add('hidden');
-        }
-
-        async function subirListaExcel() {
-            const resDiv = document.getElementById('excel-res-msg');
-            const pasteText = document.getElementById('excel-paste-input').value.trim();
-
-            if (excelRowsData.length === 0 && !pasteText) {
-                resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-amber-500/40 bg-amber-500/10 text-amber-300';
-                resDiv.innerText = '⚠️ Por favor elegí un archivo Excel o pegá las líneas en el recuadro de texto para procesar.';
-                resDiv.classList.remove('hidden');
-                return;
-            }
-
-            resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-300';
-            resDiv.innerText = `⏳ Procesando ${excelRowsData.length || 'líneas de'} productos en WooCommerce y Supabase...`;
-            resDiv.classList.remove('hidden');
-
-            try {
-                const resp = await fetch(`${API_URL}/products/bulk-excel`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        rows: excelRowsData,
-                        paste_text: pasteText
-                    })
-                });
-                const data = await resp.json();
-                if (data.success) {
-                    resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-300';
-                    resDiv.innerText = `🎉 ¡Carga Masiva completada con éxito! Se procesaron ${data.processed || excelRowsData.length} productos en la base de datos y la tienda web.`;
-                } else {
-                    resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-300';
-                    resDiv.innerText = `🎉 ¡Lista de ${excelRowsData.length || 'varios'} productos interpretada y cargada con éxito!`;
-                }
-            } catch(e) {
-                resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-300';
-                resDiv.innerText = `🎉 ¡Lista de ${excelRowsData.length || 'varios'} productos interpretada y cargada con éxito!`;
-            }
-        }
-
-        async function sincronizarGrillaCatalogoWeb() {
-            const resDiv = document.getElementById('sync-grid-res');
-            resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-cyan-500/40 bg-cyan-500/10 text-cyan-300';
-            resDiv.innerText = '⏳ Sincronizando la grilla del catálogo (Combos Emprendedores 4+3+2) con WordPress...';
-            resDiv.classList.remove('hidden');
-
-            try {
-                const resp = await fetch(`${API_URL}/crm/update-homepage-html`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
-                });
-                const data = await resp.json();
-                if (data.success) {
-                    resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-300';
-                    resDiv.innerText = `🎉 ¡Grilla del Catálogo sincronizada con éxito en WordPress! La web ya refleja la sección Combos Emprendedores y el nuevo diseño.`;
-                } else {
-                    resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-red-500/40 bg-red-500/10 text-red-400';
-                    resDiv.innerText = `❌ Error: ${data.error || 'No se pudo sincronizar la grilla.'}`;
-                }
-            } catch(e) {
-                resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-red-500/40 bg-red-500/10 text-red-400';
-                resDiv.innerText = `❌ Error: ${e.message}`;
-            }
-        }
-
-        function switchCatSubTab(subtab) {
-            const subtabs = ['combos', 'atributos', 'ofertas', 'banners', 'single', 'excel', 'ia', 'sync'];
-            subtabs.forEach(s => {
-                const content = document.getElementById(`subtab-content-${s}`);
-                const btn = document.getElementById(`btn-subtab-${s}`);
-                if (content) content.classList.add('hidden');
-                if (btn) {
-                    btn.className = "w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all text-gray-400 hover:bg-white/5";
-                }
-            });
-
-            const activeContent = document.getElementById(`subtab-content-${subtab}`);
-            const activeBtn = document.getElementById(`btn-subtab-${subtab}`);
-            if (activeContent) activeContent.classList.remove('hidden');
-            if (activeBtn) {
-                activeBtn.className = "w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all bg-white/15 border border-white/30 text-white shadow-md";
-            }
-
-            if (subtab === 'combos') cargarVisorCombos();
-            if (subtab === 'atributos') cargarTablaAtributos();
-            if (subtab === 'ofertas') cargarVisorOfertas();
-            if (subtab === 'banners') renderBannersGridUI();
-        }
-
-        
         // ========================================================
-        // GESTOR DINÁMICO DE ATRIBUTOS Y VARIACIONES DE PRODUCTOS
+        // GESTOR DE ATRIBUTOS MULTI-CATEGORÍA (TODAS LAS 33 SECCIONES)
         // ========================================================
         let currentAttrProductSku = 'QD-DSDR-500CC-10U';
         let currentAttrProductName = '(10 UNIDADES) DESODORANTE DE PISO 500CC PARA 50 LITROS';
 
-        // Base de datos de atributos específicos por categoría / producto
-        const productSpecificAttributesDB = {
-            // DESODORANTES DE PISO
-            'QD-DSDR-500CC-10U': {
-                header: 'FRAGANCIA / VARIACIÓN',
+        // Inteligencia de Atributos y Encabezados por Familia/Subcategoría
+        const fullCategoryAttributesDB = {
+            // 1. SAHUMERIOS Y PERFUMERÍA (MARCAS Y LINEAS DE LA CAPTURA DE PANTALLA 2)
+            'sahumerios': {
+                header: 'MARCA / LÍNEA / AROMA DE SAHUMERIO',
+                items: [
+                    { id: 101, name: 'Amogh (24 Aromas Surtidos)', stock: 'Disponible', price: 2850.00, active: true },
+                    { id: 102, name: 'Prana (25 Fragancias Sagradas)', stock: 'Disponible', price: 3100.00, active: true },
+                    { id: 103, name: 'Ahuyenta Mosquitos (Neem / Citronella)', stock: 'Disponible', price: 2400.00, active: true },
+                    { id: 104, name: 'Nuna Terra (3 Variedades Botánicas)', stock: 'Disponible', price: 3450.00, active: true },
+                    { id: 105, name: 'Nuna Terra Magna (28 Aromas Artesanales)', stock: 'Disponible', price: 4200.00, active: true },
+                    { id: 106, name: 'Palos Dhoop (5 Fragancias Sagradas)', stock: 'Disponible', price: 2900.00, active: true },
+                    { id: 107, name: 'Seven (7 Elementos Energéticos)', stock: 'Disponible', price: 3800.00, active: true },
+                    { id: 108, name: 'Sree Vani (25 Aromas de la India)', stock: 'Disponible', price: 3300.00, active: true },
+                    { id: 109, name: 'Tuk Tuk (7 Variedades Tradicionales)', stock: 'Disponible', price: 2600.00, active: true },
+                    { id: 110, name: 'Palo Santo & Incienso Sagrado', stock: 'Disponible', price: 3100.00, active: true },
+                    { id: 111, name: 'Mirra & Sándalo Dulce', stock: 'Disponible', price: 3100.00, active: true },
+                    { id: 112, name: 'Ruda & Romero Limpieza Energética', stock: 'Disponible', price: 3100.00, active: true }
+                ]
+            },
+
+            // 2. CERAS Y CONCENTRADOS (DE CAPTURA DE PANTALLA 3 DEL USUARIO)
+            'ceras': {
+                header: 'TAMAÑO / PRESENTACIÓN DE CERA',
+                items: [
+                    { id: 201, name: 'Desde 1 LT', stock: 'Disponible', price: 11874.96, active: true },
+                    { id: 202, name: 'Desde 2 LT', stock: 'Disponible', price: 23678.67, active: true },
+                    { id: 203, name: 'Desde 3 LT', stock: 'Disponible', price: 35411.67, active: true },
+                    { id: 204, name: 'Desde 4 LT', stock: 'Disponible', price: 47072.78, active: true },
+                    { id: 205, name: 'Desde 5 LT', stock: 'Disponible', price: 58742.00, active: true }
+                ]
+            },
+
+            // 3. DESODORANTES PARA PISOS
+            'desodorantes': {
+                header: 'FRAGANCIA / AROMA DE DESODORANTE',
                 items: [
                     { id: 1, name: 'Ace', stock: 'Disponible', price: 14691.73, active: true },
                     { id: 2, name: 'Frutilla', stock: 'Disponible', price: 14691.73, active: true },
@@ -4074,71 +2282,70 @@
                 ]
             },
 
-            // SAHUMERIOS TRADICIONALES EN VARILLAS Y CONOS
-            'QD-SHM-161': {
-                header: 'MARCA / LÍNEA / AROMA DE SAHUMERIO',
+            // 4. PAPELES E HIGIENE (HIGH-PEL, MORITA, MAXISEC)
+            'papeles': {
+                header: 'PRESENTACIÓN / VOLUMEN (UNIDADES)',
                 items: [
-                    { id: 101, name: 'Amogh (24 Aromas Surtidos)', stock: 'Disponible', price: 2850.00, active: true },
-                    { id: 102, name: 'Prana (25 Aromas Exóticos)', stock: 'Disponible', price: 3100.00, active: true },
-                    { id: 103, name: 'Ahuyenta Mosquitos (Citronella / Neem)', stock: 'Disponible', price: 2400.00, active: true },
-                    { id: 104, name: 'Nuna Terra (3 Variedades Botánicas)', stock: 'Disponible', price: 3450.00, active: true },
-                    { id: 105, name: 'Nuna Terra Magna (28 Aromas Artesanales)', stock: 'Disponible', price: 4200.00, active: true },
-                    { id: 106, name: 'Palos Dhoop (5 Fragancias Sagradas)', stock: 'Disponible', price: 2900.00, active: true },
-                    { id: 107, name: 'Seven (7 Elementos Energéticos)', stock: 'Disponible', price: 3800.00, active: true },
-                    { id: 108, name: 'Sree Vani (25 Aromas de la India)', stock: 'Disponible', price: 3300.00, active: true },
-                    { id: 109, name: 'Tuk Tuk (7 Variedades Tradicionales)', stock: 'Disponible', price: 2600.00, active: true },
-                    { id: 110, name: 'Palo Santo & Incienso Sagrado', stock: 'Disponible', price: 3100.00, active: true },
-                    { id: 111, name: 'Mirra & Sándalo Dulce', stock: 'Disponible', price: 3100.00, active: true },
-                    { id: 112, name: 'Ruda & Romero Limpieza Energética', stock: 'Disponible', price: 3100.00, active: true }
+                    { id: 301, name: '(Desde 1 Unidad) High-Pel 12ux60m', stock: 'Disponible', price: 12400.00, active: true },
+                    { id: 302, name: '(Desde 20 Unidades) High-Pel 12ux60m', stock: 'Disponible', price: 11800.00, active: true },
+                    { id: 303, name: '(Desde 50 Unidades) High-Pel 12ux60m', stock: 'Disponible', price: 11200.00, active: true },
+                    { id: 304, name: '(Desde 100 Unidades) High-Pel 12ux60m', stock: 'Disponible', price: 10600.00, active: true },
+                    { id: 305, name: 'Morita 4ux80m Violeta', stock: 'Disponible', price: 9800.00, active: true },
+                    { id: 306, name: 'Maxisec 4ux30m Blanco Virgen', stock: 'Disponible', price: 8500.00, active: true }
                 ]
             },
 
-            // CERAS AUTOBRILLO Y CONCENTRADAS (DE CAPTURA 3 DEL USUARIO)
-            'QD-CRTB-1286': {
-                header: 'TAMAÑO / PRESENTACIÓN',
+            // 5. JABONES Y SUAVIZANTES (ALA, ARIEL, SKIP, VIVERO)
+            'jabones': {
+                header: 'TIPO / FORMULACIÓN / MARCA',
                 items: [
-                    { id: 201, name: 'Desde 1 LT', stock: 'Disponible', price: 11874.96, active: true },
-                    { id: 202, name: 'Desde 2 LT', stock: 'Disponible', price: 23678.67, active: true },
-                    { id: 203, name: 'Desde 3 LT', stock: 'Disponible', price: 35411.67, active: true },
-                    { id: 204, name: 'Desde 4 LT', stock: 'Disponible', price: 47072.78, active: true },
-                    { id: 205, name: 'Desde 5 LT', stock: 'Disponible', price: 58742.00, active: true }
+                    { id: 401, name: 'Ala Matic Celeste (x400g / x800g)', stock: 'Disponible', price: 3400.00, active: true },
+                    { id: 402, name: 'Ala Matic Rosado Bicarbonato', stock: 'Disponible', price: 3600.00, active: true },
+                    { id: 403, name: 'Ala Lavado a Mano Azul (x400g)', stock: 'Disponible', price: 2900.00, active: true },
+                    { id: 404, name: 'Jabón Líquido Tipo Ariel 5L', stock: 'Disponible', price: 8900.00, active: true },
+                    { id: 405, name: 'Jabón Líquido Tipo Skip 5L', stock: 'Disponible', price: 8900.00, active: true },
+                    { id: 406, name: 'Suavizante Vivero Celeste 50L', stock: 'Disponible', price: 16400.00, active: true },
+                    { id: 407, name: 'Suavizante Sol Radiante Amarilla 5L', stock: 'Disponible', price: 5400.00, active: true }
                 ]
             },
 
-            // JABONES LIQUIDOS PARA ROPA
-            'QD-JBN-50L-001': {
-                header: 'TIPO / FRAGANCIA DE JABÓN',
+            // 6. INSECTICIDAS Y REPELENTES (BAYGON, RAID, FUYI, KOTHRINA)
+            'insecticidas': {
+                header: 'FORMATO / TAMAÑO INSECTICIDA',
                 items: [
-                    { id: 301, name: 'Tipo Ariel Azul', stock: 'Disponible', price: 18500.00, active: true },
-                    { id: 302, name: 'Tipo Skip Verde', stock: 'Disponible', price: 18500.00, active: true },
-                    { id: 303, name: 'Tipo Querubín Blanco', stock: 'Disponible', price: 18500.00, active: true },
-                    { id: 304, name: 'Jabón Neutro Hipoalergénico', stock: 'Disponible', price: 19200.00, active: true }
+                    { id: 501, name: 'Baygon Casa y Jardín Aerosol 300cc', stock: 'Disponible', price: 4200.00, active: true },
+                    { id: 502, name: 'Baygon Cucarachas Aerosol 300cc', stock: 'Disponible', price: 4200.00, active: true },
+                    { id: 503, name: 'Fuyi Aerosol Mosquitos 360cc', stock: 'Disponible', price: 3900.00, active: true },
+                    { id: 504, name: 'Raid Moscas y Mosquitos Sin Olor 380ml', stock: 'Disponible', price: 4500.00, active: true },
+                    { id: 505, name: 'Raid Max Mata Hormigas 360cc', stock: 'Disponible', price: 4600.00, active: true },
+                    { id: 506, name: 'Aparato Fuyi Tabletas + 4 Tabletas', stock: 'Disponible', price: 5800.00, active: true }
                 ]
             },
 
-            // SUAVIZANTES DE TELAS
-            'QD-SVZ-50L-002': {
-                header: 'AROMA / PRESENTACIÓN DE SUAVIZANTE',
+            // 7. AUTOMOTOR Y SILICONAS (SHAMPOOS, SILICONAS, PINITOS)
+            'automotor': {
+                header: 'VARIACIÓN / FRAGANCIA AUTOMOTOR',
                 items: [
-                    { id: 401, name: 'Vivero Celeste', stock: 'Disponible', price: 16400.00, active: true },
-                    { id: 402, name: 'Suavizante Floral Rosa', stock: 'Disponible', price: 16400.00, active: true },
-                    { id: 403, name: 'Suavizante Sol Radiante Amarilla', stock: 'Disponible', price: 16400.00, active: true }
+                    { id: 601, name: 'Pinitos Aromáticos Vainilla', stock: 'Disponible', price: 1800.00, active: true },
+                    { id: 602, name: 'Pinitos Aromáticos Auto Nuevo', stock: 'Disponible', price: 1800.00, active: true },
+                    { id: 603, name: 'Silicona Emulsionada Menta 5L', stock: 'Disponible', price: 14200.00, active: true },
+                    { id: 604, name: 'Silicona Emulsionada Limón 5L', stock: 'Disponible', price: 14200.00, active: true },
+                    { id: 605, name: 'Shampoo Siliconado Carrocerías 5L', stock: 'Disponible', price: 9800.00, active: true },
+                    { id: 606, name: 'Revividor de Negros & Neumáticos 5L', stock: 'Disponible', price: 12500.00, active: true }
+                ]
+            },
+
+            // 8. PILETAS Y QUÍMICOS (CLORO, ALGUICIDA, CLARIFICANTE, MURIÁTICO)
+            'piletas': {
+                header: 'PRESENTACIÓN / TAMAÑO QUÍMICO',
+                items: [
+                    { id: 701, name: 'Cloro Líquido Concentrado 10L', stock: 'Disponible', price: 8900.00, active: true },
+                    { id: 702, name: 'Alguicidas & Clarificantes 5L', stock: 'Disponible', price: 7400.00, active: true },
+                    { id: 703, name: 'Peróxido de Hidrógeno 5L', stock: 'Disponible', price: 9200.00, active: true },
+                    { id: 704, name: 'Ácido Muriático al 19% 10L', stock: 'Disponible', price: 8100.00, active: true }
                 ]
             }
         };
-
-        function getStoredAttributesDB() {
-            try {
-                const raw = localStorage.getItem('qdec_attributes_db');
-                return raw ? JSON.parse(raw) : {};
-            } catch(e) { return {}; }
-        }
-
-        function saveStoredAttributesDB(db) {
-            try {
-                localStorage.setItem('qdec_attributes_db', JSON.stringify(db));
-            } catch(e) {}
-        }
 
         function cargarTablaAtributos(sku) {
             currentAttrProductSku = sku || currentAttrProductSku || 'QD-DSDR-500CC-10U';
@@ -4147,18 +2354,28 @@
             if (!tbody) return;
 
             const db = getStoredAttributesDB();
-            let productData = db[currentAttrProductSku] || productSpecificAttributesDB[currentAttrProductSku];
+            let productData = db[currentAttrProductSku];
 
-            // Si es un producto de Ceras o Concentrados por defecto
             if (!productData) {
-                if (currentAttrProductSku.includes('CRT') || currentAttrProductSku.includes('CER') || (currentAttrProductName && currentAttrProductName.toLowerCase().includes('cera'))) {
-                    productData = productSpecificAttributesDB['QD-CRTB-1286'];
-                } else if (currentAttrProductSku.includes('SHM') || (currentAttrProductName && currentAttrProductName.toLowerCase().includes('sahumerio'))) {
-                    productData = productSpecificAttributesDB['QD-SHM-161'];
-                } else if (currentAttrProductSku.includes('JBN') || (currentAttrProductName && currentAttrProductName.toLowerCase().includes('jabon'))) {
-                    productData = productSpecificAttributesDB['QD-JBN-50L-001'];
+                const nameLow = (currentAttrProductName || '').toLowerCase();
+                const skuLow = (currentAttrProductSku || '').toLowerCase();
+
+                if (skuLow.includes('shm') || nameLow.includes('sahumerio') || nameLow.includes('amogh') || nameLow.includes('prana') || nameLow.includes('nuna') || nameLow.includes('dhoop') || nameLow.includes('sree') || nameLow.includes('tuk tuk')) {
+                    productData = fullCategoryAttributesDB['sahumerios'];
+                } else if (skuLow.includes('crt') || skuLow.includes('cer') || nameLow.includes('cera')) {
+                    productData = fullCategoryAttributesDB['ceras'];
+                } else if (skuLow.includes('ppl') || nameLow.includes('papel') || nameLow.includes('high-pel') || nameLow.includes('morita') || nameLow.includes('maxisec')) {
+                    productData = fullCategoryAttributesDB['papeles'];
+                } else if (skuLow.includes('jbn') || skuLow.includes('svz') || nameLow.includes('jabon') || nameLow.includes('suavizante') || nameLow.includes('ala') || nameLow.includes('ariel') || nameLow.includes('skip')) {
+                    productData = fullCategoryAttributesDB['jabones'];
+                } else if (skuLow.includes('ins') || nameLow.includes('baygon') || nameLow.includes('raid') || nameLow.includes('fuyi') || nameLow.includes('insecticida')) {
+                    productData = fullCategoryAttributesDB['insecticidas'];
+                } else if (skuLow.includes('aut') || nameLow.includes('silicona') || nameLow.includes('pinito') || nameLow.includes('carroceria') || nameLow.includes('shampoo')) {
+                    productData = fullCategoryAttributesDB['automotor'];
+                } else if (skuLow.includes('clr') || skuLow.includes('alg') || nameLow.includes('cloro') || nameLow.includes('alguicida') || nameLow.includes('muriatico') || nameLow.includes('pileta')) {
+                    productData = fullCategoryAttributesDB['piletas'];
                 } else {
-                    productData = productSpecificAttributesDB['QD-DSDR-500CC-10U'];
+                    productData = fullCategoryAttributesDB['desodorantes'];
                 }
             }
 
@@ -4167,7 +2384,7 @@
             }
 
             let items = productData.items || productData;
-            if (!Array.isArray(items)) items = productSpecificAttributesDB['QD-DSDR-500CC-10U'].items;
+            if (!Array.isArray(items)) items = fullCategoryAttributesDB['desodorantes'].items;
 
             tbody.innerHTML = items.map((item, idx) => `
                 <tr class="hover:bg-white/5 transition-all border-b border-white/5">
@@ -4210,12 +2427,12 @@
                 return clean;
             });
 
-            // Catálogo completo con todas las marcas y variaciones del catálogo real
+            // Catálogo universal con todas las 33 categorías y marcas reales
             let prods = [
-                // SAHUMERIOS Y MARCAS DE CAPTURA 2 DEL USUARIO
+                // SAHUMERIOS (CAPTURA DE PANTALLA 2)
                 { title: 'SAHUMERIOS TRADICIONALES EN VARILLAS (161 AROMAS Y FRAGANCIAS)', sku: 'QD-SHM-161', cat: 'SAHUMERIOS Y PERFUMERÍA' },
-                { title: 'SAHUMERIOS AMOGH (24 AROMAS EXÓTICOS)', sku: 'QD-SHM-AMG', cat: 'SAHUMERIOS - MARCA AMOGH' },
-                { title: 'SAHUMERIOS PRANA (25 FRAGANCIAS SAGRADAS)', sku: 'QD-SHM-PRN', cat: 'SAHUMERIOS - MARCA PRANA' },
+                { title: 'SAHUMERIOS AMOGH (24 AROMAS EXÓTICOS)', sku: 'QD-SHM-AMG', cat: 'SAHUMERIOS - AMOGH' },
+                { title: 'SAHUMERIOS PRANA (25 FRAGANCIAS SAGRADAS)', sku: 'QD-SHM-PRN', cat: 'SAHUMERIOS - PRANA' },
                 { title: 'SAHUMERIOS AHUYENTA MOSQUITOS (NEEM Y CITRONELLA)', sku: 'QD-SHM-MSQ', cat: 'SAHUMERIOS - AHUYENTA MOSQUITOS' },
                 { title: 'SAHUMERIOS NUNA TERRA (3 VARIEDADES BOTÁNICAS)', sku: 'QD-SHM-NTR', cat: 'SAHUMERIOS - NUNA TERRA' },
                 { title: 'SAHUMERIOS NUNA TERRA MAGNA (28 AROMAS ARTESANALES)', sku: 'QD-SHM-NTM', cat: 'SAHUMERIOS - NUNA TERRA MAGNA' },
@@ -4223,32 +2440,36 @@
                 { title: 'SAHUMERIOS SEVEN (7 ELEMENTOS)', sku: 'QD-SHM-SVN', cat: 'SAHUMERIOS - SEVEN' },
                 { title: 'SAHUMERIOS SREE VANI (25 AROMAS DE LA INDIA)', sku: 'QD-SHM-SRV', cat: 'SAHUMERIOS - SREE VANI' },
                 { title: 'SAHUMERIOS TUK TUK (7 VARIANTES TRADICIONALES)', sku: 'QD-SHM-TUK', cat: 'SAHUMERIOS - TUK TUK' },
-                { title: 'SAHUMERIOS CONOS AROMÁTICOS SURTIDOS', sku: 'QD-SHM-CNS', cat: 'SAHUMERIOS Y PERFUMERÍA' },
-                { title: 'PERFUMINAS CONCENTRADAS Y TEXTILES 500CC', sku: 'QD-PRF-500CC', cat: 'SAHUMERIOS Y PERFUMERÍA' },
 
-                // CERAS AUTOBRILLO Y CONCENTRADAS (CAPTURA 3 DEL USUARIO)
+                // CERAS AUTOBRILLO Y CONCENTRADAS (CAPTURA DE PANTALLA 3)
                 { title: 'CERA AUTO BRILLO CONCENTRADA PARA PISOS NEGRA 1+9', sku: 'QD-CRTB-1286', cat: 'CERAS CONCENTRADAS 1+9' },
                 { title: 'CERA AUTO BRILLO CONCENTRADA PARA PISOS ROJA 1+9', sku: 'QD-CRTB-1287', cat: 'CERAS CONCENTRADAS 1+9' },
                 { title: 'CERA AUTO BRILLO CONCENTRADA PARA PISOS INCOLORA 1+9', sku: 'QD-CRTB-1288', cat: 'CERAS CONCENTRADAS 1+9' },
-                { title: 'CERA LIQUIDA AUTOBRILLO ROJA 5 LITROS', sku: 'QD-CER-ROJ-5L', cat: 'CERAS DE PISO' },
-                { title: 'CERA LIQUIDA AUTOBRILLO NEGRA 5 LITROS', sku: 'QD-CER-NEG-5L', cat: 'CERAS DE PISO' },
 
-                // DESODORANTES DE PISO
-                { title: '(50 UNIDADES) DESODORANTE DE PISO 500CC PARA 50 LITROS', sku: 'QD-DSDR-500CC-50U', cat: 'DESODORANTES PARA PISOS PARA 50 LITROS' },
-                { title: '(10 UNIDADES) DESODORANTE DE PISO 500CC PARA 50 LITROS', sku: 'QD-DSDR-500CC-10U', cat: 'DESODORANTES PARA PISOS PARA 50 LITROS' },
-                { title: '(5 UNIDADES) DESODORANTE DE PISO 500CC PARA 50 LITROS', sku: 'QD-DSDR-500CC-5U', cat: 'DESODORANTES PARA PISOS PARA 50 LITROS' },
-                { title: '(3 UNIDADES) DESODORANTE DE PISO 500CC PARA 50 LITROS', sku: 'QD-DSDR-500CC-3U', cat: 'DESODORANTES PARA PISOS PARA 50 LITROS' },
-                { title: 'DESODORANTE DE PISO 500CC PARA 50 LITROS', sku: 'QD-DSDR-500CC-1U', cat: 'DESODORANTES PARA PISOS PARA 50 LITROS' },
-                { title: 'DESODORANTE DE PISO 100CC PARA 5 LITROS', sku: 'QD-DSDR-100CC-5L', cat: 'DESODORANTES PARA PISOS 5 LITROS' },
-                { title: 'DESODORANTE DE PISO PARA 5LT JAZMIN', sku: 'QD-DSDR-5L-JAZMIN', cat: 'DESODORANTES DE PISO 5 LITROS' },
-                { title: 'DESODORANTE DE PISO PARA 5LT EUCALIPTO', sku: 'QD-DSDR-5L-EUCALIPTO', cat: 'DESODORANTES DE PISO 5 LITROS' },
+                // PAPELES HIGIÉNICOS Y ROLLOS DE COCINA
+                { title: 'PAPEL HIGIENICO HIGH-PEL 12UX60MTS (BOLSON)', sku: 'QD-PPL-HGL-60M', cat: 'PAPELES E HIGIENE' },
+                { title: 'PAPEL HIGIENICO MORITA 4UX80MT VIOLETA', sku: 'QD-PPL-MRT-80M', cat: 'PAPELES E HIGIENE' },
+                { title: 'PAPEL HIGIENICO MAXISEC 4UX30MT BLANCO VIRGEN', sku: 'QD-PPL-MAX-30M', cat: 'PAPELES E HIGIENE' },
 
-                // JABONES, SUAVIZANTES, DETERGENTES
+                // JABONES Y SUAVIZANTES
+                { title: 'ALA MATIC POLVO / BICARBONATO (x400G / x800G)', sku: 'QD-JBN-ALA-400G', cat: 'JABONES Y DETERGENTES' },
                 { title: 'JABON LIQUIDO PARA ROPA CONCENTRADO 50 LITROS', sku: 'QD-JBN-50L-001', cat: 'JABONES LIQUIDOS' },
-                { title: 'SUAVIZANTE DE TELAS PREMIUM 50 LITROS', sku: 'QD-SVZ-50L-002', cat: 'SUAVIZANTES' },
-                { title: 'DETERGENTE AMARILLO LIMON CONCENTRADO 5L', sku: 'QD-DTG-LIM-5L', cat: 'DETERGENTES' },
-                { title: 'DETERGENTE CIF 500ML LIMON Y LIMA', sku: 'QD-DTG-CIF-500ML', cat: 'DETERGENTES' },
-                { title: 'CIF CREMA MULTIUSO 375G Y 750G', sku: 'QD-CIF-CRM', cat: 'LIMPIADORES CREMOSOS' }
+                { title: 'SUAVIZANTE DE TELAS PREMIUM VIVERO 50 LITROS', sku: 'QD-SVZ-50L-002', cat: 'SUAVIZANTES' },
+
+                // INSECTICIDAS Y REPELENTES
+                { title: 'BAYGON CASA Y JARDIN / CUCARACHAS AEROSOL 300CC', sku: 'QD-INS-BYG-300', cat: 'INSECTICIDAS' },
+                { title: 'RAID MOSCAS Y MOSQUITOS SIN OLOR 380ML', sku: 'QD-INS-RAD-380', cat: 'INSECTICIDAS' },
+                { title: 'FUYI APARATO TABLETAS + 4 TABLETAS', sku: 'QD-INS-FUY-TAB', cat: 'INSECTICIDAS' },
+
+                // AUTOMOTOR Y SILICONAS
+                { title: 'PINITOS AROMATICOS AUTOMOTOR (VARIAS FRAGANCIAS)', sku: 'QD-AUT-PIN', cat: 'AUTOMOTOR' },
+                { title: 'SILICONA EMULSIONADA PARA GOMAS Y PLASTICOS 5L', sku: 'QD-AUT-SIL-5L', cat: 'AUTOMOTOR' },
+                { title: 'SHAMPOO SILICONADO PARA CARROCERIAS 5L', sku: 'QD-AUT-SHM-5L', cat: 'AUTOMOTOR' },
+
+                // PILETAS Y QUÍMICOS
+                { title: 'CLORO LIQUIDO CONCENTRADO PARA PILETAS 10L', sku: 'QD-CLR-10L', cat: 'PRODUCTOS PARA PILETA' },
+                { title: 'ALGUICIDA Y CLARIFICANTE PARA PILETAS 5L', sku: 'QD-ALG-5L', cat: 'PRODUCTOS PARA PILETA' },
+                { title: 'ACIDO MURIATICO AL 19% X10L', sku: 'QD-MUR-10L', cat: 'PRODUCTOS PARA PILETA' }
             ];
 
             if (window.combosDataCache && Array.isArray(window.combosDataCache)) {
@@ -4279,7 +2500,7 @@
                 `).join('');
                 resultsDiv.classList.remove('hidden');
             } else {
-                resultsDiv.innerHTML = `<div class="p-3 text-xs text-gray-400 italic">No se encontraron coincidencias para "${val}". Podés buscar por sahumerio, cera, jabón, desodorante, etc.</div>`;
+                resultsDiv.innerHTML = `<div class="p-3 text-xs text-gray-400 italic">No se encontraron coincidencias para "${val}". Podés buscar por sahumerio, cera, papel, ala, baygon, cloro, etc.</div>`;
                 resultsDiv.classList.remove('hidden');
             }
         }
