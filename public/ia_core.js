@@ -573,8 +573,8 @@
 
         // Obtener o generar un ID único de sesión persistente para la conversación web
         var sessionId = localStorage.getItem('dani_session_id');
-        if (!sessionId) {
-            sessionId = 'Web_' + Math.random().toString(36).substring(2, 7) + '_' + Date.now().toString().slice(-6);
+        if (!sessionId || sessionId.length > 13) {
+            sessionId = 'Web_' + Math.random().toString(36).substring(2, 9);
             localStorage.setItem('dani_session_id', sessionId);
         }
 
@@ -623,8 +623,8 @@
     // ---------------------------------------------------------
     function callGeminiDirect(userMsg, brain) {
         var sessionId = localStorage.getItem('dani_session_id');
-        if (!sessionId) {
-            sessionId = 'Web_' + Math.random().toString(36).substring(2, 7) + '_' + Date.now().toString().slice(-6);
+        if (!sessionId || sessionId.length > 13) {
+            sessionId = 'Web_' + Math.random().toString(36).substring(2, 9);
             localStorage.setItem('dani_session_id', sessionId);
         }
 

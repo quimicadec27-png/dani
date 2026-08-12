@@ -304,31 +304,41 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
         }
 
         const rawPhone = (phone || user_id || session_id || 'Cliente Web').toString();
-        const clientePhone = rawPhone.substring(0, 20);
+        const clientePhone = rawPhone.substring(0, 13);
 
         if (!textoProcesado) return res.status(400).json({ error: 'Mensaje vacío' });
 
         // Generar nombre de Lead limpio para visitas web
-        let leadNombre = `Cliente Web (${clientePhone.substring(0, 12)})`;
+        let leadNombre = `Cliente Web (${clientePhone})`;
         if (clientePhone.startsWith('Web_')) {
-            const shortId = clientePhone.replace('Web_', '').substring(0, 6);
+            const shortId = clientePhone.replace('Web_', '');
             leadNombre = `Lead Web #${shortId}`;
         }
 
         // Buscar o registrar cliente en Supabase para que APAREZCA EN EL CRM EN VIVO (Buscando por whatsapp o cuit)
-        let { data: cliente } = await supabase
-            .from('clientes')
-            .select('id, razon_social, whatsapp, cuit')
-            .or(`whatsapp.eq.${clientePhone},cuit.eq.${clientePhone}`)
-            .single();
+        let cliente = null;
+        try {
+            const { data: existingC } = await supabase
+                .from('clientes')
+                .select('id, razon_social, whatsapp, cuit')
+                .or(`whatsapp.eq.${clientePhone},cuit.eq.${clientePhone}`)
+                .maybeSingle();
+            cliente = existingC;
+        } catch (e) {
+            console.error('Error buscando cliente:', e.message);
+        }
 
         if (!cliente) {
-            const { data: newC } = await supabase
-                .from('clientes')
-                .insert([{ razon_social: leadNombre, whatsapp: clientePhone, cuit: clientePhone }])
-                .select()
-                .single();
-            cliente = newC;
+            try {
+                const { data: newC } = await supabase
+                    .from('clientes')
+                    .insert([{ razon_social: leadNombre, whatsapp: clientePhone, cuit: clientePhone }])
+                    .select()
+                    .maybeSingle();
+                cliente = newC;
+            } catch (e) {
+                console.error('Error creando cliente lead web:', e.message);
+            }
         }
 
         let clienteId = cliente ? cliente.id : null;
