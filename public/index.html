@@ -49,6 +49,20 @@
             background-color: rgba(255, 255, 255, 0.08) !important;
             color: #ffffff !important;
         }
+
+        /* Selección de texto destacada y persistente en el chat */
+        #chat-messages-stream ::selection {
+            background-color: rgba(245, 196, 0, 0.45) !important;
+            color: #ffffff !important;
+        }
+        #chat-messages-stream ::-moz-selection {
+            background-color: rgba(245, 196, 0, 0.45) !important;
+            color: #ffffff !important;
+        }
+        #chat-messages-stream, #chat-messages-stream * {
+            user-select: text !important;
+            -webkit-user-select: text !important;
+        }
     </style>
 </head>
 <body class="flex flex-col min-h-screen">
@@ -2146,16 +2160,83 @@
             }
         }
 
+        let lastRenderedChatKey = '';
+
+        function copiarTextoMensaje(btn) {
+            const text = decodeURIComponent(btn.getAttribute('data-msg-text') || '');
+            if (!text) return;
+
+            navigator.clipboard.writeText(text).then(() => {
+                mostrarFeedbackBoton(btn, '¡Copiado!');
+            }).catch(() => {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+                mostrarFeedbackBoton(btn, '¡Copiado!');
+            });
+        }
+
+        function copiarTextoANotas(btn) {
+            const text = decodeURIComponent(btn.getAttribute('data-msg-text') || '');
+            if (!text) return;
+
+            const notasInput = document.getElementById('edit-lead-notas');
+            if (!notasInput) {
+                alert('Seleccioná un cliente primero para ver la ficha.');
+                return;
+            }
+            const curVal = notasInput.value.trim();
+            if (curVal) {
+                notasInput.value = curVal + '\n\n' + text;
+            } else {
+                notasInput.value = text;
+            }
+            
+            notasInput.focus();
+            notasInput.scrollTop = notasInput.scrollHeight;
+
+            mostrarFeedbackBoton(btn, '¡A Notas!');
+        }
+
+        function mostrarFeedbackBoton(btn, msgText) {
+            const origHTML = btn.innerHTML;
+            btn.innerHTML = `<span class="material-symbols-outlined text-[11px]">check</span> ${msgText}`;
+            btn.classList.add('text-emerald-400', 'border-emerald-500/40', 'bg-emerald-500/10');
+            setTimeout(() => {
+                btn.innerHTML = origHTML;
+                btn.classList.remove('text-emerald-400', 'border-emerald-500/40', 'bg-emerald-500/10');
+            }, 1800);
+        }
+
         function renderChatMessages(mensajes, forceScroll = false) {
             const stream = document.getElementById('chat-messages-stream');
             if (!stream) return;
 
-            const wasAtBottom = (stream.scrollHeight - stream.scrollTop - stream.clientHeight < 100);
-
             if (!mensajes || mensajes.length === 0) {
+                lastRenderedChatKey = (selectedClienteId || '') + '_empty';
                 stream.innerHTML = `<div class="text-center py-12 text-gray-500 text-xs">Sin mensajes en esta conversación.</div>`;
                 return;
             }
+
+            // Fingerprint para evitar re-renderizados innecesarios que borren la selección de texto durante el polling
+            const lastMsg = mensajes[mensajes.length - 1];
+            const currentKey = (selectedClienteId || '') + '_' + mensajes.length + '_' + (lastMsg.id || '') + '_' + (lastMsg.texto || '').length;
+
+            // Verificar si el usuario está seleccionando texto en el chat actualmente
+            const sel = window.getSelection();
+            const isSelectingInStream = sel && !sel.isCollapsed && stream.contains(sel.anchorNode);
+
+            // Si los mensajes NO cambiaron y no es forceScroll, O si el usuario está seleccionando texto activamente, OMITIR el innerHTML para NO romper la selección
+            if (!forceScroll && (currentKey === lastRenderedChatKey || isSelectingInStream)) {
+                return;
+            }
+
+            lastRenderedChatKey = currentKey;
+
+            const wasAtBottom = (stream.scrollHeight - stream.scrollTop - stream.clientHeight < 100);
 
             stream.innerHTML = mensajes.map(m => {
                 const esCliente = (m.emisor === 'cliente');
@@ -2164,7 +2245,7 @@
 
                 if (esSistema) {
                     return `
-                        <div class="flex justify-center my-2">
+                        <div class="flex justify-center my-2 select-none">
                             <span class="text-[10px] px-3 py-1 rounded-full bg-white/5 border border-white/10 text-gray-400 font-mono flex items-center gap-1">
                                 ${m.texto.includes('[BOT PAUSADO]') ? '⏸️ Bot Pausado por Vendedor' : '▶️ Bot Reanudado'}
                             </span>
@@ -2172,13 +2253,31 @@
                     `;
                 }
 
-                const cleanText = (m.texto || '').replace(/\n?\[BOT PAUSADO\]/g, '').replace(/\n?\[BOT REANUDADO\]/g, '');
+                let cleanText = (m.texto || '').replace(/\n?\[BOT PAUSADO\]/g, '').replace(/\n?\[BOT REANUDADO\]/g, '').trim();
+                let vendorName = '👤 VENDEDOR HUMANO';
+                const nameMatch = cleanText.match(/^\[VENDEDOR:([^\]]+)\]/);
+                if (nameMatch) {
+                    vendorName = '👤 ' + nameMatch[1].trim().toUpperCase();
+                    cleanText = cleanText.replace(/^\[VENDEDOR:[^\]]+\]/, '').trim();
+                }
+
+                const encodedText = encodeURIComponent(cleanText);
 
                 return `
                     <div class="flex flex-col ${esCliente ? 'items-start' : 'items-end'} my-1 select-text" style="user-select: text !important; -webkit-user-select: text !important;">
-                        <div class="max-w-[80%] p-3 rounded-2xl text-xs select-text cursor-text ${esCliente ? 'bg-white/10 text-white rounded-tl-none' : esBot ? 'bg-brand-yellow/15 text-brand-yellow border border-brand-yellow/30 rounded-tr-none' : 'bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded-tr-none'}" style="user-select: text !important; -webkit-user-select: text !important;">
-                            <span class="text-[9px] font-bold block opacity-60 uppercase mb-1 select-none">${esCliente ? 'CLIENTE' : esBot ? 'BOT DANI' : '👤 VENDEDOR HUMANO'}</span>
-                            <p class="leading-relaxed whitespace-pre-wrap select-text cursor-text" style="user-select: text !important; -webkit-user-select: text !important;">${cleanText}</p>
+                        <div class="max-w-[85%] p-3.5 rounded-2xl text-xs select-text cursor-text relative group ${esCliente ? 'bg-white/10 text-white rounded-tl-none' : esBot ? 'bg-brand-yellow/15 text-brand-yellow border border-brand-yellow/30 rounded-tr-none' : 'bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded-tr-none'}" style="user-select: text !important; -webkit-user-select: text !important;">
+                            <div class="flex justify-between items-center mb-1.5 gap-2 border-b border-white/10 pb-1 select-none">
+                                <span class="text-[9px] font-bold opacity-70 uppercase tracking-wider">${esCliente ? 'CLIENTE' : esBot ? 'BOT DANI' : vendorName}</span>
+                                <div class="flex items-center gap-1 opacity-90 group-hover:opacity-100 transition-opacity">
+                                    <button type="button" data-msg-text="${encodedText}" onclick="copiarTextoANotas(this)" title="Copiar este mensaje directamente a las Notas del Lead" class="px-1.5 py-0.5 rounded text-[10px] bg-white/10 hover:bg-brand-yellow hover:text-primary-dark font-bold text-gray-200 border border-white/15 flex items-center gap-0.5 transition-all cursor-pointer">
+                                        <span class="material-symbols-outlined text-[12px]">edit_note</span> A Notas
+                                    </button>
+                                    <button type="button" data-msg-text="${encodedText}" onclick="copiarTextoMensaje(this)" title="Copiar texto al portapapeles" class="px-1.5 py-0.5 rounded text-[10px] bg-white/10 hover:bg-white/25 font-bold text-gray-200 border border-white/15 flex items-center gap-0.5 transition-all cursor-pointer">
+                                        <span class="material-symbols-outlined text-[12px]">content_copy</span> Copiar
+                                    </button>
+                                </div>
+                            </div>
+                            <p class="leading-relaxed whitespace-pre-wrap select-text cursor-text font-normal" style="user-select: text !important; -webkit-user-select: text !important;">${cleanText}</p>
                         </div>
                     </div>
                 `;
