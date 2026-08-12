@@ -181,77 +181,111 @@ const SPANISH_STOP_WORDS = [
     'pago', 'forma', 'opciones', 'formatos', 'bidon', 'bidón', 'litros', 'unidad', 'unidades', 'combo',
     'combos', 'descuento', 'oferta', 'quiero', 'comprar', 'donde', 'dónde', 'como', 'cómo', 'cuando',
     'cuándo', 'ustedes', 'estoy', 'interesado', 'interesada', 'necesito', 'buscando', 'alguna', 'algun',
-    'algún', 'tengan', 'hablar', 'contacto', 'producto', 'productos'
+    'algún', 'tengan', 'hablar', 'contacto', 'producto', 'productos',
+    // Preposiciones y palabras funcionales (causaban capturas falsas como "Para Paraná")
+    'para', 'por', 'con', 'sin', 'hay', 'costo', 'extra', 'desde', 'hasta', 'entre', 'sobre',
+    'bajo', 'ante', 'tras', 'segun', 'según', 'durante', 'este', 'esta', 'estos', 'estas',
+    'ese', 'esa', 'esos', 'esas', 'que', 'quien', 'quién', 'cual', 'cuál', 'mucho', 'mucha',
+    'muchos', 'muchas', 'poco', 'poca', 'todo', 'toda', 'todos', 'todas'
 ];
 
-// Detección e IA Extractor Automático de Datos de Lead (Nombre, Apellido, WhatsApp)
+// Extractor Automático de Datos de Lead usando IA (Nombre, Teléfono, DNI/CUIT)
+// Usa Groq LLM para extracción inteligente — solo actualiza campos vacíos o con valor placeholder
 async function autoExtractAndUpdateLead(clienteId, clienteObj, textoUsuario) {
     if (!clienteId || !textoUsuario) return;
 
+    // Filtro rápido: solo procesar si hay pistas de datos personales
+    const TRIGGER_HINTS = [
+        /\b(me llamo|mi nombre|soy|llaman|apellido)\b/i,
+        /\b(dni|cuit|cuil|documento|número|nro\.?)\b/i,
+        /\b\d{7,11}\b/,
+        /\b(\+?54\s*9?\s*\d[\d\s.-]{7,})\b/
+    ];
+    if (!TRIGGER_HINTS.some(rx => rx.test(textoUsuario))) return;
+
     try {
-        let extractedNombre = null;
-        let extractedWhatsapp = null;
+        let extracted = { nombre: null, telefono: null, dni: null };
 
-        // 1. Extraer Número de WhatsApp / Teléfono inteligente con Regex (secuencias de 8 a 13 dígitos)
-        // Soporta formatos como: 3442 586974, 3442-586974, +5493442586974, 5493442586974, 11 2345 6789, 3442586974
-        const phoneRegex = /(?:\+?54\s*9?\s*)?(?:[0-9][\s.-]*){8,13}/g;
-        const matches = textoUsuario.match(phoneRegex);
-        if (matches && matches.length > 0) {
-            for (const matchStr of matches) {
-                let rawPhone = matchStr.replace(/[^0-9]/g, '');
-                // Verificar que la longitud esté entre 8 y 13 dígitos y no sea una fecha u otro número técnico
-                if (rawPhone.length >= 8 && rawPhone.length <= 13) {
-                    if (rawPhone.length === 10 && (rawPhone.startsWith('3') || rawPhone.startsWith('11') || rawPhone.startsWith('2') || rawPhone.startsWith('9'))) {
-                        rawPhone = '549' + rawPhone;
-                    }
-                    extractedWhatsapp = rawPhone;
-                    break;
+        // 1. Usar Groq para extracción inteligente con JSON estructurado
+        try {
+            const extraction = await groq.chat.completions.create({
+                messages: [
+                    {
+                        role: 'system',
+                        content: `Sos un extractor de datos de clientes. Analizá el mensaje y extraé ÚNICAMENTE estos datos si están presentes de forma EXPLÍCITA:
+- "nombre": Nombre y apellido completo de la persona (SOLO si la persona dice su propio nombre. NUNCA pongas nombres de ciudades, provincias, países ni productos como nombre).
+- "telefono": Número de teléfono o WhatsApp (solo dígitos, formato argentino: 10 o 13 dígitos con 549).
+- "dni": Número de DNI argentino (7 u 8 dígitos) o CUIT/CUIL (11 dígitos).
+
+REGLAS CRÍTICAS:
+- Si el mensaje menciona una ciudad ("para paraná", "soy de rosario", "vivo en córdoba") NO la pongas como nombre.
+- Si el mensaje es una consulta genérica sin datos personales, devolvé null en todos los campos.
+- El "nombre" debe ser claramente el nombre de una persona física (ej: "Iago De Mello", "Juan Pérez", "María González").
+- Para DNI buscá patrones como: "dni 12345678", "mi dni es 12345678", "documento: 12345678".
+- Si no encontrás el dato con certeza absoluta, devolvé null para ese campo.
+
+Respondé ÚNICAMENTE con JSON válido sin ninguna explicación: {"nombre": "string o null", "telefono": "string o null", "dni": "string o null"}`
+                    },
+                    { role: 'user', content: textoUsuario }
+                ],
+                model: 'llama-3.3-70b-versatile',
+                response_format: { type: 'json_object' },
+                temperature: 0.05
+            });
+            const raw = JSON.parse(extraction.choices[0]?.message?.content || '{}');
+            if (raw.nombre && typeof raw.nombre === 'string' && raw.nombre.length > 1) {
+                extracted.nombre = raw.nombre.trim();
+            }
+            if (raw.telefono && typeof raw.telefono === 'string') {
+                const digits = raw.telefono.replace(/\D/g, '');
+                if (digits.length >= 8) extracted.telefono = digits;
+            }
+            if (raw.dni && typeof raw.dni === 'string') {
+                const dniDigits = raw.dni.replace(/\D/g, '');
+                if (dniDigits.length >= 7) extracted.dni = dniDigits;
+            }
+        } catch (groqErr) {
+            // Fallback regex para teléfonos si Groq falla
+            console.warn('[AUTO LEAD EXTRACT] Groq falló, usando regex fallback:', groqErr.message);
+            const phoneMatch = textoUsuario.match(/(?:\+?54\s*9?\s*)?(\d[\s.-]*){8,13}/);
+            if (phoneMatch) {
+                const digits = phoneMatch[0].replace(/\D/g, '');
+                if (digits.length >= 8 && digits.length <= 13) {
+                    extracted.telefono = digits.length === 10 ? '549' + digits : digits;
                 }
             }
         }
 
-        // 2. Extraer Nombre y Apellido real del texto
-        // Prefijos explícitos: "me llamo X", "mi nombre es X", "soy X", "me dicen X", "habla X"
-        const prefixRegex = /(?:me llamo|mi nombre es|soy|me dicen|habla|saluda)\s+([a-záéíóúñÁÉÍÓÚÑ]{2,}(?:\s+[a-záéíóúñÁÉÍÓÚÑ]{2,}){0,3})/i;
-        const pm = textoUsuario.match(prefixRegex);
-        if (pm && pm[1]) {
-            const cand = pm[1].trim();
-            const candWords = cand.toLowerCase().split(/\s+/);
-            if (!candWords.some(w => SPANISH_STOP_WORDS.includes(w))) {
-                extractedNombre = cand.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
-            }
-        }
+        // 2. Solo actualizar campos que son vacíos o placeholders genéricos
+        const currentNombre   = (clienteObj?.razon_social || '').trim();
+        const currentWhatsapp = (clienteObj?.whatsapp || '').trim();
+        const currentCuit     = (clienteObj?.cuit || '').trim();
+        const isPlaceholderNombre   = !currentNombre   || currentNombre.startsWith('Lead Web')   || currentNombre.startsWith('Cliente Web');
+        const isPlaceholderWhatsapp = !currentWhatsapp || currentWhatsapp.startsWith('Web_');
+        const isPlaceholderCuit     = !currentCuit     || currentCuit.startsWith('Web_');
 
-        // Si no hay prefijo, buscar si las palabras al inicio son un Nombre legítimo
-        if (!extractedNombre) {
-            const firstChunk = textoUsuario.split(/[,;\n\.]/)[0].trim();
-            if (firstChunk) {
-                const words = firstChunk.split(/\s+/);
-                if (words.length >= 1 && words.length <= 3) {
-                    const isAllLetters = words.every(w => /^[a-záéíóúñÁÉÍÓÚÑ]+$/i.test(w));
-                    const hasStopWord = words.some(w => SPANISH_STOP_WORDS.includes(w.toLowerCase()));
-                    if (isAllLetters && !hasStopWord) {
-                        extractedNombre = words.map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
-                    }
-                }
-            }
-        }
-
-        // 3. Actualizar en Supabase si se detectó un dato válido
         const updateData = {};
-        
-        if (extractedNombre) {
-            updateData.razon_social = extractedNombre;
-            updateData.contacto_nombre = extractedNombre;
+
+        if (extracted.nombre && isPlaceholderNombre) {
+            const nombreCapitalizado = extracted.nombre
+                .split(' ')
+                .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+                .join(' ');
+            updateData.razon_social    = nombreCapitalizado;
+            updateData.contacto_nombre = nombreCapitalizado;
         }
 
-        if (extractedWhatsapp) {
-            updateData.whatsapp = extractedWhatsapp;
+        if (extracted.telefono && extracted.telefono.length >= 8 && isPlaceholderWhatsapp) {
+            updateData.whatsapp = extracted.telefono.substring(0, 20);
+        }
+
+        if (extracted.dni && extracted.dni.length >= 7 && isPlaceholderCuit) {
+            updateData.cuit = extracted.dni.substring(0, 13);
         }
 
         if (Object.keys(updateData).length > 0) {
             await supabase.from('clientes').update(updateData).eq('id', clienteId);
-            console.log(`[AUTO LEAD EXTRACT SUCCESS] Ficha del Lead ${clienteId} actualizada en Supabase:`, updateData);
+            console.log('[AUTO LEAD EXTRACT] Ficha actualizada:', clienteId, updateData);
         }
     } catch(err) {
         console.error('[AUTO LEAD EXTRACT ERROR]:', err.message);
