@@ -808,21 +808,49 @@ app.post('/api/crm/chat/enviar-mensaje-vendedor', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Helper para obtener TODOS los productos de dec_products paginando en rangos de 1000
+// Supabase REST API limita cada consulta individual a 1000 filas como máximo
+async function fetchAllProductsFromSupabase(fields = 'id, sku, name, price, stock, category, image_url, status, woocommerce_id, stock_status') {
+    let allProducts = [];
+    let page = 0;
+    const pageSize = 1000;
+    let hasMore = true;
+
+    while (hasMore) {
+        const from = page * pageSize;
+        const to = from + pageSize - 1;
+
+        const { data, error } = await supabase
+            .from('dec_products')
+            .select(fields)
+            .neq('status', 'borrador')
+            .order('name', { ascending: true })
+            .range(from, to);
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+            allProducts = allProducts.concat(data);
+            if (data.length < pageSize) {
+                hasMore = false;
+            } else {
+                page++;
+            }
+        } else {
+            hasMore = false;
+        }
+    }
+
+    return allProducts;
+}
+
 // =========================================================================
 // 2. ALERTAS DE INVENTARIO Y UMBRALES
 // =========================================================================
 app.get('/api/crm/alertas-stock', async (req, res) => {
     try {
         const umbralMinimoDefault = parseInt(req.query.umbral || 20);
-
-        const { data: prods, error } = await supabase
-            .from('dec_products')
-            .select('id, woocommerce_id, name, price, stock, stock_status, category, image_url')
-            .neq('status', 'borrador')
-            .order('name', { ascending: true })
-            .limit(1000);
-
-        if (error) throw error;
+        const prods = await fetchAllProductsFromSupabase();
 
         const estructuraCategorias = {};
         CATEGORIAS_OFICIALES.forEach(cat => {
@@ -1100,12 +1128,7 @@ app.post('/api/crm/pedidos/crear-presupuesto', async (req, res) => {
 // Endpoint para obtener catálogo simple de productos para el modal de presupuestos
 app.get('/api/crm/productos-list', async (req, res) => {
     try {
-        const { data, error } = await supabase
-            .from('dec_products')
-            .select('id, sku, name, price, stock, category, image_url')
-            .order('name', { ascending: true })
-            .limit(10000);
-        if (error) throw error;
+        const data = await fetchAllProductsFromSupabase('id, sku, name, price, stock, category, image_url');
         res.json({ success: true, count: data.length, productos: data });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });

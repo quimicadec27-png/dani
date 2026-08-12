@@ -2700,12 +2700,12 @@
             // Cargar clientes confirmados en el dropdown
             cargarClientesModalDropdown('', clienteIdPreseleccionado);
 
-            // Cargar catálogo de productos si no está en cache
-            if (!productosCatalogoCache || productosCatalogoCache.length === 0) {
+            // Cargar catálogo de productos si no está en cache o si estaba incompleto (<2000)
+            if (!productosCatalogoCache || productosCatalogoCache.length < 2000) {
                 try {
                     const res = await fetch(`${API_URL}/crm/productos-list`);
                     const data = await res.json();
-                    if (data.success) productosCatalogoCache = data.productos || [];
+                    if (data.success && data.productos) productosCatalogoCache = data.productos;
                 } catch (e) {}
             }
 
