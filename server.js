@@ -1104,7 +1104,7 @@ app.get('/api/crm/productos-list', async (req, res) => {
             .from('dec_products')
             .select('id, sku, name, price, stock, category, image_url')
             .order('name', { ascending: true })
-            .limit(1000);
+            .limit(10000);
         if (error) throw error;
         res.json({ success: true, count: data.length, productos: data });
     } catch (err) { res.status(500).json({ error: err.message }); }

@@ -2162,8 +2162,21 @@
 
         let lastRenderedChatKey = '';
 
+        function obtenerTextoACopiar(btn) {
+            const fullText = decodeURIComponent(btn.getAttribute('data-msg-text') || '');
+            const sel = window.getSelection();
+            if (sel && !sel.isCollapsed) {
+                const selectedText = sel.toString().trim();
+                const container = btn.closest('.select-text') || btn.closest('.relative') || btn.parentElement;
+                if (selectedText && container && (container.contains(sel.anchorNode) || container.contains(sel.focusNode))) {
+                    return selectedText;
+                }
+            }
+            return fullText;
+        }
+
         function copiarTextoMensaje(btn) {
-            const text = decodeURIComponent(btn.getAttribute('data-msg-text') || '');
+            const text = obtenerTextoACopiar(btn);
             if (!text) return;
 
             navigator.clipboard.writeText(text).then(() => {
@@ -2180,7 +2193,7 @@
         }
 
         function copiarTextoANotas(btn) {
-            const text = decodeURIComponent(btn.getAttribute('data-msg-text') || '');
+            const text = obtenerTextoACopiar(btn);
             if (!text) return;
 
             const notasInput = document.getElementById('edit-lead-notas');
@@ -2770,6 +2783,13 @@
             calcularTotalPresupuestoModal();
         }
 
+        function normalizeStr(str) {
+            return (str || '')
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '');
+        }
+
         function filtrarProductosModalRow(filaId, searchText) {
             const fila = document.getElementById(filaId);
             if (!fila) return;
@@ -2777,16 +2797,19 @@
             const select = fila.querySelector('.item-prod-select');
             if (!select) return;
 
-            const term = searchText.toLowerCase().trim();
+            const normTerm = normalizeStr(searchText).trim();
+            const terms = normTerm.split(/\s+/).filter(Boolean);
+
             const list = (productosCatalogoCache || []).filter(p => {
-                if (!term) return true;
-                const name = (p.name || '').toLowerCase();
-                const sku = (p.sku || '').toLowerCase();
-                const cat = (p.category || '').toLowerCase();
-                return name.includes(term) || sku.includes(term) || cat.includes(term);
+                if (terms.length === 0) return true;
+                const name = normalizeStr(p.name);
+                const sku = normalizeStr(p.sku);
+                const cat = normalizeStr(p.category);
+                const fullTarget = `${name} ${sku} ${cat}`;
+                return terms.every(t => fullTarget.includes(t));
             });
 
-            select.innerHTML = '<option value="" style="background-color: #0f172a; color: #ffffff;">Seleccionar del catálogo...</option>' +
+            select.innerHTML = `<option value="" style="background-color: #0f172a; color: #ffffff;">${list.length > 0 ? `Seleccionar del catálogo (${list.length} encontrados)...` : 'No se encontraron productos...'}</option>` +
                 list.map(p => `
                     <option value="${p.id}" data-name="${p.name}" data-price="${p.price}" data-sku="${p.sku}" data-image="${p.image_url || ''}" style="background-color: #0f172a; color: #ffffff;">
                         ${p.name} — $${parseFloat(p.price || 0).toLocaleString('es-AR')}
@@ -2794,7 +2817,7 @@
                 `).join('');
 
             // Si hay búsqueda y existe al menos 1 coincidencia, seleccionar automáticamente la primera coincidencia
-            if (term && list.length > 0) {
+            if (normTerm && list.length > 0) {
                 select.selectedIndex = 1;
                 onProductoSeleccionadoPresupuesto(filaId, select.value);
             }
