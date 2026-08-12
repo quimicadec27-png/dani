@@ -187,41 +187,39 @@
         'div[class*="crm-plugin"],div[id*="crm-plugin"]{',
             'display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important;',
         '}',
-        
-        .dani-history-toggle{
-            background:rgba(255,255,255,0.06);
-            border:1px solid rgba(255,255,255,0.12);
-            color:#cbd5e1;
-            padding:6px 12px;
-            border-radius:10px;
-            font-size:0.75rem;
-            font-weight:600;
-            cursor:pointer;
-            transition:all 0.2s;
-            margin:6px auto 10px auto;
-            display:flex;
-            align-items:center;
-            gap:6px;
-            align-self:center;
-        }
-        .dani-history-toggle:hover{
-            background:rgba(245,196,0,0.15);
-            border-color:rgba(245,196,0,0.4);
-            color:#f5c400;
-        }
-        .dani-history-box{
-            display:none;
-            flex-direction:column;
-            gap:10px;
-            width:100%;
-            padding-bottom:10px;
-            border-bottom:1px dashed rgba(255,255,255,0.15);
-            margin-bottom:10px;
-        }
-        .dani-history-box.dani-history-visible{
-            display:flex;
-        }
-
+        '.dani-history-toggle{',
+            'background:rgba(255,255,255,0.06);',
+            'border:1px solid rgba(255,255,255,0.12);',
+            'color:#cbd5e1;',
+            'padding:6px 12px;',
+            'border-radius:10px;',
+            'font-size:0.75rem;',
+            'font-weight:600;',
+            'cursor:pointer;',
+            'transition:all 0.2s;',
+            'margin:6px auto 10px auto;',
+            'display:flex;',
+            'align-items:center;',
+            'gap:6px;',
+            'align-self:center;',
+        '}',
+        '.dani-history-toggle:hover{',
+            'background:rgba(245,196,0,0.15);',
+            'border-color:rgba(245,196,0,0.4);',
+            'color:#f5c400;',
+        '}',
+        '.dani-history-box{',
+            'display:none;',
+            'flex-direction:column;',
+            'gap:10px;',
+            'width:100%;',
+            'padding-bottom:10px;',
+            'border-bottom:1px dashed rgba(255,255,255,0.15);',
+            'margin-bottom:10px;',
+        '}',
+        '.dani-history-box.dani-history-visible{',
+            'display:flex;',
+        '}',
         /* Auto-expandir subcategorías en el filtro para eliminar el doble clic */
         'div[class*="subcat"] ul, div[class*="subcat"] div, [class*="otras-subcat"] + div, details[class*="subcat"] > div {',
             'display:block!important;visibility:visible!important;opacity:1!important;',
