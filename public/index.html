@@ -1292,12 +1292,21 @@
                     </div>
 
                     <form onsubmit="guardarNuevoPresupuesto(event)" class="space-y-5 text-xs">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                             <div>
-                                <label class="block text-gray-300 font-bold mb-1">Buscar y Seleccionar Cliente Confirmado *</label>
+                                <label class="block text-gray-300 font-bold mb-1">Buscar y Seleccionar Cliente *</label>
                                 <input type="text" id="presupuesto-cliente-search" oninput="filtrarClientesModalPresupuesto()" placeholder="🔍 Buscar por nombre o teléfono..." class="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white placeholder-gray-500 mb-1.5 focus:border-brand-yellow focus:outline-none">
                                 <select id="presupuesto-cliente-id" required class="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:border-brand-yellow focus:outline-none" style="background-color: #0f172a; color: #ffffff;">
                                     <option value="" style="background-color: #0f172a; color: #ffffff;">Seleccionar Cliente...</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-gray-300 font-bold mb-1">Método de Envío / Retiro *</label>
+                                <select id="presupuesto-tipo-envio" onchange="calcularTotalPresupuestoModal()" class="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:border-brand-yellow focus:outline-none" style="background-color: #0f172a; color: #ffffff;">
+                                    <option value="Retira en Local" style="background-color: #0f172a; color: #ffffff;">🏪 Retira en Local (C. del Uruguay)</option>
+                                    <option value="Envío Local (C. del Uruguay)" style="background-color: #0f172a; color: #ffffff;">🚚 Envío Local (C. del Uruguay)</option>
+                                    <option value="Entre Ríos (Andreani +5%)" style="background-color: #0f172a; color: #ffffff;">🚛 Entre Ríos (Andreani +5% Recargo)</option>
+                                    <option value="Nacional (Vía Cargo / Andreani)" style="background-color: #0f172a; color: #ffffff;">✈️ Resto del País (Vía Cargo / Andreani)</option>
                                 </select>
                             </div>
                             <div>
@@ -2104,26 +2113,68 @@
 
             const tieneWhatsappReal = c.whatsapp && !c.whatsapp.startsWith('Web_') && !c.whatsapp.includes('Cliente Web');
 
+            // Determinar valores de envío guardados
+            const tipoEnvioPrev = c.contacto_nombre && c.contacto_nombre.includes('Envío: ') ? c.contacto_nombre.split('Envío: ')[1].split('|')[0].trim() : 'Retira en Local';
+            const locPrev = c.localidad || '';
+            const provPrev = c.provincia || 'Entre Ríos';
+
             container.innerHTML = `
-                <div class="space-y-3">
+                <div class="space-y-3 select-text">
                     <div>
                         <label class="text-[10px] uppercase font-bold text-gray-400 block mb-1">Nombre / Razón Social:</label>
                         <input type="text" id="edit-lead-nombre" value="${c.razon_social || ''}" class="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-brand-yellow focus:outline-none">
                     </div>
-                    <div>
-                        <label class="text-[10px] uppercase font-bold text-gray-400 block mb-1">WhatsApp / Teléfono:</label>
-                        <input type="text" id="edit-lead-telefono" value="${tieneWhatsappReal ? c.whatsapp : ''}" placeholder="Ej: 5493442586974" class="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-brand-yellow focus:outline-none font-mono">
-                    </div>
-                    <div>
-                        <label class="text-[10px] uppercase font-bold text-gray-400 block mb-1">DNI / CUIT:</label>
-                        <input type="text" id="edit-lead-dni" value="${c.contacto_nombre ? c.contacto_nombre.replace('DNI: ', '') : ''}" placeholder="Ej: 20-35987654-9" class="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-brand-yellow focus:outline-none">
-                    </div>
-                    <div>
-                        <label class="text-[10px] uppercase font-bold text-gray-400 block mb-1">Notas / Observaciones:</label>
-                        <textarea id="edit-lead-notas" rows="2" placeholder="Notas sobre el pedido o cliente..." class="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-brand-yellow focus:outline-none">${c.observaciones || ''}</textarea>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="text-[10px] uppercase font-bold text-gray-400 block mb-1">WhatsApp / Teléfono:</label>
+                            <input type="text" id="edit-lead-telefono" value="${tieneWhatsappReal ? c.whatsapp : ''}" placeholder="5493442586974" class="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-brand-yellow focus:outline-none font-mono">
+                        </div>
+                        <div>
+                            <label class="text-[10px] uppercase font-bold text-gray-400 block mb-1">DNI / CUIT:</label>
+                            <input type="text" id="edit-lead-dni" value="${c.cuit || (c.contacto_nombre ? c.contacto_nombre.replace('DNI: ', '') : '')}" placeholder="DNI o CUIT" class="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-brand-yellow focus:outline-none">
+                        </div>
                     </div>
 
-                    <button onclick="guardarDatosLead('${c.id}')" class="w-full py-2 bg-brand-yellow text-primary-dark font-title text-xs font-bold uppercase rounded-xl hover:bg-yellow-400 transition-all flex items-center justify-center gap-1">
+                    <!-- DATOS DE ENVÍO Y DESPACHO -->
+                    <div class="p-2.5 rounded-xl bg-black/30 border border-white/10 space-y-2 select-none">
+                        <span class="text-[10px] uppercase font-bold text-brand-yellow flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[14px]">local_shipping</span>
+                            <span>Datos de Envío / Despacho:</span>
+                        </span>
+                        
+                        <div>
+                            <label class="text-[9px] uppercase font-bold text-gray-400 block mb-0.5">Método de Envío:</label>
+                            <select id="edit-lead-tipo-envio" class="w-full bg-slate-900 border border-white/10 rounded-lg px-2 py-1 text-xs text-white focus:outline-none focus:border-brand-yellow" style="background-color: #0f172a; color: #ffffff;">
+                                <option value="Retira en Local" ${tipoEnvioPrev === 'Retira en Local' ? 'selected' : ''}>🏪 Retira en Local (C. del Uruguay)</option>
+                                <option value="Envío Local (C. del Uruguay)" ${tipoEnvioPrev.includes('Envío Local') ? 'selected' : ''}>🚚 Envío Local (C. del Uruguay)</option>
+                                <option value="Entre Ríos (Andreani +5%)" ${tipoEnvioPrev.includes('Entre Ríos') ? 'selected' : ''}>🚛 Entre Ríos (Andreani +5% Recargo)</option>
+                                <option value="Nacional (Vía Cargo / Andreani)" ${tipoEnvioPrev.includes('Nacional') ? 'selected' : ''}>✈️ Resto del País (Vía Cargo / Andreani)</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="text-[9px] uppercase font-bold text-gray-400 block mb-0.5">Dirección de Envío (Calle y Nro):</label>
+                            <input type="text" id="edit-lead-direccion" value="${locPrev.includes(',') ? locPrev.split(',')[0].trim() : locPrev}" placeholder="Ej: San Martín 1234, Dpto 2" class="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-yellow select-text">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="text-[9px] uppercase font-bold text-gray-400 block mb-0.5">Localidad:</label>
+                                <input type="text" id="edit-lead-localidad" value="${locPrev.includes(',') ? locPrev.split(',')[1].trim() : 'Concepción del Uruguay'}" placeholder="Ej: C. del Uruguay" class="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-yellow select-text">
+                            </div>
+                            <div>
+                                <label class="text-[9px] uppercase font-bold text-gray-400 block mb-0.5">Provincia:</label>
+                                <input type="text" id="edit-lead-provincia" value="${provPrev || 'Entre Ríos'}" placeholder="Ej: Entre Ríos" class="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-yellow select-text">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="text-[10px] uppercase font-bold text-gray-400 block mb-1">Notas / Observaciones:</label>
+                        <textarea id="edit-lead-notas" rows="2" placeholder="Notas sobre el pedido o cliente..." class="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-brand-yellow focus:outline-none select-text">${c.observaciones || ''}</textarea>
+                    </div>
+
+                    <button onclick="guardarDatosLead('${c.id}')" class="w-full py-2 bg-brand-yellow text-primary-dark font-title text-xs font-bold uppercase rounded-xl hover:bg-yellow-400 transition-all flex items-center justify-center gap-1 shadow-lg">
                         <span class="material-symbols-outlined text-[16px]">save</span> Guardar Datos del Lead
                     </button>
 
@@ -2150,6 +2201,10 @@
             const nombre = document.getElementById('edit-lead-nombre').value.trim();
             const tel = document.getElementById('edit-lead-telefono').value.trim();
             const dni = document.getElementById('edit-lead-dni').value.trim();
+            const tipoEnvio = document.getElementById('edit-lead-tipo-envio')?.value || 'Retira en Local';
+            const direccion = document.getElementById('edit-lead-direccion')?.value.trim() || '';
+            const localidad = document.getElementById('edit-lead-localidad')?.value.trim() || '';
+            const provincia = document.getElementById('edit-lead-provincia')?.value.trim() || '';
             const notas = document.getElementById('edit-lead-notas').value.trim();
 
             try {
@@ -2161,12 +2216,16 @@
                         razon_social: nombre,
                         whatsapp: tel,
                         dni_cuit: dni,
+                        tipo_envio: tipoEnvio,
+                        direccion: direccion,
+                        localidad: localidad,
+                        provincia: provincia,
                         notas: notas
                     })
                 });
                 const data = await res.json();
                 if (data.success) {
-                    alert('✅ Datos del cliente guardados con éxito.');
+                    alert('✅ Datos del cliente y envío guardados con éxito.');
                     refreshData();
                 }
             } catch (e) {
@@ -2547,6 +2606,28 @@
                                     </div>
                                 ` : ''}
 
+                                <!-- DATOS DE ENVÍO Y DIRECCIÓN DEL CLIENTE -->
+                                ${p.clientes ? `
+                                    <div class="p-2.5 rounded-xl bg-black/40 border border-white/10 text-xs flex items-center justify-between gap-2">
+                                        <div class="flex items-center gap-2">
+                                            <span class="material-symbols-outlined text-[18px] text-brand-yellow">local_shipping</span>
+                                            <div>
+                                                <strong class="uppercase text-[9px] block text-brand-yellow font-bold">Datos de Envío / Entrega:</strong>
+                                                <span class="text-white text-[11px]">
+                                                    ${p.clientes.contacto_nombre && p.clientes.contacto_nombre.includes('Envío: ') ? p.clientes.contacto_nombre.split('Envío: ')[1].split('|')[0].trim() : (p.clientes.localidad ? 'Envío A Domicilio' : '🏪 Retira en Local')}
+                                                    ${p.clientes.localidad ? ` — 📍 ${p.clientes.localidad}` : ''}
+                                                    ${p.clientes.provincia ? ` (${p.clientes.provincia})` : ''}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        ${!p.clientes.localidad && !(p.clientes.contacto_nombre && p.clientes.contacto_nombre.includes('Retira')) ? `
+                                            <span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 text-[10px] font-bold border border-amber-500/30">
+                                                ⚠️ Sin Dirección
+                                            </span>
+                                        ` : ''}
+                                    </div>
+                                ` : ''}
+
                                 <!-- DETALLE DE PRODUCTOS DEL PEDIDO -->
                                 <div class="space-y-2">
                                     <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Items Solicitados (${itemsPedido.length}):</span>
@@ -2578,13 +2659,23 @@
                                     </div>
 
                                     <div class="flex items-center gap-2">
-                                        ${!esPagado && !esCancelado ? `
-                                            <button onclick="confirmarPagoDescontarStock('${p.id}')" class="px-3 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-xs font-bold border border-emerald-500/30 flex items-center gap-1 transition-all">
+                                        ${!esPagado && p.estado !== 'Despachado' && !esCancelado ? `
+                                            <button onclick="confirmarPagoDescontarStock('${p.id}')" class="px-3 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-xs font-bold border border-emerald-500/30 flex items-center gap-1 transition-all cursor-pointer">
                                                 🟢 Confirmar Pago & Restar Stock
                                             </button>
                                         ` : ''}
+                                        ${(esPagado || p.estado === 'Confirmado') && p.estado !== 'Despachado' ? `
+                                            <button onclick="confirmarDespachoPedido('${p.id}')" class="px-3 py-1.5 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 text-xs font-bold border border-purple-500/30 flex items-center gap-1 transition-all cursor-pointer">
+                                                🟣 Confirmar Despacho / Entrega
+                                            </button>
+                                        ` : ''}
+                                        ${p.estado === 'Despachado' ? `
+                                            <span class="px-3 py-1.5 rounded-xl bg-purple-500/20 text-purple-300 text-xs font-bold border border-purple-500/30 flex items-center gap-1">
+                                                ✅ Pedido Despachado / Entregado
+                                            </span>
+                                        ` : ''}
                                         ${!esCancelado ? `
-                                            <button onclick="cambiarEstadoPedido('${p.id}', 'Cancelado')" class="px-3 py-1.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs font-bold border border-red-500/30 transition-all">
+                                            <button onclick="cambiarEstadoPedido('${p.id}', 'Cancelado')" class="px-3 py-1.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs font-bold border border-red-500/30 transition-all cursor-pointer">
                                                 🔴 Cancelar
                                             </button>
                                         ` : ''}
@@ -2658,6 +2749,33 @@
 
         async function confirmarPagoDescontarStock(pedidoId) {
             await cambiarEstadoPedido(pedidoId, 'Pagado');
+        }
+
+        async function confirmarDespachoPedido(pedidoId) {
+            const p = (pedidosData || []).find(x => x.id === pedidoId);
+            if (p && p.clientes) {
+                const c = p.clientes;
+                const loc = (c.localidad || '').trim();
+                const tipoEnvio = c.contacto_nombre && c.contacto_nombre.includes('Envío: ') ? c.contacto_nombre.split('Envío: ')[1].split('|')[0].trim() : '';
+
+                const esRetiroLocal = tipoEnvio.includes('Retira') || loc.toLowerCase().includes('retira');
+
+                if (!esRetiroLocal && (!loc || loc.length < 5)) {
+                    const confirmRetiro = confirm('⚠️ ATENCIÓN: El cliente no tiene cargada una Dirección de Envío.\n\n¿El cliente va a RETIRAR EN EL LOCAL?\n- Hacé clic en ACEPTAR para marcar "Retira en Local" y despachar.\n- Hacé clic en CANCELAR para ingresar la Dirección en la Ficha del Lead a la izquierda.');
+                    if (confirmRetiro) {
+                        await fetch(`${API_URL}/crm/clientes/actualizar`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ cliente_id: c.id, tipo_envio: 'Retira en Local' })
+                        });
+                    } else {
+                        alert('Ingresá la Dirección y Localidad en la Ficha del Lead (a la izquierda) antes de despachar.');
+                        return;
+                    }
+                }
+            }
+
+            await cambiarEstadoPedido(pedidoId, 'Despachado');
         }
 
         // =========================================================================
@@ -3007,7 +3125,7 @@
             const container = document.getElementById('presupuesto-items-container');
             if (!container) return;
 
-            let grandTotal = 0;
+            let subtotalItems = 0;
             const filas = container.querySelectorAll('[id^="item-fila-"]');
 
             filas.forEach(f => {
@@ -3018,16 +3136,33 @@
                 const cant = parseFloat(cantInput?.value || 0);
                 const precio = parseFloat(precioInput?.value || 0);
                 const subtotal = cant * precio;
-                grandTotal += subtotal;
+                subtotalItems += subtotal;
 
                 if (subtotalSpan) {
                     subtotalSpan.innerText = subtotal.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' });
                 }
             });
 
+            const tipoEnvio = document.getElementById('presupuesto-tipo-envio')?.value || 'Retira en Local';
+            let recargo5Pct = 0;
+            if (tipoEnvio.includes('Entre Ríos')) {
+                recargo5Pct = subtotalItems * 0.05;
+            }
+
+            const grandTotal = subtotalItems + recargo5Pct;
+
             const display = document.getElementById('presupuesto-total-display');
             if (display) {
-                display.innerText = grandTotal.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' });
+                if (recargo5Pct > 0) {
+                    display.innerHTML = `
+                        <div class="text-right">
+                            <span class="text-[11px] text-gray-300 font-normal block">Subtotal: $${subtotalItems.toLocaleString('es-AR', { minimumFractionDigits: 2 })} + Recargo Envío Andreani (5%): $${recargo5Pct.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</span>
+                            <span class="font-title text-xl font-bold text-brand-yellow">$${grandTotal.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                    `;
+                } else {
+                    display.innerText = grandTotal.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' });
+                }
             }
         }
 
@@ -3036,6 +3171,7 @@
 
             const clienteId = document.getElementById('presupuesto-cliente-id')?.value;
             const origen = document.getElementById('presupuesto-origen')?.value || 'CRM';
+            const tipoEnvio = document.getElementById('presupuesto-tipo-envio')?.value || 'Retira en Local';
             const observaciones = document.getElementById('presupuesto-observaciones')?.value || '';
 
             if (!clienteId) {
@@ -3072,6 +3208,18 @@
                 return;
             }
 
+            // Actualizar tipo de envío en la ficha del cliente
+            try {
+                await fetch(`${API_URL}/crm/clientes/actualizar`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cliente_id: clienteId, tipo_envio: tipoEnvio })
+                });
+            } catch(e) {}
+
+            let origenFinal = `${origen} | Envío: ${tipoEnvio}`;
+            if (observaciones) origenFinal += ` | Nota: ${observaciones}`;
+
             const btn = document.getElementById('btn-guardar-presupuesto');
             const origText = btn.innerHTML;
             btn.innerHTML = `<span class="material-symbols-outlined text-sm animate-spin">refresh</span> Guardando...`;
@@ -3085,7 +3233,8 @@
                         cliente_id: clienteId,
                         items: items,
                         observaciones: observaciones,
-                        origen: origen
+                        origen: origenFinal,
+                        tipo_envio: tipoEnvio
                     })
                 });
 

@@ -704,22 +704,30 @@ app.get('/api/crm/chat/conversaciones', async (req, res) => {
 // Actualizar Datos de Lead / Cliente desde el CRM
 app.post('/api/crm/clientes/actualizar', async (req, res) => {
     try {
-        const { cliente_id, razon_social, whatsapp, dni_cuit, notas } = req.body;
+        const { cliente_id, razon_social, whatsapp, dni_cuit, tipo_envio, direccion, localidad, provincia, notas } = req.body;
         if (!cliente_id) return res.status(400).json({ error: 'ID de cliente requerido' });
 
         const updatePayload = {};
         if (razon_social) updatePayload.razon_social = String(razon_social).trim();
         if (whatsapp) updatePayload.whatsapp = String(whatsapp).replace(/[^\d+]/g, '').trim().substring(0, 20);
-        
+        if (dni_cuit) updatePayload.cuit = String(dni_cuit).trim().substring(0, 30);
+        if (provincia) updatePayload.provincia = String(provincia).trim();
+
+        let locStr = '';
+        if (direccion) locStr += String(direccion).trim();
+        if (localidad) locStr += (locStr ? `, ${String(localidad).trim()}` : String(localidad).trim());
+        if (locStr) updatePayload.localidad = locStr;
+
         let contactoStr = '';
         if (dni_cuit) contactoStr += `DNI: ${dni_cuit}`;
+        if (tipo_envio) contactoStr += (contactoStr ? ` | Envío: ${tipo_envio}` : `Envío: ${tipo_envio}`);
         if (notas) contactoStr += (contactoStr ? ` | ${notas}` : notas);
         if (contactoStr) updatePayload.contacto_nombre = contactoStr.substring(0, 150);
 
         const { data, error } = await supabase.from('clientes').update(updatePayload).eq('id', cliente_id).select().single();
         if (error) throw error;
 
-        res.json({ success: true, mensaje: '✅ Datos del cliente actualizados correctamente en el CRM.', cliente: data });
+        res.json({ success: true, mensaje: '✅ Datos del cliente y envío actualizados correctamente.', cliente: data });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
