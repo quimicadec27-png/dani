@@ -1151,19 +1151,20 @@ app.post('/api/crm/pedidos/crear-presupuesto', async (req, res) => {
 });
 
 // Webhook para recibir pedidos en tiempo real desde el Carrito de WooCommerce (quimicadec.com)
-app.post('/api/crm/webhooks/woocommerce-order', async (req, res) => {
+app.all(['/api/crm/webhooks/woocommerce-order', '/api/webhooks/woocommerce-order', '/webhook/woocommerce-order'], async (req, res) => {
     try {
-        const payload = req.body || {};
-        console.log('[WOOCOMMERCE WEBHOOK] Evento de pedido recibido ID:', payload.id || 'Ping de verificación');
-
-        // Responder OK si es un ping de prueba de WooCommerce al configurar el webhook
-        if (payload.webhook_id) {
-            return res.json({ success: true, message: 'Webhook de prueba verificado correctamente' });
+        // Si es un PING, GET o HEAD de verificación de WooCommerce al guardar el webhook
+        if (req.method === 'GET' || req.method === 'HEAD' || !req.body || Object.keys(req.body).length === 0 || req.body.webhook_id) {
+            console.log('[WOOCOMMERCE WEBHOOK PING] Verificación de webhook recibida con éxito.');
+            return res.status(200).json({ success: true, message: 'Webhook de WooCommerce verificado correctamente en CRM DEC.' });
         }
+
+        const payload = req.body || {};
+        console.log('[WOOCOMMERCE WEBHOOK] Evento de pedido recibido ID:', payload.id || 'Nuevo evento');
 
         const wcOrderId = payload.id;
         if (!wcOrderId) {
-            return res.status(400).json({ error: 'Payload de WooCommerce inválido (falta ID de pedido)' });
+            return res.status(200).json({ success: true, message: 'Ping de prueba recibido correctamente' });
         }
 
         // Datos de facturación y envío del cliente
