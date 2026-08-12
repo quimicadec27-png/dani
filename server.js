@@ -304,24 +304,26 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
         }
 
         const rawPhone = (phone || user_id || session_id || 'Cliente Web').toString();
-        const clientePhone = rawPhone.substring(0, 13);
+        // whatsapp admite hasta 20 chars; cuit es VARCHAR(13) → se trunca por separado
+        const clientePhone = rawPhone.substring(0, 20);
+        const clienteCuit  = rawPhone.substring(0, 13);
 
         if (!textoProcesado) return res.status(400).json({ error: 'Mensaje vacío' });
 
         // Generar nombre de Lead limpio para visitas web
-        let leadNombre = `Cliente Web (${clientePhone})`;
+        let leadNombre = `Cliente Web (${clientePhone.substring(0, 12)})`;
         if (clientePhone.startsWith('Web_')) {
-            const shortId = clientePhone.replace('Web_', '');
+            const shortId = clientePhone.replace('Web_', '').substring(0, 8);
             leadNombre = `Lead Web #${shortId}`;
         }
 
-        // Buscar o registrar cliente en Supabase para que APAREZCA EN EL CRM EN VIVO (Buscando por whatsapp o cuit)
+        // Buscar o registrar cliente en Supabase para que APAREZCA EN EL CRM EN VIVO
         let cliente = null;
         try {
             const { data: existingC } = await supabase
                 .from('clientes')
                 .select('id, razon_social, whatsapp, cuit')
-                .or(`whatsapp.eq.${clientePhone},cuit.eq.${clientePhone}`)
+                .or(`whatsapp.eq.${clientePhone},cuit.eq.${clienteCuit}`)
                 .maybeSingle();
             cliente = existingC;
         } catch (e) {
@@ -332,7 +334,7 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
             try {
                 const { data: newC } = await supabase
                     .from('clientes')
-                    .insert([{ razon_social: leadNombre, whatsapp: clientePhone, cuit: clientePhone }])
+                    .insert([{ razon_social: leadNombre, whatsapp: clientePhone, cuit: clienteCuit }])
                     .select()
                     .maybeSingle();
                 cliente = newC;
@@ -718,15 +720,17 @@ app.get('/api/crm/chat/mensajes/:clienteId', async (req, res) => {
         const { clienteId } = req.params;
         let targetUUID = clienteId;
 
-        // Si clienteId es un session_id web o teléfono, resolver al UUID correspondiente en clientes (buscando por whatsapp o cuit original)
+        // Si clienteId es un session_id web o teléfono, resolver al UUID correspondiente en clientes
         const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clienteId);
         if (!isUUID) {
-            // Aplicar la misma truncación que incoming-ai (substring 0,20) para que coincida con el whatsapp almacenado
-            const truncatedId = clienteId.substring(0, 20);
+            // Probar con el sessionId completo (hasta 20 chars) para whatsapp,
+            // y además con los primeros 13 chars para cuit (por retrocompatibilidad)
+            const phoneForWhatsapp = clienteId.substring(0, 20);
+            const phoneForCuit    = clienteId.substring(0, 13);
             const { data: cData } = await supabase
                 .from('clientes')
                 .select('id')
-                .or(`whatsapp.eq.${truncatedId},cuit.eq.${truncatedId}`)
+                .or(`whatsapp.eq.${phoneForWhatsapp},cuit.eq.${phoneForCuit}`)
                 .limit(1);
             if (cData && cData.length > 0) {
                 targetUUID = cData[0].id;
