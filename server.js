@@ -1065,16 +1065,27 @@ app.post('/api/crm/pedidos/cambiar-estado', async (req, res) => {
 // Endpoint para crear un Presupuesto / Pedido desde la Ficha de Chat o el Embudo
 app.post('/api/crm/pedidos/crear-presupuesto', async (req, res) => {
     try {
-        const { cliente_id, items, observaciones, origen } = req.body;
+        const { cliente_id, items, observaciones, origen, tipo_envio, monto_total_final } = req.body;
         if (!cliente_id) return res.status(400).json({ error: 'cliente_id es requerido' });
 
         const itemsList = Array.isArray(items) ? items : [];
-        let montoTotal = 0;
+        let subtotalItems = 0;
         itemsList.forEach(it => {
             const cant = parseFloat(it.cantidad || 1);
             const precio = parseFloat(it.precio_unitario || 0);
-            montoTotal += (cant * precio);
+            subtotalItems += (cant * precio);
         });
+
+        // Calcular el monto total incluyendo el 5% de recargo si es para Entre Ríos (Mostto)
+        let montoTotal = subtotalItems;
+        const tipoEnvioStr = String(tipo_envio || '').trim();
+        const esEntreRiosMostto = tipoEnvioStr.includes('Entre Ríos') || tipoEnvioStr.includes('Mostto');
+
+        if (monto_total_final && parseFloat(monto_total_final) > 0) {
+            montoTotal = parseFloat(monto_total_final);
+        } else if (esEntreRiosMostto) {
+            montoTotal = subtotalItems * 1.05;
+        }
 
         const origenBase = String(origen || 'CRM').trim();
         // IMPORTANTE: La columna 'origen' en la tabla 'pedidos' es VARCHAR(50) en PostgreSQL. Truncar estrictamente a 50 chars.
@@ -1083,7 +1094,7 @@ app.post('/api/crm/pedidos/crear-presupuesto', async (req, res) => {
         const pedidoPayload = {
             cliente_id: cliente_id,
             origen: origenFormatted,
-            monto_total: montoTotal,
+            monto_total: parseFloat(montoTotal.toFixed(2)),
             estado: 'Presupuesto'
         };
 
@@ -1099,9 +1110,12 @@ app.post('/api/crm/pedidos/crear-presupuesto', async (req, res) => {
         if (itemsList.length > 0) {
             const itemsPayload = itemsList.map((it, idx) => {
                 let varTam = it.variacion_tamano ? String(it.variacion_tamano) : null;
-                // Guardar la observación completa en la variacion del primer ítem para no perder caracteres por la restricción VARCHAR(50) de origen
-                if (idx === 0 && observaciones) {
-                    varTam = `Nota: ${observaciones}`.substring(0, 250);
+                // Guardar la observación completa y método de envío en el primer ítem
+                if (idx === 0) {
+                    let noteParts = [];
+                    if (tipoEnvioStr) noteParts.push(`Envío: ${tipoEnvioStr}`);
+                    if (observaciones) noteParts.push(`Nota: ${observaciones}`);
+                    if (noteParts.length > 0) varTam = noteParts.join(' | ').substring(0, 250);
                 }
 
                 return {
@@ -1130,7 +1144,10 @@ app.post('/api/crm/pedidos/crear-presupuesto', async (req, res) => {
             mensaje: '🎉 ¡Presupuesto creado con éxito y cargado al embudo!',
             pedido: fullOrder || orderData
         });
-    } catch (err) { res.status(500).json({ error: err.message }); }
+    } catch (err) {
+        console.error('[CREAR PRESUPUESTO ERROR]:', err.message);
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // Endpoint para obtener catálogo simple de productos para el modal de presupuestos
