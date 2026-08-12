@@ -1150,6 +1150,141 @@ app.post('/api/crm/pedidos/crear-presupuesto', async (req, res) => {
     }
 });
 
+// Webhook para recibir pedidos en tiempo real desde el Carrito de WooCommerce (quimicadec.com)
+app.post('/api/crm/webhooks/woocommerce-order', async (req, res) => {
+    try {
+        const payload = req.body || {};
+        console.log('[WOOCOMMERCE WEBHOOK] Evento de pedido recibido ID:', payload.id || 'Ping de verificación');
+
+        // Responder OK si es un ping de prueba de WooCommerce al configurar el webhook
+        if (payload.webhook_id) {
+            return res.json({ success: true, message: 'Webhook de prueba verificado correctamente' });
+        }
+
+        const wcOrderId = payload.id;
+        if (!wcOrderId) {
+            return res.status(400).json({ error: 'Payload de WooCommerce inválido (falta ID de pedido)' });
+        }
+
+        // Datos de facturación y envío del cliente
+        const billing = payload.billing || {};
+        const shipping = payload.shipping || {};
+
+        const nombre = `${billing.first_name || ''} ${billing.last_name || ''}`.trim() || 'Cliente Web WooCommerce';
+        let rawPhone = billing.phone || shipping.phone || '';
+        let cleanPhone = rawPhone.replace(/[^\d+]/g, '').trim();
+
+        if (!cleanPhone) {
+            cleanPhone = `Web_${wcOrderId}`;
+        } else if (!cleanPhone.startsWith('54') && cleanPhone.length >= 10) {
+            cleanPhone = `549${cleanPhone}`;
+        }
+
+        const direccion = (shipping.address_1 || billing.address_1 || '').trim();
+        const localidad = (shipping.city || billing.city || '').trim();
+        const provincia = (shipping.state || billing.state || 'Entre Ríos').trim();
+
+        // Determinar método de envío seleccionado en la web
+        const shippingLines = payload.shipping_lines || [];
+        let methodTitle = shippingLines.length > 0 ? (shippingLines[0].method_title || '') : '';
+        let tipoEnvio = 'Retira en Local';
+
+        if (methodTitle.toLowerCase().includes('mostto') || provincia.toLowerCase().includes('entre') || localidad.toLowerCase().includes('paraná')) {
+            tipoEnvio = 'Entre Ríos (Mostto +5%)';
+        } else if (methodTitle.toLowerCase().includes('vía cargo') || methodTitle.toLowerCase().includes('andreani') || (localidad && !localidad.toLowerCase().includes('concepción'))) {
+            tipoEnvio = 'Resto del País (Andreani / Vía Cargo)';
+        } else if (methodTitle.toLowerCase().includes('local')) {
+            tipoEnvio = 'Envío Local (C. del Uruguay)';
+        }
+
+        const contactoStr = `DNI: Web | Envío: ${tipoEnvio}`;
+        const locStr = direccion ? (localidad ? `${direccion}, ${localidad}` : direccion) : localidad;
+
+        // Buscar o registrar cliente en Supabase
+        let clienteId = null;
+        const { data: existingClient } = await supabase
+            .from('clientes')
+            .select('id, localidad, provincia')
+            .or(`whatsapp.eq.${cleanPhone},razon_social.ilike.%${nombre}%`)
+            .limit(1);
+
+        if (existingClient && existingClient.length > 0) {
+            clienteId = existingClient[0].id;
+            await supabase.from('clientes').update({
+                razon_social: nombre,
+                provincia: provincia || 'Entre Ríos',
+                localidad: locStr || existingClient[0].localidad,
+                contacto_nombre: contactoStr
+            }).eq('id', clienteId);
+        } else {
+            const { data: newClient, error: clientErr } = await supabase.from('clientes').insert([{
+                razon_social: nombre,
+                whatsapp: cleanPhone,
+                email: billing.email || null,
+                provincia: provincia || 'Entre Ríos',
+                localidad: locStr,
+                contacto_nombre: contactoStr,
+                estado_lead: 'Web WooCommerce'
+            }]).select().single();
+
+            if (!clientErr && newClient) {
+                clienteId = newClient.id;
+            }
+        }
+
+        if (!clienteId) {
+            return res.status(500).json({ error: 'No se pudo generar el registro de cliente' });
+        }
+
+        // Monto Total
+        const montoTotal = parseFloat(payload.total || 0);
+
+        // Crear pedido en el Embudo de Pedidos (estado Presupuesto)
+        const pedidoPayload = {
+            cliente_id: clienteId,
+            woocommerce_order_id: String(wcOrderId),
+            origen: `WooCommerce Web #${wcOrderId} | Envío: ${tipoEnvio}`.substring(0, 50),
+            monto_total: montoTotal,
+            estado: 'Presupuesto'
+        };
+
+        const { data: orderData, error: orderErr } = await supabase
+            .from('pedidos')
+            .insert([pedidoPayload])
+            .select()
+            .single();
+
+        if (orderErr) throw orderErr;
+
+        // Insertar items del pedido
+        const lineItems = payload.line_items || [];
+        if (lineItems.length > 0) {
+            const itemsPayload = lineItems.map((it, idx) => ({
+                pedido_id: orderData.id,
+                sku: it.sku ? String(it.sku).substring(0, 50) : null,
+                producto_nombre: String(it.name || 'Producto Web').substring(0, 150),
+                variacion_tamano: idx === 0 ? `Pedido Web WooCommerce #${wcOrderId} | Envío: ${tipoEnvio}`.substring(0, 250) : null,
+                cantidad: parseInt(it.quantity || 1),
+                precio_unitario: parseFloat(it.price || (parseFloat(it.total || 0) / parseFloat(it.quantity || 1)))
+            }));
+
+            await supabase.from('items_pedido').insert(itemsPayload);
+        }
+
+        console.log(`[WOOCOMMERCE WEBHOOK] ✅ Pedido #${wcOrderId} de ${nombre} registrado en CRM por $${montoTotal}`);
+
+        res.json({
+            success: true,
+            message: `🎉 Pedido #${wcOrderId} sincronizado exitosamente con el CRM DEC`,
+            pedido_id: orderData.id
+        });
+
+    } catch (err) {
+        console.error('[WOOCOMMERCE WEBHOOK ERROR]:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Endpoint para obtener catálogo simple de productos para el modal de presupuestos
 app.get('/api/crm/productos-list', async (req, res) => {
     try {
