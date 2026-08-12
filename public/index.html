@@ -1310,6 +1310,20 @@
                             </div>
                         </div>
 
+                        <!-- CAJA DE PARSEO AUTOMÁTICO IA DESDE NOTAS O CHAT -->
+                        <div class="p-3.5 rounded-xl bg-brand-yellow/10 border border-brand-yellow/30 space-y-2 select-none">
+                            <div class="flex justify-between items-center flex-wrap gap-2">
+                                <label class="block text-brand-yellow font-bold uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                                    <span class="material-symbols-outlined text-[16px]">auto_awesome</span>
+                                    <span>Auto-Armar Pedido con IA desde Chat / Notas</span>
+                                </label>
+                                <button type="button" onclick="procesarTextoPresupuestoIA()" id="btn-procesar-ia-modal" class="px-3 py-1 rounded-lg bg-brand-yellow text-primary-dark font-bold text-[11px] hover:bg-yellow-400 flex items-center gap-1 transition-all shadow-md cursor-pointer">
+                                    <span class="material-symbols-outlined text-[15px]">auto_fix_high</span> ✨ Cargar Productos desde Texto
+                                </button>
+                            </div>
+                            <textarea id="presupuesto-texto-ia-input" rows="2" placeholder="Pegá acá el texto del chat o cotización (ej: '40 Sahumerio Prana Gardenia $1002.78, 10 Lavandina 5L')..." class="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white placeholder-gray-400 focus:border-brand-yellow focus:outline-none select-text"></textarea>
+                        </div>
+
                         <!-- LISTA DE PRODUCTOS COTIZADOS -->
                         <div class="space-y-3 pt-2 border-t border-white/10">
                             <div class="flex justify-between items-center">
@@ -2689,6 +2703,121 @@
             cargarClientesModalDropdown(searchText, currentSelected);
         }
 
+        function buscarProductoCacheInteligente(nombreQuery) {
+            if (!nombreQuery || !productosCatalogoCache || productosCatalogoCache.length === 0) return null;
+            const normQuery = normalizeStr(nombreQuery).trim();
+            const terms = normQuery.split(/\s+/).filter(Boolean);
+            if (terms.length === 0) return null;
+
+            // 1. Coincidencia de TODOS los términos
+            let match = productosCatalogoCache.find(p => {
+                const full = normalizeStr(`${p.name} ${p.category} ${p.sku}`);
+                return terms.every(t => full.includes(t));
+            });
+            if (match) return match;
+
+            // 2. Coincidencia parcial con scoring
+            let bestP = null;
+            let maxCount = 0;
+            productosCatalogoCache.forEach(p => {
+                const full = normalizeStr(`${p.name} ${p.category} ${p.sku}`);
+                const count = terms.filter(t => full.includes(t)).length;
+                if (count > maxCount && count >= (terms.length > 2 ? 2 : 1)) {
+                    maxCount = count;
+                    bestP = p;
+                }
+            });
+
+            return bestP;
+        }
+
+        async function procesarTextoPresupuestoIA(textoManual = null) {
+            const inputIa = document.getElementById('presupuesto-texto-ia-input');
+            const txt = (textoManual || inputIa?.value || '').trim();
+            if (!txt) {
+                alert('Ingresá o pegá el texto de la cotización para armar el pedido.');
+                return;
+            }
+
+            const btn = document.getElementById('btn-procesar-ia-modal');
+            const origHTML = btn ? btn.innerHTML : '';
+            if (btn) {
+                btn.innerHTML = `<span class="material-symbols-outlined text-[15px] animate-spin">refresh</span> Procesando con IA...`;
+                btn.disabled = true;
+            }
+
+            try {
+                // Asegurar catálogo cargado
+                if (!productosCatalogoCache || productosCatalogoCache.length < 2000) {
+                    const resCat = await fetch(`${API_URL}/crm/productos-list`);
+                    const dataCat = await resCat.json();
+                    if (dataCat.success && dataCat.productos) productosCatalogoCache = dataCat.productos;
+                }
+
+                // Llamar al endpoint de IA de extracción
+                const res = await fetch(`${API_URL}/crm/parse-presupuesto-texto-ia`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ texto: txt })
+                });
+                const data = await res.json();
+
+                if (!data.success || !Array.isArray(data.items) || data.items.length === 0) {
+                    if (!textoManual) alert('No se encontraron productos explícitos en el texto ingresado.');
+                    if (btn) { btn.innerHTML = origHTML; btn.disabled = false; }
+                    return;
+                }
+
+                // Limpiar container de items actual
+                const container = document.getElementById('presupuesto-items-container');
+                if (container) container.innerHTML = '';
+                itemFilaCounter = 0;
+
+                let cargadosCount = 0;
+                data.items.forEach(it => {
+                    const prodMatch = buscarProductoCacheInteligente(it.nombre);
+
+                    // Crear una fila
+                    agregarFilaItemPresupuesto();
+                    const filaId = `item-fila-${itemFilaCounter}`;
+                    const fila = document.getElementById(filaId);
+                    if (!fila) return;
+
+                    const select = fila.querySelector('.item-prod-select');
+                    const inputCustom = fila.querySelector('.item-prod-name-custom');
+                    const inputCant = fila.querySelector('.item-prod-cant');
+                    const inputPrecio = fila.querySelector('.item-prod-precio');
+
+                    if (prodMatch) {
+                        // Si se encontró el producto en catálogo, seleccionarlo
+                        select.value = prodMatch.id;
+                        onProductoSeleccionadoPresupuesto(filaId, prodMatch.id);
+                        if (inputCant) inputCant.value = it.cantidad || 1;
+                        if (it.precio_unitario && parseFloat(it.precio_unitario) > 0 && inputPrecio) {
+                            inputPrecio.value = parseFloat(it.precio_unitario);
+                        }
+                        cargadosCount++;
+                    } else {
+                        // Si no está en catálogo exacto, cargar como ítem personalizado
+                        if (inputCustom) inputCustom.value = it.nombre;
+                        if (inputCant) inputCant.value = it.cantidad || 1;
+                        if (inputPrecio) inputPrecio.value = parseFloat(it.precio_unitario || 0);
+                        cargadosCount++;
+                    }
+                });
+
+                calcularTotalPresupuestoModal();
+
+                if (btn) {
+                    btn.innerHTML = `<span class="material-symbols-outlined text-[15px]">check</span> ¡${cargadosCount} Productos Cargados!`;
+                    setTimeout(() => { btn.innerHTML = origHTML; btn.disabled = false; }, 2000);
+                }
+            } catch (err) {
+                console.error('[PROCESAR IA ERROR]:', err);
+                if (btn) { btn.innerHTML = origHTML; btn.disabled = false; }
+            }
+        }
+
         async function abrirModalNuevoPedido(clienteIdPreseleccionado = null) {
             const modal = document.getElementById('modal-nuevo-pedido');
             if (!modal) return;
@@ -2714,6 +2843,21 @@
             document.getElementById('presupuesto-observaciones').value = '';
             agregarFilaItemPresupuesto();
             calcularTotalPresupuestoModal();
+
+            // Copiar notas del lead de la ficha (si existen) a la caja de observaciones e IA
+            const leadNotasText = (document.getElementById('edit-lead-notas')?.value || '').trim();
+            const inputIa = document.getElementById('presupuesto-texto-ia-input');
+            const inputObs = document.getElementById('presupuesto-observaciones');
+
+            if (leadNotasText) {
+                if (inputIa) inputIa.value = leadNotasText;
+                if (inputObs) inputObs.value = leadNotasText;
+                // Auto-procesar con IA los productos si hay notas copiadas del chat
+                procesarTextoPresupuestoIA(leadNotasText);
+            } else {
+                if (inputIa) inputIa.value = '';
+                if (inputObs) inputObs.value = '';
+            }
 
             modal.classList.remove('hidden');
         }

@@ -1133,6 +1133,51 @@ app.get('/api/crm/productos-list', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Endpoint de IA para Analizar Texto de Chat / Notas y Extraer Productos / Cantidades / Precios automáticamente
+app.post('/api/crm/parse-presupuesto-texto-ia', async (req, res) => {
+    try {
+        const { texto } = req.body;
+        if (!texto || typeof texto !== 'string' || !texto.trim()) {
+            return res.status(400).json({ error: 'Texto no proporcionado' });
+        }
+
+        const completion = await groq.chat.completions.create({
+            messages: [
+                {
+                    role: "system",
+                    content: `Sos un extractor de items de pedido para un CRM comercial de productos químicos y sahumerios.
+Analizá el texto recibido y extraé CADA producto mencionado con su cantidad y precio unitario si está especificado.
+Ignorá totales generales, nombres de clientes o mensajes introductorios.
+
+Respondé ÚNICAMENTE con JSON válido en este formato:
+{
+  "items": [
+    {
+      "nombre": "Nombre del producto limpio (ej: Sahumerio Prana Gardenia, Jabón Skip 5L, Lavandina)",
+      "cantidad": 40,
+      "precio_unitario": 1002.78
+    }
+  ]
+}`
+                },
+                { role: "user", content: texto.trim() }
+            ],
+            model: "llama-3.3-70b-versatile",
+            response_format: { type: "json_object" },
+            temperature: 0.05
+        });
+
+        const result = JSON.parse(completion.choices[0]?.message?.content || '{}');
+        res.json({
+            success: true,
+            items: result.items || []
+        });
+    } catch (err) {
+        console.error('[PARSE PRESUPUESTO IA ERROR]:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 app.get('/api/crm/clientes', async (req, res) => {
     try {
         const { data, error } = await supabase.from('clientes').select('id, razon_social, contacto_nombre, whatsapp, cuit, email, localidad, tipo_cliente, estado_lead, total_comprado, creado_el').limit(2000);
