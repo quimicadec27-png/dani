@@ -220,10 +220,15 @@
         '.dani-history-box.dani-history-visible{',
             'display:flex;',
         '}',
-        /* Auto-expandir subcategorías en el filtro para eliminar el doble clic */
-        'div[class*="subcat"] ul, div[class*="subcat"] div, [class*="otras-subcat"] + div, details[class*="subcat"] > div {',
-            'display:block!important;visibility:visible!important;opacity:1!important;',
-        '}'
+        /* --- CORRECCIÓN GLOBAL DE ESTILOS Y RESPONSIVE MÓVIL --- */,
+        'html, body { max-width: 100vw !important; overflow-x: hidden !important; }',
+        /* Ocultar el acordeón no deseado de Marcas y Subcategorías Disponibles */,
+        '.woocommerce-widget-layered-nav, .widget_layered_nav, .wc-block-attribute-filter, details.wc-block-attribute-filter, div[class*="marcas-subcat"], div[class*="subcategorias-disponibles"] { display: none !important; }',
+        /* Legibilidad en el formulario de valoraciones / reseñas sobre fondo oscuro */,
+        '#reviews, #review_form, .comment-respond, .comment-reply-title, .comment-form label, .comment-form-comment label, .comment-form-author label, .comment-form-email label, .stars a, p.stars span a { color: #ffffff !important; }',
+        '.comment-form input[type="text"], .comment-form input[type="email"], .comment-form textarea { background-color: rgba(255, 255, 255, 0.08) !important; color: #ffffff !important; border: 1px solid rgba(255, 255, 255, 0.25) !important; border-radius: 8px !important; }',
+        /* Ajuste de imágenes de productos para no desbordar en móvil */,
+        '.woocommerce-product-gallery, .woocommerce-product-gallery img { max-width: 100% !important; height: auto !important; }'
     ].join('');
 
     // ---------------------------------------------------------
