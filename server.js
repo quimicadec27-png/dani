@@ -466,9 +466,11 @@ Devuelve JSON: {"items": [{"busqueda": "string", "cantidad": number}]}`
                 let cantidadDeseada = (typeof itemObj === 'object' && itemObj.cantidad) ? parseInt(itemObj.cantidad) || 1 : 1;
                 if (!queryStr) continue;
 
-                // Normalizar faltas de ortografía comunes (saumerio -> sahumerio)
+                // Normalizar faltas de ortografía comunes (saumerio -> sahumerio, litros -> LT)
                 queryStr = queryStr.replace(/\bsaumerios?\b/g, 'sahumerio')
-                                   .replace(/\bsahumerios?\b/g, 'sahumerio');
+                                   .replace(/\bsahumerios?\b/g, 'sahumerio')
+                                   .replace(/\blitros?\b/gi, 'LT')
+                                   .replace(/\blts?\b/gi, 'LT');
 
                 const stopWords = ['cuanto', 'sale', 'tenes', 'opciones', 'producto', 'precio', 'este', 'para', 'saber', 'quisiera', 'quiero', 'necesito', 'unidades', 'paquetes', 'cajas'];
                 const words = queryStr.split(' ').filter(w => w.length > 2 && !stopWords.includes(w));
