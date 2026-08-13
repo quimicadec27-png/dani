@@ -497,7 +497,7 @@ Devuelve JSON: {"items": [{"busqueda": "string", "cantidad": number}]}`
                 if (prods.length === 0) {
                     let queryBuilder = supabase
                         .from('dec_products')
-                        .select('name, price, regular_price, stock_status, sku')
+                        .select('name, price, stock_status, sku')
                         .or('status.eq.publish,status.eq.publicado');
 
                     for (const w of words) {
@@ -511,7 +511,7 @@ Devuelve JSON: {"items": [{"busqueda": "string", "cantidad": number}]}`
                         if (longestWord && longestWord.length > 2) {
                             const { data: fallbackProds } = await supabase
                                 .from('dec_products')
-                                .select('name, price, regular_price, stock_status, sku')
+                                .select('name, price, stock_status, sku')
                                 .or('status.eq.publish,status.eq.publicado')
                                 .ilike('name', `%${longestWord}%`)
                                 .limit(10);
@@ -523,7 +523,7 @@ Devuelve JSON: {"items": [{"busqueda": "string", "cantidad": number}]}`
 
                 if (prods && prods.length > 0) {
                     const bestMatch = prods[0];
-                    const rawPrice = parseFloat(bestMatch.price || bestMatch.regular_price || 0);
+                    const rawPrice = parseFloat(bestMatch.price || 0);
                     const stockText = bestMatch.stock_status === 'instock' || !bestMatch.stock_status ? 'Disponible ✅' : 'Consultar ⚠️';
                     const cleanName = bestMatch.name.replace(/\(SKU:.*?\)/gi, '').trim();
 
@@ -549,7 +549,7 @@ Devuelve JSON: {"items": [{"busqueda": "string", "cantidad": number}]}`
                     // Sugerir variantes si hay otras opciones
                     if (prods.length > 1 && busquedas.length <= 2) {
                         prods.slice(1, 3).forEach(otherP => {
-                            const pPrice = parseFloat(otherP.price || otherP.regular_price || 0);
+                            const pPrice = parseFloat(otherP.price || 0);
                             const otherCleanName = otherP.name.replace(/\(SKU:.*?\)/gi, '').trim();
                             if (pPrice > 0) {
                                 desgloses.push(`  - Variante / Opción: ${otherCleanName} ($${pPrice.toLocaleString('es-AR')} c/u)`);
@@ -1460,7 +1460,7 @@ app.get('/api/products/debug-search', async (req, res) => {
     try {
         const { data: allProds } = await supabase
             .from('dec_products')
-            .select('id, name, sku, price, regular_price, status')
+            .select('id, name, sku, price, status')
             .or('name.ilike.%MAGISTRAL%,name.ilike.%AZUL%,price.lt.1000');
             
         // Borrar cualquier producto que tenga AZUL o precio < 1000 en 20LT
@@ -1494,7 +1494,7 @@ app.get('/api/products/cleanup-outdated', async (req, res) => {
 app.get('/api/products/all', async (req, res) => {
 
     try {
-        let { data, error } = await supabase
+        const { data, error } = await supabase
             .from('dec_products')
             .select('id, name, sku, price, stock, image_url, stock_status')
             .order('name', { ascending: true })
@@ -1642,7 +1642,6 @@ app.post('/api/products/update-details', async (req, res) => {
         let sbUpdated = false;
         const updateDb = {};
         if (name) updateDb.name = name;
-        if (regular_price) updateDb.regular_price = parseFloat(regular_price);
         if (sale_price || regular_price) updateDb.price = parseFloat(sale_price || regular_price);
 
         if (Object.keys(updateDb).length > 0) {
