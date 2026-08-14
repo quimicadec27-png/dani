@@ -399,22 +399,7 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
             } catch (e) { console.error('Error insertando mensaje:', e.message); }
         }
 
-        // VERIFICACIÓN DE INTERVENCIÓN HUMANA: Si el Bot está pausado para este cliente, NO responder vía IA
-        if (clienteId) {
-            const estaPausado = await isBotPausado(clienteId);
-            if (estaPausado) {
-                console.log(`[BOT PAUSADO] Cliente ${clienteId} tiene el bot deshabilitado. Se registró el mensaje para el vendedor humano.`);
-                return res.json({
-                    success: true,
-                    cliente_id: clienteId,
-                    bot_pausado: true,
-                    respuesta_sugerida_ia: '',
-                    choices: [{ message: { content: '' } }]
-                });
-            }
-        }
-
-        // Obtener historial previo desde Supabase (garantiza que si un Vendedor Humano intervino, la IA tenga el contexto completo)
+        // Obtener historial previo desde Supabase (y verificar si el Bot está pausado por un vendedor humano)
         let historialPrevio = [];
         if (clienteId) {
             try {
@@ -426,6 +411,18 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
                     .limit(15);
 
                 if (ultimosMsgs && ultimosMsgs.length > 0) {
+                    const pausadoMsg = ultimosMsgs.find(m => m.texto.includes('[BOT PAUSADO]') || m.texto.includes('[BOT REANUDADO]'));
+                    if (pausadoMsg && pausadoMsg.texto.includes('[BOT PAUSADO]')) {
+                        console.log(`[BOT PAUSADO] Cliente ${clienteId} tiene el bot deshabilitado.`);
+                        return res.json({
+                            success: true,
+                            cliente_id: clienteId,
+                            bot_pausado: true,
+                            respuesta_sugerida_ia: '',
+                            choices: [{ message: { content: '' } }]
+                        });
+                    }
+
                     historialPrevio = ultimosMsgs
                         .filter(m => !m.texto.includes('[BOT PAUSADO]') && !m.texto.includes('[BOT REANUDADO]'))
                         .reverse()
