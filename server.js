@@ -627,12 +627,21 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
         ];
 
         historialPrevio.forEach(m => {
-            if (m.role !== 'system') messagesPayload.push(m);
+            if (m.role !== 'system' && m.content) {
+                const prev = messagesPayload[messagesPayload.length - 1];
+                if (prev && prev.role === m.role) {
+                    prev.content += '\n' + m.content;
+                } else {
+                    messagesPayload.push({ role: m.role, content: m.content });
+                }
+            }
         });
 
         const lastMsgInPayload = messagesPayload[messagesPayload.length - 1];
-        if (!lastMsgInPayload || lastMsgInPayload.role !== 'user' || lastMsgInPayload.content !== textoProcesado) {
+        if (!lastMsgInPayload || lastMsgInPayload.role !== 'user') {
             messagesPayload.push({ role: "user", content: textoProcesado });
+        } else {
+            lastMsgInPayload.content = textoProcesado;
         }
 
         let respuestaIA = await generateDaniResponse(messagesPayload);
