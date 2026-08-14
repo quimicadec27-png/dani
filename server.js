@@ -429,17 +429,10 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
         }
 
         let clienteId = cliente ? cliente.id : null;
-        if (clienteId) {
-            try {
-                await supabase.from('mensajes_chat').insert([{ cliente_id: clienteId, emisor: 'cliente', texto: textoProcesado }]);
-                // Extraer automáticamente Nombre, Apellido y WhatsApp del texto y actualizar ficha del Lead (en segundo plano)
-                autoExtractAndUpdateLead(clienteId, cliente, textoProcesado).catch(e => console.error('[AUTO EXTRACT BACKGROUND ERROR]', e.message));
-            } catch (e) { console.error('Error insertando mensaje:', e.message); }
-        }
-
-        // Obtener historial previo desde Supabase (y verificar si el Bot está pausado por un vendedor humano)
         let historialPrevio = [];
+
         if (clienteId) {
+            // 1. Obtener historial previo desde Supabase (y verificar si el Bot está pausado)
             try {
                 const { data: ultimosMsgs } = await supabase
                     .from('mensajes_chat')
@@ -475,6 +468,16 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
                         });
                 }
             } catch (e) {}
+
+            // 2. Guardar el mensaje del cliente y auto-actualizar datos del lead en segundo plano (0ms de bloqueo)
+            (async () => {
+                try {
+                    await supabase.from('mensajes_chat').insert([{ cliente_id: clienteId, emisor: 'cliente', texto: textoProcesado }]);
+                    autoExtractAndUpdateLead(clienteId, cliente, textoProcesado);
+                } catch (e) {
+                    console.error('[ASYNC MSG SAVE ERROR]', e.message);
+                }
+            })();
         }
 
         // Cotizador instantáneo de productos en memoria RAM (0ms sin llamadas extras a la API)
