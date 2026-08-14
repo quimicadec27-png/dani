@@ -298,29 +298,17 @@ async function autoExtractAndUpdateLead(clienteId, clienteObj, textoUsuario) {
 
         if (extracted.telefono && extracted.telefono.length >= 8 && isPlaceholderWhatsapp) {
             const cleanTel = extracted.telefono.substring(0, 20);
-            
-            // Verificar si este teléfono ya está registrado en otro cliente
-            const { data: existingWithPhone } = await supabase
-                .from('clientes')
-                .select('id, razon_social, cuit')
-                .eq('whatsapp', cleanTel)
-                .maybeSingle();
-
-            if (existingWithPhone && existingWithPhone.id !== clienteId) {
-                console.log(`[AUTO LEAD EXTRACT] Teléfono ${cleanTel} ya pertenece a cliente ${existingWithPhone.id}. Unificando historial en ${clienteId}...`);
-                // 1. Migrar mensajes previos del cliente viejo al cliente activo actual
-                await supabase.from('mensajes_chat').update({ cliente_id: clienteId }).eq('cliente_id', existingWithPhone.id);
-                // 2. Eliminar el registro viejo para liberar el número de WhatsApp y evitar duplicados
-                await supabase.from('clientes').delete().eq('id', existingWithPhone.id);
-                // 3. Asignar el teléfono al cliente activo
-                updateData.whatsapp = cleanTel;
-            } else {
-                updateData.whatsapp = cleanTel;
-            }
+            updateData.whatsapp = cleanTel;
         }
 
         if (Object.keys(updateData).length > 0) {
-            await supabase.from('clientes').update(updateData).eq('id', clienteId);
+            const { error: updateErr } = await supabase.from('clientes').update(updateData).eq('id', clienteId);
+            if (updateErr && updateErr.message && updateErr.message.includes('unique constraint')) {
+                delete updateData.whatsapp;
+                if (Object.keys(updateData).length > 0) {
+                    await supabase.from('clientes').update(updateData).eq('id', clienteId);
+                }
+            }
             console.log('[AUTO LEAD EXTRACT] Ficha actualizada:', clienteId, updateData);
         }
     } catch(err) {
@@ -490,9 +478,9 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
 
         if (!isOnlyContactOrGreeting && PRODUCT_CATALOG_CACHE && PRODUCT_CATALOG_CACHE.length > 0) {
             let searchContext = textoProcesado;
-            if (textoProcesado.length < 25 && historialPrevio.length > 0) {
-                const prevUserMsg = [...historialPrevio].reverse().find(m => m.role === 'user');
-                if (prevUserMsg) searchContext = prevUserMsg.content + " " + textoProcesado;
+            if (historialPrevio && historialPrevio.length > 0) {
+                const prevUserMsgs = historialPrevio.filter(m => m.role === 'user').map(m => m.content).join(" ");
+                searchContext = prevUserMsgs + " " + textoProcesado;
             }
 
             let normalized = searchContext.toLowerCase()
@@ -500,9 +488,16 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
                 .replace(/\blitros?\b|\blts?\b/gi, 'LT')
                 .replace(/\bcloros?\b/gi, 'cloro');
 
-            const stopWords = ['hola', 'cuanto', 'sale', 'tenes', 'opciones', 'producto', 'precio', 'este', 'para', 'saber', 'quisiera', 'quiero', 'necesito', 'unidades', 'paquetes', 'cajas', 'favor', 'gracias', 'buenas', 'tardes', 'dias', 'envio', 'costo', 'extra', 'paso', 'nombre', 'numero', 'whats', 'whatsapp', 'dni'];
+            const stopWords = [
+                'hola', 'cuanto', 'sale', 'tenes', 'opciones', 'producto', 'precio', 'este', 'para', 'saber',
+                'quisiera', 'quiero', 'necesito', 'unidades', 'paquetes', 'cajas', 'favor', 'gracias', 'buenas',
+                'tardes', 'dias', 'envio', 'costo', 'extra', 'paso', 'nombre', 'numero', 'whats', 'whatsapp',
+                'dni', 'cuit', 'cuil', 'direccion', 'americas', 'rosario', 'tala', 'imagino', 'bien', 'las', 'los',
+                'del', 'con', 'sin', 'una', 'uno', 'unos', 'unas', 'que', 'por', 'son', 'mis', 'tus', 'sus',
+                'donde', 'como', 'cuando', 'quien', 'cual', 'estoy', 'estan', 'esta', 'estos', 'estas', 'enviame'
+            ];
             const tokens = normalized.match(/[a-záéíóúñ0-9+]{3,}/gi) || [];
-            const keywords = tokens.filter(t => !stopWords.includes(t));
+            const keywords = tokens.filter(t => !stopWords.includes(t) && !/^\d+$/.test(t));
 
             const sizeMatch = normalized.match(/\b(20|40|60|120|200|5|10)\s*lt\b/i) || normalized.match(/\b(20|40|60|120|200|5|10)\b/);
             const requestedSize = sizeMatch ? sizeMatch[1] : null;
