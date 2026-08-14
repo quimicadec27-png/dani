@@ -292,13 +292,40 @@ async function autoExtractAndUpdateLead(clienteId, clienteObj, textoUsuario) {
             updateData.contacto_nombre = nombreCapitalizado;
         }
 
-        if (extracted.telefono && extracted.telefono.length >= 8 && isPlaceholderWhatsapp) {
-            const cleanTel = extracted.telefono.substring(0, 20);
-            updateData.whatsapp = cleanTel;
-        }
-
         if (extracted.dni && extracted.dni.length >= 7 && isPlaceholderCuit) {
             updateData.cuit = extracted.dni.substring(0, 13);
+        }
+
+        if (extracted.telefono && extracted.telefono.length >= 8 && isPlaceholderWhatsapp) {
+            const cleanTel = extracted.telefono.substring(0, 20);
+            
+            // Verificar si este teléfono ya está registrado en otro cliente
+            const { data: existingWithPhone } = await supabase
+                .from('clientes')
+                .select('id, razon_social, cuit')
+                .eq('whatsapp', cleanTel)
+                .maybeSingle();
+
+            if (existingWithPhone && existingWithPhone.id !== clienteId) {
+                console.log(`[AUTO LEAD EXTRACT] Teléfono ${cleanTel} ya pertenece a cliente ${existingWithPhone.id}. Unificando ficha...`);
+                const mergeData = {};
+                if (extracted.nombre && (!existingWithPhone.razon_social || existingWithPhone.razon_social.startsWith('Lead Web') || existingWithPhone.razon_social.startsWith('Cliente Web'))) {
+                    mergeData.razon_social = updateData.razon_social || extracted.nombre;
+                    mergeData.contacto_nombre = updateData.contacto_nombre || extracted.nombre;
+                }
+                if (extracted.dni && (!existingWithPhone.cuit || existingWithPhone.cuit.startsWith('Web_'))) {
+                    mergeData.cuit = extracted.dni;
+                }
+                if (Object.keys(mergeData).length > 0) {
+                    await supabase.from('clientes').update(mergeData).eq('id', existingWithPhone.id);
+                }
+                // Migrar mensajes de chat al cliente existente y remover el temporal
+                await supabase.from('mensajes_chat').update({ cliente_id: existingWithPhone.id }).eq('cliente_id', clienteId);
+                await supabase.from('clientes').delete().eq('id', clienteId);
+                return;
+            } else {
+                updateData.whatsapp = cleanTel;
+            }
         }
 
         if (Object.keys(updateData).length > 0) {
