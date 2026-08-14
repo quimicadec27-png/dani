@@ -525,8 +525,8 @@ Devuelve JSON estricto: {"items": [{"busqueda": "string", "cantidad": number}]}`
         let totalGeneralCotizacion = 0;
         let itemsCotizadosCuenta = 0;
 
-        if (itemsExtraidos.length > 0 || textoProcesado.length > 3) {
-            const busquedas = itemsExtraidos.length > 0 ? itemsExtraidos : [{ busqueda: textoProcesado, cantidad: 1 }];
+        if (itemsExtraidos && itemsExtraidos.length > 0) {
+            const busquedas = itemsExtraidos;
             
             for (const itemObj of busquedas) {
                 let prods = [];
