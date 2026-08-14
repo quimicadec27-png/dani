@@ -297,22 +297,7 @@ Respondé ÚNICAMENTE con JSON válido sin ninguna explicación: {"nombre": "str
 
         if (extracted.telefono && extracted.telefono.length >= 8 && isPlaceholderWhatsapp) {
             const cleanTel = extracted.telefono.substring(0, 20);
-            // Verificar si ya existe otro cliente con este teléfono
-            const { data: existingWithPhone } = await supabase
-                .from('clientes')
-                .select('id')
-                .eq('whatsapp', cleanTel)
-                .neq('id', clienteId)
-                .maybeSingle();
-
-            if (existingWithPhone) {
-                // Reasignar mensajes al cliente existente
-                await supabase.from('mensajes_chat').update({ cliente_id: existingWithPhone.id }).eq('cliente_id', clienteId);
-                await supabase.from('clientes').delete().eq('id', clienteId);
-                clienteId = existingWithPhone.id;
-            } else {
-                updateData.whatsapp = cleanTel;
-            }
+            updateData.whatsapp = cleanTel;
         }
 
         if (extracted.dni && extracted.dni.length >= 7 && isPlaceholderCuit) {
