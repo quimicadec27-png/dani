@@ -599,14 +599,16 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
         }
 
 
-        const tieneMensajesAnteriores = historialPrevio.length > 1;
-        const userProvidedContact = textoProcesado.match(/(?:mi (?:nombre|whats|whatsapp|tel|telefono|dni)|me llamo|soy|@|\d{7,})/i);
+        const tieneMensajesAnteriores = (historialPrevio || []).length > 0;
         let directiveContinuidad = "";
-        if (tieneMensajesAnteriores && userProvidedContact) {
-            directiveContinuidad = `\n⚠️ INSTRUCCIÓN DE CIERRE DE PEDIDO INMEDIATO:\nEl cliente te acaba de responder con sus datos de contacto para completar su pedido. Agradecé cordialmente sus datos, confirmale que su pedido quedó agendado y que un asesor comercial humano se comunicará por WhatsApp para coordinar el pago (Efectivo o Transferencia) y el envío. PROHIBIDO usar corchetes como "[Nombre]" o inventar nombres. PROHIBIDO decir "¿En qué puedo ayudarte hoy?" o preguntar qué producto busca.`;
+        if (tieneMensajesAnteriores) {
+            directiveContinuidad = `\n⚠️ INSTRUCCIÓN DE CONTINUIDAD Y CIERRE DE PEDIDO:\nEsta conversación YA ESTÁ EN CURSO y tiene historial previo. Recordá perfectamente lo que se habló antes en el historial.
+- Si el cliente te brinda su nombre, teléfono, dirección o confirmación (ej: "javier aguirre y mi whats es..."): agradecé cordialmente, confirmale que todos sus datos y pedido quedaron registrados y agendados, y que un asesor comercial humano se pondrá en contacto por WhatsApp a la brevedad para coordinar el pago (Efectivo o Transferencia) y el despacho.
+- ESTÁ ABSOLUTAMENTE PROHIBIDO volver a saludar como si recién empezara el chat ("¡Hola! Mi nombre es Dani..."), PROHIBIDO decir "¿En qué puedo ayudarte hoy?" o preguntar qué producto busca si ya se habló previamente.
+- PROHIBIDO usar corchetes como "[Nombre]" o inventar nombres o datos bancarios.`;
         }
 
-        const promptInstrucciones = `${SYSTEM_PROMPT_DANI}\n${tieneMensajesAnteriores ? '⚠️ ATENCIÓN CRÍTICA DE CONTINUIDAD DE CHAT:\nEsta conversación YA ESTÁ EN CURSO. Recordá perfectamente lo que se habló antes en el historial. ESTÁ ABSOLUTAMENTE PROHIBIDO SALUDAR DE NUEVO ("¡Hola!", "Hola", "Soy Dani..."). Responde directo y con memoria al último mensaje del usuario.' : ''}\n${directiveContinuidad}\n${cotizacionCalculada}`;
+        const promptInstrucciones = `${SYSTEM_PROMPT_DANI}\n${directiveContinuidad}\n${cotizacionCalculada}`;
 
 
         const messagesPayload = [
