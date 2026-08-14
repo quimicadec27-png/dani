@@ -492,15 +492,9 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
             const parserMessages = [
                 { 
                     role: "system", 
-                    content: `Sos el extractor de productos del catálogo de Química DEC.
-Analizá el historial reciente de la conversación y el último mensaje del cliente para extraer un JSON con la lista de productos consultados o pedidos con su cantidad.
-REGLA CRÍTICA DE CONTEXTO: Si el cliente en su último mensaje solo menciona una cantidad (ej: "50 unidades", "quiero 20", "cuánto sale?", "de ese"), DEDUCE el producto a partir del mensaje anterior del historial.
-Ejemplos:
-- Historial: [User: "tenés cera auto brillo concentrada natural 1+9?"] -> Último mensaje: [User: "50 unidades quiero saber el precio"] -> {"items": [{"busqueda": "cera auto brillo concentrada para pisos natural 1+9", "cantidad": 50}]}
-- Historial: [User: "tenes desinfectante cif?"] -> Último mensaje: [User: "50 unidades"] -> {"items": [{"busqueda": "desinfectante cif", "cantidad": 50}]}
-- Historial: [] -> Último mensaje: [User: "desinfectante cif 50 unidades"] -> {"items": [{"busqueda": "desinfectante cif", "cantidad": 50}]}
-- Historial: [] -> Último mensaje: [User: "3 detergente magenta y 10 lavandinas"] -> {"items": [{"busqueda": "detergente magenta", "cantidad": 3}, {"busqueda": "lavandina", "cantidad": 10}]}
-Devuelve JSON estricto: {"items": [{"busqueda": "string", "cantidad": number}]}` 
+                    content: `Analizá el último mensaje del usuario para extraer productos y cantidades solicitadas del catálogo.
+Si el mensaje contiene únicamente datos personales (nombre, teléfono, dirección, DNI), saludos o confirmaciones, respondé EXACTAMENTE: {"items": []}.
+Respondé en formato JSON estricto: {"items": [{"busqueda": "nombre del producto", "cantidad": number}]}` 
                 },
                 ...ultimosContexto
             ];
