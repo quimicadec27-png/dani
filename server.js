@@ -248,7 +248,7 @@ Respondé ÚNICAMENTE con JSON válido sin ninguna explicación: {"nombre": "str
                     },
                     { role: 'user', content: textoUsuario }
                 ],
-                model: 'llama-3.3-70b-versatile',
+                model: 'llama-3.1-8b-instant',
                 response_format: { type: 'json_object' },
                 temperature: 0.05
             });
@@ -511,7 +511,7 @@ Devuelve JSON estricto: {"items": [{"busqueda": "string", "cantidad": number}]}`
 
             const parserCompletion = await groq.chat.completions.create({
                 messages: parserMessages,
-                model: "llama-3.3-70b-versatile",
+                model: "llama-3.1-8b-instant",
                 response_format: { type: "json_object" },
                 temperature: 0.1
             });
@@ -682,11 +682,21 @@ Devuelve JSON estricto: {"items": [{"busqueda": "string", "cantidad": number}]}`
             messagesPayload.push({ role: "user", content: textoProcesado });
         }
 
-        const completion = await groq.chat.completions.create({
-            messages: messagesPayload,
-            model: "llama-3.3-70b-versatile",
-            temperature: 0.2
-        });
+        let completion;
+        try {
+            completion = await groq.chat.completions.create({
+                messages: messagesPayload,
+                model: "llama-3.3-70b-versatile",
+                temperature: 0.2
+            });
+        } catch (err70b) {
+            console.warn('[GROQ 70B FALLBACK] Usando llama-3.1-8b-instant:', err70b.message);
+            completion = await groq.chat.completions.create({
+                messages: messagesPayload,
+                model: "llama-3.1-8b-instant",
+                temperature: 0.2
+            });
+        }
 
         let respuestaIA = completion.choices[0]?.message?.content || "Perfecto, ¿en qué te puedo ayudar?";
         
