@@ -135,6 +135,12 @@ Sí vendemos y distribuimos:
   2. TRANSFERENCIA BANCARIA.
 - Queda ROTUNDAMENTE PROHIBIDO mencionar tarjetas de crédito, tarjetas de débito, Mercado Pago en cuotas o financiación.
 
+⚠️ REGLA ABSOLUTA ANTI-INVENCIÓN DE PRECIOS:
+- EL VALOR "$2.500" ES ÚNICA Y EXCLUSIVAMENTE EL MONTO MÍNIMO DE COMPRA PARA RETIRAR EN EL LOCAL (para clientes mayoristas registrados). ¡BAJO NINGUNA CIRCUNSTANCIA ES EL PRECIO DE UN PRODUCTO!
+- QUEDA ROTUNDAMENTE PROHIBIDO ASIGNAR $2.500 O CUALQUIER PRECIO INVENTADO A PRODUCTOS (como desinfectantes, ceras, jabones, etc.).
+- DEBÉS USAR ÚNICAMENTE LOS PRECIOS OFICIALES Y CÁLCULOS QUE APARECEN EN "[DATOS REALES Y CÁLCULOS MATEMÁTICOS OFICIALES DE QUÍMICA DEC]".
+- SI NO HAY DATOS DE PRECIO ESPECÍFICOS EN LA SECCIÓN DE CÁLCULO, INVITÁ AL CLIENTE A VER EL CATÁLOGO EN quimicadec.com/catalogo CON LA LUPITA DE BÚSQUEDA 🔍 O DERIVALO CON UN ASESOR, PERO NUNCA INVENTES UN MONTO.
+
 ⚠️ POLÍTICAS COMERCIALES, HORARIOS Y ENVÍOS OFICIALES DE QUÍMICA DEC (ESTRICTO):
 1. HORARIOS DE ATENCIÓN EN LOCAL (Av. Frondizi 815, Concepción del Uruguay):
    - Lunes a Viernes: Turno Mañana de 8:00 a 12:30 hs y Turno Tarde de 16:30 a 19:30 hs.
@@ -432,29 +438,46 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
             } catch (e) {}
         }
 
-        // Cotizador matemático exacto para precios de productos y listas extensas
+        // Cotizador matemático exacto para precios de productos y listas extensas (con memoria contextual)
         let itemsExtraidos = [];
         try {
-            const parserCompletion = await groq.chat.completions.create({
-                messages: [
-                    { 
-                        role: "system", 
-                        content: `Analizá el mensaje del cliente y extraé un JSON con la lista de productos consultados o pedidos, corrigiendo errores de tipeo y registrando la cantidad pedida si el cliente la menciona.
+            // Extraer últimos 3 mensajes de contexto para saber de qué producto habla si el cliente solo dice "50 unidades"
+            const ultimosContexto = (historialPrevio || []).slice(-3).map(m => ({
+                role: m.role === 'assistant' ? 'assistant' : 'user',
+                content: m.content
+            }));
+
+            const parserMessages = [
+                { 
+                    role: "system", 
+                    content: `Sos el extractor de productos del catálogo de Química DEC.
+Analizá el historial reciente de la conversación y el último mensaje del cliente para extraer un JSON con la lista de productos consultados o pedidos con su cantidad.
+REGLA CRÍTICA DE CONTEXTO: Si el cliente en su último mensaje solo menciona una cantidad (ej: "50 unidades", "quiero 20", "cuánto sale?", "de ese"), DEDUCE el producto a partir del mensaje anterior del historial.
 Ejemplos:
-- "quiero 2 alcohol etilico y 5 sahumerio" -> {"items": [{"busqueda": "alcohol etilico", "cantidad": 2}, {"busqueda": "sahumerio", "cantidad": 5}]}
-- "cuanto sale el detergente magenta?" -> {"items": [{"busqueda": "detergente magenta", "cantidad": 1}]}
-- "3 detergnt magnt, 10 lavandina y 1 desodorant piso" -> {"items": [{"busqueda": "detergente magenta", "cantidad": 3}, {"busqueda": "lavandina", "cantidad": 10}, {"busqueda": "desodorante piso", "cantidad": 1}]}
-Devuelve JSON: {"items": [{"busqueda": "string", "cantidad": number}]}` 
-                    },
-                    { role: "user", content: textoProcesado }
-                ],
+- Historial: [User: "tenés cera auto brillo concentrada natural 1+9?"] -> Último mensaje: [User: "50 unidades quiero saber el precio"] -> {"items": [{"busqueda": "cera auto brillo concentrada para pisos natural 1+9", "cantidad": 50}]}
+- Historial: [User: "tenes desinfectante cif?"] -> Último mensaje: [User: "50 unidades"] -> {"items": [{"busqueda": "desinfectante cif", "cantidad": 50}]}
+- Historial: [] -> Último mensaje: [User: "desinfectante cif 50 unidades"] -> {"items": [{"busqueda": "desinfectante cif", "cantidad": 50}]}
+- Historial: [] -> Último mensaje: [User: "3 detergente magenta y 10 lavandinas"] -> {"items": [{"busqueda": "detergente magenta", "cantidad": 3}, {"busqueda": "lavandina", "cantidad": 10}]}
+Devuelve JSON estricto: {"items": [{"busqueda": "string", "cantidad": number}]}` 
+                },
+                ...ultimosContexto
+            ];
+
+            if (ultimosContexto.length === 0 || ultimosContexto[ultimosContexto.length - 1].content !== textoProcesado) {
+                parserMessages.push({ role: "user", content: textoProcesado });
+            }
+
+            const parserCompletion = await groq.chat.completions.create({
+                messages: parserMessages,
                 model: "llama-3.3-70b-versatile",
                 response_format: { type: "json_object" },
                 temperature: 0.1
             });
             const parsed = JSON.parse(parserCompletion.choices[0]?.message?.content || '{}');
             itemsExtraidos = parsed.items || [];
-        } catch (e) {}
+        } catch (e) {
+            console.error('[PARSER GROQ ERROR]', e.message);
+        }
 
         let cotizacionCalculada = "";
         let desgloses = [];
@@ -540,7 +563,7 @@ Devuelve JSON: {"items": [{"busqueda": "string", "cantidad": number}]}`
 
                 if (prods && prods.length > 0) {
                     const bestMatch = prods[0];
-                    const rawPrice = parseFloat(bestMatch.price || 0);
+                    const rawPrice = parseFloat(bestMatch.regular_price || bestMatch.price || 0);
                     const stockText = bestMatch.stock_status === 'instock' || !bestMatch.stock_status ? 'Disponible ✅' : 'Consultar ⚠️';
                     const cleanName = bestMatch.name.replace(/\(SKU:.*?\)/gi, '').trim();
 
@@ -565,8 +588,8 @@ Devuelve JSON: {"items": [{"busqueda": "string", "cantidad": number}]}`
 
                     // Sugerir variantes si hay otras opciones
                     if (prods.length > 1 && busquedas.length <= 2) {
-                        prods.slice(1, 3).forEach(otherP => {
-                            const pPrice = parseFloat(otherP.price || 0);
+                        prods.slice(1, 4).forEach(otherP => {
+                            const pPrice = parseFloat(otherP.regular_price || otherP.price || 0);
                             const otherCleanName = otherP.name.replace(/\(SKU:.*?\)/gi, '').trim();
                             if (pPrice > 0) {
                                 desgloses.push(`  - Variante / Opción: ${otherCleanName} ($${pPrice.toLocaleString('es-AR')} c/u)`);

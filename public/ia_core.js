@@ -784,6 +784,9 @@
     // Sincronización en Tiempo Real de Mensajes del Vendedor Humano
     // ---------------------------------------------------------
     var knownVendorMsgTexts = {};
+    var daniBootTimestamp = Date.now();
+    var firstPollDone = false;
+
     function pollVendorMessages() {
         try {
             var sessionId = localStorage.getItem('dani_session_id');
@@ -804,6 +807,13 @@
                     if (data && data.success && Array.isArray(data.mensajes)) {
                         data.mensajes.forEach(function(m) {
                             if (m.emisor === 'vendedor') {
+                                var msgTime = m.creado_el ? new Date(m.creado_el).getTime() : 0;
+                                // Si es el primer chequeo y el mensaje es viejo, marcarlo como conocido para no duplicar en pantalla
+                                if (!firstPollDone && msgTime > 0 && msgTime < (daniBootTimestamp - 15000)) {
+                                    knownVendorMsgTexts[m.id] = true;
+                                    return;
+                                }
+
                                 var cleanTxt = (m.texto || '').replace(/\n?\[BOT PAUSADO\]/g, '').replace(/\n?\[BOT REANUDADO\]/g, '').trim();
                                 // Parsear nombre del vendedor si existe tag [VENDEDOR:nombre]
                                 var vendorName = 'Asesor Comercial';
@@ -825,6 +835,7 @@
                                 }
                             }
                         });
+                        firstPollDone = true;
                     }
                 })
                 .catch(function (err) {
