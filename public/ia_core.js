@@ -306,43 +306,39 @@
             }, 4000);
         }
 
-        // Restaurar historial en el contenedor desplegable "Ver conversación anterior"
-        var historyToggleBtn = document.getElementById('dani-history-toggle-btn');
-        var historyBox = document.getElementById('dani-history-box');
-
-        var savedHistory = sessionStorage.getItem('dani_chat_history');
-        if (savedHistory && historyBox && historyToggleBtn) {
+        // Restaurar historial activo directamente en la ventana de chat para que no se pierda al cambiar de pestaña o navegar
+        var savedHistory = localStorage.getItem('dani_chat_history') || sessionStorage.getItem('dani_chat_history');
+        if (savedHistory) {
             try {
                 var parsed = JSON.parse(savedHistory);
-                if (parsed && parsed.length > 0) {
+                if (Array.isArray(parsed) && parsed.length > 0) {
                     history = parsed;
-                    historyToggleBtn.style.display = 'flex';
-                    historyToggleBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px">history</span> Ver conversación anterior (' + parsed.length + ' mensajes)';
-                    
-                    historyBox.innerHTML = '';
+                    // Limpiar mensaje por defecto y renderizar toda la conversación previa en vivo
+                    msgs.innerHTML = '<div class="dm dm-ai">¡Hola! 👋 Soy <strong>Dani</strong>, asistente de Química DEC. ¿En qué te puedo ayudar hoy?</div>';
                     for (var h = 0; h < parsed.length; h++) {
                         var item = parsed[h];
-                        var sender = item.role === 'model' ? 'ai' : 'user';
-                        var d = document.createElement('div');
-                        d.className = 'dm dm-' + sender;
-                        d.innerHTML = formatMsgText(item.parts[0].text);
-                        historyBox.appendChild(d);
-                    }
-
-                    historyToggleBtn.onclick = function() {
-                        var isVis = historyBox.classList.contains('dani-history-visible');
-                        if (isVis) {
-                            historyBox.classList.remove('dani-history-visible');
-                            historyToggleBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px">history</span> Ver conversación anterior (' + parsed.length + ' mensajes)';
-                        } else {
-                            historyBox.classList.add('dani-history-visible');
-                            historyToggleBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px">unfold_less</span> Ocultar conversación anterior';
+                        var sender = (item.role === 'model' || item.role === 'assistant') ? 'ai' : 'user';
+                        var textContent = (item.parts && item.parts[0] && item.parts[0].text) ? item.parts[0].text : (item.content || '');
+                        if (textContent) {
+                            var d = document.createElement('div');
+                            d.className = 'dm dm-' + sender;
+                            d.innerHTML = formatMsgText(textContent);
+                            msgs.appendChild(d);
                         }
-                    };
+                    }
+                    setTimeout(function() { msgs.scrollTop = msgs.scrollHeight; }, 100);
                 }
             } catch (e) {
                 history = [];
             }
+        }
+
+        // Si el usuario tenía el chat abierto en la pestaña previa, mantenerlo abierto
+        if (localStorage.getItem('dani_chat_open') === 'true') {
+            win.classList.add('dani-active');
+            if (cta) cta.classList.remove('dani-cta-visible');
+        } else {
+            win.classList.remove('dani-active');
         }
 
         // Función global para abrir/conmutar el chat desde cualquier parte del sitio
@@ -354,9 +350,11 @@
             var isOpen = win.classList.contains('dani-active');
             if (isOpen) {
                 win.classList.remove('dani-active');
+                localStorage.setItem('dani_chat_open', 'false');
                 sessionStorage.setItem('dani_chat_open', 'false');
             } else {
                 win.classList.add('dani-active');
+                localStorage.setItem('dani_chat_open', 'true');
                 sessionStorage.setItem('dani_chat_open', 'true');
                 if (cta) cta.classList.remove('dani-cta-visible');
                 if (ctaTimeout) clearTimeout(ctaTimeout);
@@ -380,6 +378,7 @@
 
         close.addEventListener('click', function () {
             win.classList.remove('dani-active');
+            localStorage.setItem('dani_chat_open', 'false');
             sessionStorage.setItem('dani_chat_open', 'false');
         });
 
@@ -532,9 +531,10 @@
     function pushToHistory(role, text) {
         history.push({ role: role, parts: [{ text: text }] });
         try {
+            localStorage.setItem('dani_chat_history', JSON.stringify(history));
             sessionStorage.setItem('dani_chat_history', JSON.stringify(history));
         } catch (e) {
-            console.error('Dani: Error al guardar historial en sessionStorage', e);
+            console.error('Dani: Error al guardar historial en storage', e);
         }
     }
 
@@ -567,8 +567,11 @@
         // Mapear historial al formato OpenAI
         for (var i = 0; i < history.length; i++) {
             var item = history[i];
-            var role = item.role === 'model' ? 'assistant' : 'user';
-            messages.push({ role: role, content: item.parts[0].text });
+            var role = (item.role === 'model' || item.role === 'assistant') ? 'assistant' : 'user';
+            var txt = (item.parts && item.parts[0] && item.parts[0].text) ? item.parts[0].text : (item.content || '');
+            if (txt) {
+                messages.push({ role: role, content: txt });
+            }
         }
 
         // Obtener o generar un ID único de sesión persistente para la conversación web
@@ -578,9 +581,12 @@
             localStorage.setItem('dani_session_id', sessionId);
         }
 
+        var clientUuid = localStorage.getItem('dani_client_uuid') || null;
+
         var payload = {
             model: 'llama-3.3-70b-versatile',
             session_id: sessionId,
+            cliente_id: clientUuid,
             messages: messages,
             temperature: 0.4,
             max_tokens: 1000
@@ -596,6 +602,9 @@
             return r.json();
         })
         .then(function (data) {
+            if (data.cliente_id) {
+                localStorage.setItem('dani_client_uuid', data.cliente_id);
+            }
             // Si el bot está pausado, no mostrar mensaje automático
             if (data.bot_pausado) {
                 return null;
@@ -628,9 +637,12 @@
             localStorage.setItem('dani_session_id', sessionId);
         }
 
+        var clientUuid = localStorage.getItem('dani_client_uuid') || null;
+
         // Enviar en formato contents (Gemini style) al mismo CRM
         var payload = {
             session_id: sessionId,
+            cliente_id: clientUuid,
             system_instruction: { parts: [{ text: brain }] },
             contents: history,
             generationConfig: {
@@ -649,6 +661,9 @@
             return r.json();
         })
         .then(function (data) {
+            if (data.cliente_id) {
+                localStorage.setItem('dani_client_uuid', data.cliente_id);
+            }
             var reply = '';
             if (data.choices && data.choices.length > 0) {
                 reply = data.choices[0].message.content;

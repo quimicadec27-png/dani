@@ -2131,7 +2131,7 @@
                         </div>
                         <div>
                             <label class="text-[10px] uppercase font-bold text-gray-400 block mb-1">DNI / CUIT:</label>
-                            <input type="text" id="edit-lead-dni" value="${c.cuit || (c.contacto_nombre ? c.contacto_nombre.replace('DNI: ', '') : '')}" placeholder="DNI o CUIT" class="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-brand-yellow focus:outline-none">
+                            <input type="text" id="edit-lead-dni" value="${(c.cuit && !c.cuit.startsWith('Web_') && !c.cuit.startsWith('cli_')) ? c.cuit : ((c.contacto_nombre && c.contacto_nombre.includes('DNI:') && !c.contacto_nombre.includes('Web_')) ? c.contacto_nombre.split('DNI:')[1].split('|')[0].trim() : '')}" placeholder="DNI o CUIT" class="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-brand-yellow focus:outline-none">
                         </div>
                     </div>
 

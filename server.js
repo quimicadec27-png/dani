@@ -120,13 +120,19 @@ Hablas en primera persona como representante oficial de la empresa ("en Química
 Sí vendemos y distribuimos:
 - Productos Líquidos: Jabones para ropa (Skip, Ariel), Suavizantes (Downy, Vivere, Mary Cher, Eco Plus), Detergentes (Amarillo Limón, Magenta, Tipo CIF), Desodorantes de piso, Lavandina (dilución 1+2), Cloro, Desengrasantes, Ceras, Siliconas.
 - Sahumerios Tuk Tuk, Amogh, Prana, Sree Vani, Nuna Terra: Sahumerios x50u, Dhoop Sticks, etc. ¡SÍ LOS VENDEMOS!
-- Desinfectantes en Aerosol: DESINFECTANTE CIF (Floral, Frescura Cítrica, Lavanda, Original 360gr).
+⚠️ REGLAS SOBRE ESPECIFICACIÓN DE VARIABLES DE PRODUCTO (TAMAÑOS, LITROS, FRAGANCIAS):
+- CLORO LÍQUIDO (1+2 partes de agua):
+  * La presentación inicial mínima es el bidón de 20 LITROS a $15.060. ¡QUEDA ROTUNDAMENTE PROHIBIDO decir que se vende cloro líquido de 1 litro fraccionado (no existe 1L de cloro líquido)!
+  * Otras presentaciones disponibles de Cloro Líquido: 40 LT ($29.675,60), 60 LT ($43.719,60), 120 LT ($85.534,80) y 200 LT ($139.648).
+- PASTILLAS DE CLORO TRIPLE ACCIÓN:
+  * Disponibles en pastillas de 50g y 200g (por unidad o sueltas por 1 kg).
+- Desinfectantes en Aerosol: DESINFECTANTE CIF (Floral, Frescura Cítrica, Lavanda, Original 360gr a $3.591,99).
 - Insecticidas: Raid, Fuyi (exclusivamente insecticidas en aerosol / espirales / tabletas, NUNCA ofrecerlos como desinfectantes).
-- Repelentes: Off.
-- Aromatizantes de Ambientes: Glade, Poett, Perfuminas textiles y de ambientes.
-- Pastas Concentradas: Rinden 50 Litros.
-- Productos para Diluir (Línea 1+4).
-- Combos Emprendedores y Ofertas Semanales.
+- Desinfección Concentrada: Lavandina Líquida (dilución 1+2).
+
+⚠️ REGLA DE CONTINUIDAD AL RECIBIR DATOS DEL CLIENTE:
+- Si el cliente te brinda su nombre, WhatsApp, DNI o dirección para completar su pedido (ej: "javier aguirre y mi whats es 344854263"), NUNCA reinicies la charla preguntando "¿En qué puedo ayudarte hoy?".
+- En su lugar: Agradecé cordialmente sus datos por su nombre, confirmale el detalle exacto de su pedido (productos, cantidades, total con envío si corresponde) y avisale que un asesor comercial ya tiene su ficha para coordinar el pago (Efectivo o Transferencia) y despacho.
 ⚠️ REGLA CRÍTICA ANTI-ALUCINACIÓN DE MARCAS: Queda ROTUNDAMENTE PROHIBIDO inventar marcas o productos inexistentes como "desinfectante concentrado Lysoform" o "desinfectante Fuyi". Los desinfectantes oficiales son ÚNICAMENTE DESINFECTANTE CIF (en aerosol) y Lavandina (concentrada y diluible).
 
 ⚠️ MEDIOS DE PAGO OFICIALES DE QUÍMICA DEC (ESTRICTO - PROHIBIDO INVENTAR OTROS):
@@ -286,7 +292,23 @@ Respondé ÚNICAMENTE con JSON válido sin ninguna explicación: {"nombre": "str
         }
 
         if (extracted.telefono && extracted.telefono.length >= 8 && isPlaceholderWhatsapp) {
-            updateData.whatsapp = extracted.telefono.substring(0, 20);
+            const cleanTel = extracted.telefono.substring(0, 20);
+            // Verificar si ya existe otro cliente con este teléfono
+            const { data: existingWithPhone } = await supabase
+                .from('clientes')
+                .select('id')
+                .eq('whatsapp', cleanTel)
+                .neq('id', clienteId)
+                .maybeSingle();
+
+            if (existingWithPhone) {
+                // Reasignar mensajes al cliente existente
+                await supabase.from('mensajes_chat').update({ cliente_id: existingWithPhone.id }).eq('cliente_id', clienteId);
+                await supabase.from('clientes').delete().eq('id', clienteId);
+                clienteId = existingWithPhone.id;
+            } else {
+                updateData.whatsapp = cleanTel;
+            }
         }
 
         if (extracted.dni && extracted.dni.length >= 7 && isPlaceholderCuit) {
@@ -326,7 +348,7 @@ async function isBotPausado(clienteId) {
 // =========================================================================
 app.post('/api/whatsapp/incoming-ai', async (req, res) => {
     try {
-        const { phone, user_id, session_id, mensaje_texto, user_message, message, messages, contents, prompt } = req.body;
+        const { phone, user_id, session_id, cliente_id, mensaje_texto, user_message, message, messages, contents, prompt } = req.body;
         
         // 1. Extraer el texto de la última consulta del usuario
         let textoProcesado = (prompt || mensaje_texto || user_message || message || '').trim();
@@ -348,9 +370,7 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
         }
 
         const rawPhone = (phone || user_id || session_id || 'Cliente Web').toString();
-        // whatsapp admite hasta 20 chars; cuit es VARCHAR(13) → se trunca por separado
         const clientePhone = rawPhone.substring(0, 20);
-        const clienteCuit  = rawPhone.substring(0, 13);
 
         if (!textoProcesado) return res.status(400).json({ error: 'Mensaje vacío' });
 
@@ -363,22 +383,39 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
 
         // Buscar o registrar cliente en Supabase para que APAREZCA EN EL CRM EN VIVO
         let cliente = null;
-        try {
-            const { data: existingC } = await supabase
-                .from('clientes')
-                .select('id, razon_social, whatsapp, cuit')
-                .or(`whatsapp.eq.${clientePhone},cuit.eq.${clienteCuit}`)
-                .maybeSingle();
-            cliente = existingC;
-        } catch (e) {
-            console.error('Error buscando cliente:', e.message);
+
+        // 1. Si el frontend web ya envió el UUID del cliente persistente, buscar por ID
+        if (cliente_id && cliente_id.length > 20) {
+            try {
+                const { data: cById } = await supabase
+                    .from('clientes')
+                    .select('id, razon_social, whatsapp, cuit, contacto_nombre')
+                    .eq('id', cliente_id)
+                    .maybeSingle();
+                cliente = cById;
+            } catch (e) {}
         }
 
+        // 2. Si no se encontró por ID, buscar por whatsapp / session_id
+        if (!cliente) {
+            try {
+                const { data: existingC } = await supabase
+                    .from('clientes')
+                    .select('id, razon_social, whatsapp, cuit, contacto_nombre')
+                    .eq('whatsapp', clientePhone)
+                    .maybeSingle();
+                cliente = existingC;
+            } catch (e) {
+                console.error('Error buscando cliente:', e.message);
+            }
+        }
+
+        // 3. Si no existe, crear registro nuevo (CUIT SIEMPRE NULL para evitar códigos Web_ en DNI)
         if (!cliente) {
             try {
                 const { data: newC } = await supabase
                     .from('clientes')
-                    .insert([{ razon_social: leadNombre, whatsapp: clientePhone, cuit: clienteCuit }])
+                    .insert([{ razon_social: leadNombre, whatsapp: clientePhone, cuit: null }])
                     .select()
                     .maybeSingle();
                 cliente = newC;
@@ -403,6 +440,7 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
                 console.log(`[BOT PAUSADO] Cliente ${clienteId} tiene el bot deshabilitado. Se registró el mensaje para el vendedor humano.`);
                 return res.json({
                     success: true,
+                    cliente_id: clienteId,
                     bot_pausado: true,
                     respuesta_sugerida_ia: '',
                     choices: [{ message: { content: '' } }]
@@ -675,6 +713,7 @@ Devuelve JSON estricto: {"items": [{"busqueda": "string", "cantidad": number}]}`
 
         res.json({
             success: true,
+            cliente_id: clienteId,
             respuesta_sugerida_ia: respuestaIA,
             choices: [{ message: { content: respuestaIA } }]
         });
@@ -1582,10 +1621,16 @@ app.get('/api/products/cleanup-outdated', async (req, res) => {
             .from('dec_products')
             .delete()
             .or('price.eq.0,status.eq.draft,status.eq.trash,name.ilike.%MAGISTRAL AZUL%');
+
+        // Limpiar códigos temporales 'Web_' en la columna cuit de clientes
+        await supabase
+            .from('clientes')
+            .update({ cuit: null })
+            .ilike('cuit', 'Web_%');
             
         res.json({
             success: true,
-            message: 'Borradores y productos obsoletos con sufijo _ID eliminados exitosamente de Supabase dec_products',
+            message: 'Borradores y productos obsoletos con sufijo _ID eliminados exitosamente de Supabase dec_products, y CUITs Web_ limpiados.',
             eliminados_id: delId,
             eliminados_cero: delZero
         });
