@@ -678,21 +678,11 @@ Respondé en formato JSON estricto: {"items": [{"busqueda": "nombre del producto
             messagesPayload.push({ role: "user", content: textoProcesado });
         }
 
-        let completion;
-        try {
-            completion = await groq.chat.completions.create({
-                messages: messagesPayload,
-                model: "llama-3.3-70b-versatile",
-                temperature: 0.2
-            });
-        } catch (err70b) {
-            console.warn('[GROQ 70B FALLBACK] Usando llama-3.1-8b-instant:', err70b.message);
-            completion = await groq.chat.completions.create({
-                messages: messagesPayload,
-                model: "llama-3.1-8b-instant",
-                temperature: 0.2
-            });
-        }
+        let completion = await groq.chat.completions.create({
+            messages: messagesPayload,
+            model: "llama-3.1-8b-instant",
+            temperature: 0.2
+        });
 
         let respuestaIA = completion.choices[0]?.message?.content || "Perfecto, ¿en qué te puedo ayudar?";
         
