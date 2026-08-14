@@ -432,8 +432,8 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
         if (clienteId) {
             try {
                 await supabase.from('mensajes_chat').insert([{ cliente_id: clienteId, emisor: 'cliente', texto: textoProcesado }]);
-                // Extraer automáticamente Nombre, Apellido y WhatsApp del texto y actualizar ficha del Lead
-                await autoExtractAndUpdateLead(clienteId, cliente, textoProcesado);
+                // Extraer automáticamente Nombre, Apellido y WhatsApp del texto y actualizar ficha del Lead (en segundo plano)
+                autoExtractAndUpdateLead(clienteId, cliente, textoProcesado).catch(e => console.error('[AUTO EXTRACT BACKGROUND ERROR]', e.message));
             } catch (e) { console.error('Error insertando mensaje:', e.message); }
         }
 
@@ -556,9 +556,11 @@ Devuelve JSON estricto: {"items": [{"busqueda": "string", "cantidad": number}]}`
                 const words = queryStr.split(' ').filter(w => w.length > 2 && !stopWords.includes(w));
                 if (words.length === 0) continue;
 
-                // 1. Consultar WooCommerce Live Search PRIMERO (Exclusivamente productos PUBLICADOS)
+                // 1. Consultar WooCommerce Live Search PRIMERO con timeout de 4.5s
                 try {
-                    const wcRes = await fetch(`https://quimicadec.com/?qdec_api=search_product&secret_key=qdec_crm_sec_2026&q=${encodeURIComponent(queryStr)}`);
+                    const wcRes = await fetch(`https://quimicadec.com/?qdec_api=search_product&secret_key=qdec_crm_sec_2026&q=${encodeURIComponent(queryStr)}`, {
+                        signal: AbortSignal.timeout(4500)
+                    });
                     if (wcRes.ok) {
                         const wcData = await wcRes.json();
                         if (wcData && wcData.success && wcData.products && wcData.products.length > 0) {
