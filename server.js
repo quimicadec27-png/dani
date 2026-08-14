@@ -51,6 +51,26 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANO
 });
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
+// Caché en memoria RAM del catálogo de productos para respuestas ultra-rápidas en 0ms
+let PRODUCT_CATALOG_CACHE = [];
+async function refreshProductCatalog() {
+    try {
+        const { data } = await supabase
+            .from('dec_products')
+            .select('name, price, stock_status, sku')
+            .or('status.eq.publish,status.eq.publicado')
+            .gt('price', 0);
+        if (data && data.length > 0) {
+            PRODUCT_CATALOG_CACHE = data.filter(p => !p.sku?.includes('_ID') && !p.sku?.includes('QD-DTRG-1320'));
+            console.log(`[CATALOG CACHE] ${PRODUCT_CATALOG_CACHE.length} productos cargados en memoria RAM.`);
+        }
+    } catch (e) {
+        console.error('[CATALOG CACHE ERROR]', e.message);
+    }
+}
+refreshProductCatalog();
+setInterval(refreshProductCatalog, 10 * 60 * 1000);
+
 // System Prompt Oficial de "Dani"
 const SYSTEM_PROMPT_DANI = `
 Eres "Dani", la asistente virtual oficial de Química DEC (Concepción del Uruguay, Entre Ríos).
@@ -509,53 +529,20 @@ Respondé en formato JSON estricto: {"items": [{"busqueda": "nombre del producto
                 const words = queryStr.split(' ').filter(w => w.length > 2 && !stopWords.includes(w));
                 if (words.length === 0) continue;
 
-                // 1. Consultar WooCommerce Live Search PRIMERO con timeout de 4.5s
-                try {
-                    const wcRes = await fetch(`https://quimicadec.com/?qdec_api=search_product&secret_key=qdec_crm_sec_2026&q=${encodeURIComponent(queryStr)}`, {
-                        signal: AbortSignal.timeout(4500)
+                // Búsqueda instantánea en caché RAM (0ms)
+                if (PRODUCT_CATALOG_CACHE && PRODUCT_CATALOG_CACHE.length > 0) {
+                    prods = PRODUCT_CATALOG_CACHE.filter(p => {
+                        const pName = (p.name || '').toLowerCase();
+                        return words.every(w => pName.includes(w));
                     });
-                    if (wcRes.ok) {
-                        const wcData = await wcRes.json();
-                        if (wcData && wcData.success && wcData.products && wcData.products.length > 0) {
-                            prods = wcData.products.filter(p => {
-                                const pSku = (p.sku || '').toUpperCase();
-                                const pName = (p.name || '').toUpperCase();
-                                const price = parseFloat(p.regular_price || p.price || 0);
-                                if (pSku.includes('QD-DTRG-1320') || (pName.includes('MAGISTRAL AZUL') && price < 1000)) {
-                                    return false;
-                                }
-                                return true;
-                            });
-                        }
-                    }
-                } catch(e) {}
 
-                // 2. Fallback a Supabase dec_products ÚNICAMENTE si WooCommerce no devolvió NINGÚN resultado
-                if (prods.length === 0) {
-                    let queryBuilder = supabase
-                        .from('dec_products')
-                        .select('name, price, stock_status, sku')
-                        .or('status.eq.publish,status.eq.publicado');
-
-                    for (const w of words) {
-                        queryBuilder = queryBuilder.ilike('name', `%${w}%`);
-                    }
-
-                    let { data: sbProds } = await queryBuilder.limit(10);
-                    if (!sbProds || sbProds.length === 0) {
-                        const sortedWords = words.sort((a,b) => b.length - a.length);
+                    if (prods.length === 0) {
+                        const sortedWords = [...words].sort((a,b) => b.length - a.length);
                         const longestWord = sortedWords[0];
                         if (longestWord && longestWord.length > 2) {
-                            const { data: fallbackProds } = await supabase
-                                .from('dec_products')
-                                .select('name, price, stock_status, sku')
-                                .or('status.eq.publish,status.eq.publicado')
-                                .ilike('name', `%${longestWord}%`)
-                                .limit(10);
-                            sbProds = fallbackProds;
+                            prods = PRODUCT_CATALOG_CACHE.filter(p => (p.name || '').toLowerCase().includes(longestWord));
                         }
                     }
-                    if (sbProds && sbProds.length > 0) prods = sbProds;
                 }
 
                 if (prods && prods.length > 0) {
