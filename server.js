@@ -335,6 +335,58 @@ async function isBotPausado(clienteId) {
     return false;
 }
 
+// Motor de IA Doble Ultra-Resiliente (Groq Llama-3.1 + Gemini 2.5 Flash)
+async function generateDaniResponse(messagesPayload) {
+    // 1. Intentar Groq Llama-3.1-8b-instant con timeout de 3.5s
+    try {
+        const groqPromise = groq.chat.completions.create({
+            messages: messagesPayload,
+            model: "llama-3.1-8b-instant",
+            temperature: 0.2
+        });
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Groq timeout 3.5s')), 3500));
+        const completion = await Promise.race([groqPromise, timeoutPromise]);
+        if (completion && completion.choices && completion.choices[0]?.message?.content) {
+            return completion.choices[0].message.content;
+        }
+    } catch (e) {
+        console.warn('[GROQ TIMEOUT / ERROR, ACTIVANDO GEMINI 2.5 FLASH]:', e.message);
+    }
+
+    // 2. Fallback de alta velocidad: Gemini 2.5 Flash
+    try {
+        const geminiKey = process.env.GOOGLE_API_KEY || "AIzaSyD9WIsEODLjprXG-wdQdNYHBlqFyAQowz0";
+        const systemMsg = messagesPayload.find(m => m.role === 'system')?.content || '';
+        const conversationMsgs = messagesPayload.filter(m => m.role !== 'system');
+
+        const contents = conversationMsgs.map(m => ({
+            role: m.role === 'assistant' ? 'model' : 'user',
+            parts: [{ text: m.content }]
+        }));
+
+        const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: contents,
+                systemInstruction: { parts: [{ text: systemMsg }] },
+                generationConfig: { temperature: 0.2 }
+            }),
+            signal: AbortSignal.timeout(4000)
+        });
+
+        if (geminiRes.ok) {
+            const data = await geminiRes.json();
+            const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (text) return text;
+        }
+    } catch (err) {
+        console.error('[GEMINI FLASH ERROR]:', err.message);
+    }
+
+    return "¡Hola! En Química DEC vendemos al por mayor. ¿En qué producto y cantidad estás interesado?";
+}
+
 // =========================================================================
 // 1. ENDPOINT DE CHAT EN VIVO E IA (Utilizado por la web y WhatsApp)
 // =========================================================================
@@ -570,13 +622,7 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
             messagesPayload.push({ role: "user", content: textoProcesado });
         }
 
-        let completion = await groq.chat.completions.create({
-            messages: messagesPayload,
-            model: "llama-3.1-8b-instant",
-            temperature: 0.2
-        });
-
-        let respuestaIA = completion.choices[0]?.message?.content || "Perfecto, ¿en qué te puedo ayudar?";
+        let respuestaIA = await generateDaniResponse(messagesPayload);
         
         // Filtro de seguridad post-procesamiento (elimina SKUs, tarjetas, cuotas, CBU/cuentas inventadas, teléfonos falsos, corchetes, español neutro o modismos victimistas)
         respuestaIA = respuestaIA.replace(/\b\(?SKU:\s*[\w-]+\)?\b/gi, '')
