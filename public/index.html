@@ -5163,6 +5163,379 @@
         }
 
         
+        // =========================================================================
+        // SUB-TAB 4: GESTOR Y EDITOR MANUAL DE PRODUCTOS E IMÁGENES
+        // =========================================================================
+        let debounceBuscarProdImg = null;
+        let batchEditorRows = [];
+        let bulkFilesQueue = [];
+
+        async function buscarProductoImagen(val) {
+            const resultsDiv = document.getElementById('img-search-results');
+            if (!resultsDiv) return;
+
+            if (!val || val.trim().length < 2) {
+                resultsDiv.classList.add('hidden');
+                resultsDiv.innerHTML = '';
+                return;
+            }
+
+            clearTimeout(debounceBuscarProdImg);
+            debounceBuscarProdImg = setTimeout(async () => {
+                resultsDiv.innerHTML = '<div class="p-3 text-xs text-blue-300 font-bold flex items-center gap-2"><span class="animate-spin">⏳</span> Buscando en catálogo en tiempo real...</div>';
+                resultsDiv.classList.remove('hidden');
+
+                try {
+                    const query = val.trim();
+                    const resp = await fetch(`${API_URL}/products/search?q=${encodeURIComponent(query)}`);
+                    const data = await resp.json();
+
+                    if (data && data.success && data.products && data.products.length > 0) {
+                        resultsDiv.innerHTML = data.products.map(p => {
+                            const imgThumb = p.image_url ? `<img src="${p.image_url}" class="w-10 h-10 object-cover rounded-lg border border-white/20 shrink-0">` : `<div class="w-10 h-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-[10px] text-gray-400 shrink-0">📷 Sin foto</div>`;
+                            const priceText = p.regular_price ? `$ ${Number(p.regular_price).toLocaleString('es-AR')}` : 'Sin precio';
+                            const safeProdStr = encodeURIComponent(JSON.stringify(p));
+
+                            return `
+                                <div onclick="seleccionarProductoParaEditorManual('${safeProdStr}')" class="p-3 hover:bg-blue-500/20 cursor-pointer border-b border-white/5 transition-colors flex items-center justify-between gap-3">
+                                    <div class="flex items-center gap-3 min-w-0">
+                                        ${imgThumb}
+                                        <div class="min-w-0">
+                                            <p class="font-bold text-xs text-white truncate">${p.name}</p>
+                                            <p class="text-[10px] text-blue-300 font-mono">SKU: <span class="font-bold text-amber-400">${p.sku || 'N/A'}</span></p>
+                                        </div>
+                                    </div>
+                                    <div class="text-right shrink-0">
+                                        <span class="text-xs font-black text-amber-400 font-mono">${priceText}</span>
+                                        <span class="block text-[9px] text-emerald-400 font-bold">➕ Clic para editar</span>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+                        resultsDiv.classList.remove('hidden');
+                    } else {
+                        resultsDiv.innerHTML = `<div class="p-3 text-xs text-gray-400 italic">No se encontraron productos para "${val}". Podés escribir otro nombre o SKU.</div>`;
+                        resultsDiv.classList.remove('hidden');
+                    }
+                } catch (err) {
+                    console.error('Error buscando productos:', err);
+                    resultsDiv.innerHTML = `<div class="p-3 text-xs text-red-400">Error al buscar productos: ${err.message}</div>`;
+                }
+            }, 300);
+        }
+
+        function seleccionarProductoParaEditorManual(encodedProdStr) {
+            try {
+                const prod = JSON.parse(decodeURIComponent(encodedProdStr));
+                agregarRenglonEditorManual(prod);
+                const searchInput = document.getElementById('img-prod-search');
+                if (searchInput) searchInput.value = '';
+                const resultsDiv = document.getElementById('img-search-results');
+                if (resultsDiv) {
+                    resultsDiv.classList.add('hidden');
+                    resultsDiv.innerHTML = '';
+                }
+            } catch (e) {
+                console.error('Error seleccionando producto:', e);
+            }
+        }
+
+        function agregarRenglonEditorManual(prod = null) {
+            const container = document.getElementById('batch-prod-editor-container');
+            if (!container) return;
+
+            const rowId = 'row_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+            const sku = prod ? (prod.sku || '') : '';
+            const name = prod ? (prod.name || '') : '';
+            const price = prod ? (prod.regular_price || prod.price || '') : '';
+            const imageUrl = prod ? (prod.image_url || '') : '';
+
+            const rowHtml = `
+                <div id="${rowId}" class="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-3 relative group hover:border-blue-500/40 transition-all">
+                    <div class="flex flex-col md:flex-row items-start md:items-center gap-4">
+                        <!-- PREVIEW FOTO / UPLOAD -->
+                        <div class="flex items-center gap-3 shrink-0">
+                            <div class="relative w-16 h-16 rounded-xl overflow-hidden bg-slate-900 border border-white/20 flex items-center justify-center shrink-0">
+                                <img id="preview_${rowId}" src="${imageUrl || 'https://quimicadec.com/assets/img/categorias/productosparadiluir.jpeg'}" class="w-full h-full object-cover ${imageUrl ? '' : 'opacity-40'}">
+                                <span id="tag_${rowId}" class="absolute bottom-0 inset-x-0 bg-black/80 text-[8px] text-center text-gray-300 py-0.5">${imageUrl ? 'Foto Actual' : 'Sin Foto'}</span>
+                            </div>
+                            <div class="space-y-1">
+                                <label class="cursor-pointer px-2.5 py-1.5 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/40 text-[10px] font-bold flex items-center gap-1 transition-all">
+                                    <span class="material-symbols-outlined text-[14px]">photo_camera</span> Elegir Foto
+                                    <input type="file" accept="image/*" class="hidden" onchange="handleRowImageSelected('${rowId}', event)">
+                                </label>
+                                <input type="hidden" id="base64_${rowId}" value="">
+                                <input type="hidden" id="filename_${rowId}" value="">
+                            </div>
+                        </div>
+
+                        <!-- CAMPOS DE EDICIÓN: NOMBRE, SKU, PRECIO -->
+                        <div class="flex-1 grid grid-cols-1 md:grid-cols-12 gap-3 w-full">
+                            <div class="md:col-span-6 space-y-1">
+                                <label class="text-[9px] font-bold text-gray-400 uppercase">Nombre del Producto</label>
+                                <input type="text" id="name_${rowId}" value="${name.replace(/"/g, '&quot;')}" placeholder="Nombre del producto..." class="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white font-bold focus:outline-none focus:border-blue-400">
+                            </div>
+                            <div class="md:col-span-3 space-y-1">
+                                <label class="text-[9px] font-bold text-amber-400 uppercase">SKU (Identificador)</label>
+                                <input type="text" id="sku_${rowId}" value="${sku.replace(/"/g, '&quot;')}" placeholder="Ej: QD-SHMR-1424" class="w-full bg-slate-950 border border-amber-500/30 rounded-xl px-3 py-2 text-xs text-amber-300 font-mono font-bold focus:outline-none focus:border-amber-400">
+                            </div>
+                            <div class="md:col-span-3 space-y-1">
+                                <label class="text-[9px] font-bold text-emerald-400 uppercase">Precio ($ ARS)</label>
+                                <input type="number" step="0.01" id="price_${rowId}" value="${price}" placeholder="0.00" class="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-emerald-300 font-mono font-bold focus:outline-none focus:border-emerald-400">
+                            </div>
+                        </div>
+
+                        <!-- BOTÓN ELIMINAR RENGLÓN -->
+                        <button type="button" onclick="eliminarRenglonEditorManual('${rowId}')" title="Eliminar de la lista" class="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 transition-all shrink-0 self-end md:self-center">
+                            <span class="material-symbols-outlined text-[18px]">delete</span>
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            container.insertAdjacentHTML('beforeend', rowHtml);
+            batchEditorRows.push(rowId);
+        }
+
+        function handleRowImageSelected(rowId, event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const base64Data = e.target.result;
+                const previewImg = document.getElementById(`preview_${rowId}`);
+                if (previewImg) {
+                    previewImg.src = base64Data;
+                    previewImg.classList.remove('opacity-40');
+                }
+                const tag = document.getElementById(`tag_${rowId}`);
+                if (tag) {
+                    tag.innerText = 'Nueva Foto ✅';
+                    tag.className = 'absolute bottom-0 inset-x-0 bg-emerald-600/90 text-[8px] text-center text-white py-0.5 font-bold';
+                }
+                const base64Input = document.getElementById(`base64_${rowId}`);
+                if (base64Input) base64Input.value = base64Data;
+                const filenameInput = document.getElementById(`filename_${rowId}`);
+                if (filenameInput) filenameInput.value = file.name;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function eliminarRenglonEditorManual(rowId) {
+            const el = document.getElementById(rowId);
+            if (el) el.remove();
+            batchEditorRows = batchEditorRows.filter(id => id !== rowId);
+        }
+
+        function limpiarEditorManualLote() {
+            const container = document.getElementById('batch-prod-editor-container');
+            if (container) container.innerHTML = '';
+            batchEditorRows = [];
+            const resDiv = document.getElementById('batch-manual-res');
+            if (resDiv) resDiv.classList.add('hidden');
+        }
+
+        async function guardarEditorManualLote() {
+            const btn = document.getElementById('btn-guardar-batch-manual');
+            const resDiv = document.getElementById('batch-manual-res');
+
+            if (batchEditorRows.length === 0) {
+                if (resDiv) {
+                    resDiv.className = 'text-xs font-bold p-3 rounded-xl border bg-amber-500/20 text-amber-300 border-amber-500/40';
+                    resDiv.innerText = '⚠️ No hay productos en la lista para actualizar. Buscá o sumá uno primero.';
+                    resDiv.classList.remove('hidden');
+                }
+                return;
+            }
+
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="animate-spin">⏳</span> Guardando en WooCommerce y Supabase...';
+            }
+
+            let guardadosCount = 0;
+            let errores = [];
+
+            for (const rowId of batchEditorRows) {
+                const skuEl = document.getElementById(`sku_${rowId}`);
+                const nameEl = document.getElementById(`name_${rowId}`);
+                const priceEl = document.getElementById(`price_${rowId}`);
+                const base64El = document.getElementById(`base64_${rowId}`);
+                const filenameEl = document.getElementById(`filename_${rowId}`);
+
+                const sku = skuEl ? skuEl.value.trim() : '';
+                const name = nameEl ? nameEl.value.trim() : '';
+                const price = priceEl ? parseFloat(priceEl.value) : null;
+                const imageBase64 = base64El ? base64El.value : '';
+                const filename = filenameEl ? filenameEl.value : '';
+
+                if (!sku) continue;
+
+                try {
+                    // 1. Actualizar Nombre y Precios
+                    if (name || price !== null) {
+                        await fetch(`${API_URL}/products/update-details`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                sku: sku,
+                                name: name || undefined,
+                                regular_price: price || undefined
+                            })
+                        });
+                    }
+
+                    // 2. Si se cargó nueva foto, subirla
+                    if (imageBase64) {
+                        await fetch(`${API_URL}/products/upload-image`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                sku: sku,
+                                imageBase64: imageBase64,
+                                filename: filename || `${sku}.jpg`
+                            })
+                        });
+                    }
+
+                    guardadosCount++;
+                } catch (e) {
+                    errores.push(`Error en SKU ${sku}: ${e.message}`);
+                }
+            }
+
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<span class="material-symbols-outlined text-sm">save</span> 💾 Aplicar Cambios (WooCommerce + Supabase)';
+            }
+
+            if (resDiv) {
+                if (errores.length === 0) {
+                    resDiv.className = 'text-xs font-bold p-3 rounded-xl border bg-emerald-500/20 text-emerald-300 border-emerald-500/40';
+                    resDiv.innerText = `✅ ¡Éxito! Se actualizaron correctamente ${guardadosCount} productos en WooCommerce y Supabase. Se purgó la caché de la tienda.`;
+                } else {
+                    resDiv.className = 'text-xs font-bold p-3 rounded-xl border bg-amber-500/20 text-amber-300 border-amber-500/40';
+                    resDiv.innerText = `⚠️ Se actualizaron ${guardadosCount} productos con advertencias: ${errores.join(', ')}`;
+                }
+                resDiv.classList.remove('hidden');
+            }
+
+            appendAuditLog('BATCH_PRODUCT_UPDATE', `Actualizó ${guardadosCount} productos desde el Editor Manual.`);
+        }
+
+        // =========================================================================
+        // CARGA MASIVA DE FOTOS POR LOTE
+        // =========================================================================
+        function handleBulkFilesSelected(event) {
+            const files = event.target.files;
+            if (!files || files.length === 0) return;
+
+            bulkFilesQueue = Array.from(files);
+            renderBulkQueue();
+        }
+
+        function renderBulkQueue() {
+            const container = document.getElementById('bulk-img-queue-container');
+            const list = document.getElementById('bulk-img-queue-list');
+            const countEl = document.getElementById('bulk-img-count');
+
+            if (!container || !list) return;
+
+            if (bulkFilesQueue.length === 0) {
+                container.classList.add('hidden');
+                return;
+            }
+
+            container.classList.remove('hidden');
+            if (countEl) countEl.innerText = bulkFilesQueue.length;
+
+            list.innerHTML = bulkFilesQueue.map((file, idx) => {
+                const guessedSku = file.name.replace(/\.[^/.]+$/, '').toUpperCase();
+                return `
+                    <div class="flex items-center justify-between p-2 rounded-lg bg-white/5 border border-white/10 text-xs text-gray-200">
+                        <div class="flex items-center gap-2 truncate">
+                            <span class="text-amber-400 font-mono">#${idx + 1}</span>
+                            <span class="font-bold truncate">${file.name}</span>
+                            <span class="text-[10px] text-blue-300 font-mono bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20">SKU sugerido: ${guessedSku}</span>
+                        </div>
+                        <button onclick="removeBulkQueueItem(${idx})" class="text-rose-400 hover:text-rose-300 font-bold px-2">✕</button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function removeBulkQueueItem(idx) {
+            bulkFilesQueue.splice(idx, 1);
+            renderBulkQueue();
+        }
+
+        function clearBulkQueue() {
+            bulkFilesQueue = [];
+            const input = document.getElementById('bulk-img-input');
+            if (input) input.value = '';
+            renderBulkQueue();
+        }
+
+        async function startBulkImageUpload() {
+            const btn = document.getElementById('bulk-upload-btn');
+            const progressBox = document.getElementById('bulk-upload-progress');
+            const progressBar = document.getElementById('bulk-progress-bar');
+            const progressText = document.getElementById('bulk-progress-text');
+            const progressPercent = document.getElementById('bulk-progress-percent');
+            const resDiv = document.getElementById('bulk-upload-res');
+
+            if (bulkFilesQueue.length === 0) return;
+
+            if (btn) btn.disabled = true;
+            if (progressBox) progressBox.classList.remove('hidden');
+
+            let processed = 0;
+            const total = bulkFilesQueue.length;
+
+            for (let i = 0; i < total; i++) {
+                const file = bulkFilesQueue[i];
+                const sku = file.name.replace(/\.[^/.]+$/, '').toUpperCase();
+
+                if (progressText) progressText.innerText = `Subiendo (${i + 1}/${total}): ${file.name}...`;
+
+                try {
+                    const base64Data = await new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = () => resolve(reader.result);
+                        reader.onerror = reject;
+                        reader.readAsDataURL(file);
+                    });
+
+                    await fetch(`${API_URL}/products/upload-image`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            sku: sku,
+                            imageBase64: base64Data,
+                            filename: file.name
+                        })
+                    });
+                } catch (err) {
+                    console.error('Error subiendo imagen en lote:', err);
+                }
+
+                processed++;
+                const percent = Math.round((processed / total) * 100);
+                if (progressBar) progressBar.style.width = `${percent}%`;
+                if (progressPercent) progressPercent.innerText = `${percent}%`;
+            }
+
+            if (btn) btn.disabled = false;
+            if (resDiv) {
+                resDiv.className = 'text-xs font-bold p-3 rounded-xl border bg-emerald-500/20 text-emerald-300 border-emerald-500/40';
+                resDiv.innerText = `✅ ¡Carga Masiva Completa! Se subieron ${processed} fotos a WooCommerce y Supabase. Caché purgada.`;
+                resDiv.classList.remove('hidden');
+            }
+
+            appendAuditLog('BULK_IMAGE_UPLOAD', `Subió lote de ${processed} imágenes de productos.`);
+        }
+
         // Auto-cargar catálogo completo desde WooCommerce al iniciar CRM
         async function cargarCatalogoCompletoUI() {
             if (window.combosDataCache && window.combosDataCache.length > 0) return;
