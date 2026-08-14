@@ -695,19 +695,18 @@ Respondé en formato JSON estricto: {"items": [{"busqueda": "nombre del producto
                                  .replace(/03442-?\d{5,8}/g, '')
                                  .replace(/0800-?\d+/g, '');
 
-        // Guardar respuesta del Bot en el historial para el CRM
-        if (clienteId) {
-            try {
-                await supabase.from('mensajes_chat').insert([{ cliente_id: clienteId, emisor: 'bot', texto: respuestaIA }]);
-            } catch (e) {}
-        }
-
+        // Responder inmediatamente al usuario para máxima velocidad
         res.json({
             success: true,
             cliente_id: clienteId,
             respuesta_sugerida_ia: respuestaIA,
             choices: [{ message: { content: respuestaIA } }]
         });
+
+        // Guardar respuesta del Bot en segundo plano para el CRM
+        if (clienteId) {
+            supabase.from('mensajes_chat').insert([{ cliente_id: clienteId, emisor: 'bot', texto: respuestaIA }]).catch(() => {});
+        }
 
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
