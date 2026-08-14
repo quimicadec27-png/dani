@@ -64,8 +64,9 @@ Hablas en primera persona como representante oficial de la empresa ("en Química
 - ESTÁ ROTUNDAMENTE PROHIBIDO usar la palabra "Che". Saludá siempre con "¡Hola! ¿Cómo estás?", "¡Hola! Decime...", etc., tuteando con voseo pero NUNCA usando "Che".
 
 ⚠️ REGLA DE ADVERTENCIA SUTIL SOBRE PRIMER PEDIDO MAYORISTA:
-- Al inicio de la conversación o al consultar precios por primera vez, recordá de forma sutil y amable:
+- ÚNICAMENTE al inicio de la conversación o al consultar precios por primera vez y SI EL PEDIDO AÚN NO ESTÁ DEFINIDO, podés recordar de forma sutil:
   "Recordá que si sos cliente nuevo y querés activar tu cuenta mayorista, tu primer pedido debe ser de $80.000 o más."
+- ⚠️ SI EL PEDIDO YA ESTÁ DEFINIDO, SI YA SE CALCULÓ UN TOTAL O SI EL CLIENTE TE ESTÁ DANDO SUS DATOS, ESTÁ ROTUNDAMENTE PROHIBIDO REPETIR ESTA ADVERTENCIA O PREGUNTAR "¿EN QUÉ PUEDO AYUDARTE HOY?".
 - ⚠️ PROHIBIDO MEZCLAR EL RETIRO DE $2.500 EN EL SALUDO DE CLIENTE NUEVO. El retiro en local a partir de $2.500 es EXCLUSIVAMENTE para clientes que YA son mayoristas. NUNCA lo menciones al hablar de la compra inicial de cliente nuevo.
 
 ⚠️ REGLA DE CONCISIÓN Y MEMORIA DE CONVERSACIÓN (PROHIBIDO SER REDUNDANTE O REPETITIVA):
@@ -659,7 +660,13 @@ Devuelve JSON estricto: {"items": [{"busqueda": "string", "cantidad": number}]}`
 
 
         const tieneMensajesAnteriores = historialPrevio.length > 1;
-        const promptInstrucciones = `${SYSTEM_PROMPT_DANI}\n${tieneMensajesAnteriores ? '⚠️ ATENCIÓN CRÍTICA DE CONTINUIDAD DE CHAT:\nEsta conversación YA ESTÁ EN CURSO. Recordá perfectamente lo que se habló antes en el historial. ESTÁ ABSOLUTAMENTE PROHIBIDO SALUDAR DE NUEVO ("¡Hola!", "Hola", "Soy Dani..."). Responde directo y con memoria al último mensaje del usuario.' : ''}\n${cotizacionCalculada}`;
+        const userProvidedContact = textoProcesado.match(/(?:mi (?:nombre|whats|whatsapp|tel|telefono|dni)|me llamo|soy|@|\d{7,})/i);
+        let directiveContinuidad = "";
+        if (tieneMensajesAnteriores && userProvidedContact) {
+            directiveContinuidad = `\n⚠️ INSTRUCCIÓN DE CIERRE DE PEDIDO INMEDIATO:\nEl cliente te acaba de responder con sus datos de contacto para completar su pedido. Agradecé cordialmente sus datos, confirmale que su pedido quedó agendado y que un asesor comercial humano se comunicará por WhatsApp para coordinar el pago (Efectivo o Transferencia) y el envío. PROHIBIDO decir "¿En qué puedo ayudarte hoy?" o preguntar qué producto busca.`;
+        }
+
+        const promptInstrucciones = `${SYSTEM_PROMPT_DANI}\n${tieneMensajesAnteriores ? '⚠️ ATENCIÓN CRÍTICA DE CONTINUIDAD DE CHAT:\nEsta conversación YA ESTÁ EN CURSO. Recordá perfectamente lo que se habló antes en el historial. ESTÁ ABSOLUTAMENTE PROHIBIDO SALUDAR DE NUEVO ("¡Hola!", "Hola", "Soy Dani..."). Responde directo y con memoria al último mensaje del usuario.' : ''}\n${directiveContinuidad}\n${cotizacionCalculada}`;
 
 
         const messagesPayload = [
