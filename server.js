@@ -535,7 +535,7 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
         const userProvidedContact = textoProcesado.match(/(?:mi (?:nombre|whats|whatsapp|tel|telefono|dni)|me llamo|soy|@|\d{7,})/i);
         let directiveContinuidad = "";
         if (tieneMensajesAnteriores && userProvidedContact) {
-            directiveContinuidad = `\n⚠️ INSTRUCCIÓN DE CIERRE DE PEDIDO INMEDIATO:\nEl cliente te acaba de responder con sus datos de contacto para completar su pedido. Agradecé cordialmente sus datos, confirmale que su pedido quedó agendado y que un asesor comercial humano se comunicará por WhatsApp para coordinar el pago (Efectivo o Transferencia) y el envío. PROHIBIDO decir "¿En qué puedo ayudarte hoy?" o preguntar qué producto busca.`;
+            directiveContinuidad = `\n⚠️ INSTRUCCIÓN DE CIERRE DE PEDIDO INMEDIATO:\nEl cliente te acaba de responder con sus datos de contacto para completar su pedido. Agradecé cordialmente sus datos, confirmale que su pedido quedó agendado y que un asesor comercial humano se comunicará por WhatsApp para coordinar el pago (Efectivo o Transferencia) y el envío. PROHIBIDO usar corchetes como "[Nombre]" o inventar nombres. PROHIBIDO decir "¿En qué puedo ayudarte hoy?" o preguntar qué producto busca.`;
         }
 
         const promptInstrucciones = `${SYSTEM_PROMPT_DANI}\n${tieneMensajesAnteriores ? '⚠️ ATENCIÓN CRÍTICA DE CONTINUIDAD DE CHAT:\nEsta conversación YA ESTÁ EN CURSO. Recordá perfectamente lo que se habló antes en el historial. ESTÁ ABSOLUTAMENTE PROHIBIDO SALUDAR DE NUEVO ("¡Hola!", "Hola", "Soy Dani..."). Responde directo y con memoria al último mensaje del usuario.' : ''}\n${directiveContinuidad}\n${cotizacionCalculada}`;
@@ -562,8 +562,10 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
 
         let respuestaIA = completion.choices[0]?.message?.content || "Perfecto, ¿en qué te puedo ayudar?";
         
-        // Filtro de seguridad post-procesamiento (elimina SKUs, tarjetas, cuotas, CBU/cuentas inventadas, teléfonos falsos, español neutro o modismos victimistas)
+        // Filtro de seguridad post-procesamiento (elimina SKUs, tarjetas, cuotas, CBU/cuentas inventadas, teléfonos falsos, corchetes, español neutro o modismos victimistas)
         respuestaIA = respuestaIA.replace(/\b\(?SKU:\s*[\w-]+\)?\b/gi, '')
+                                 .replace(/\[nombre\]/gi, '')
+                                 .replace(/\[producto\]/gi, 'los productos que buscás')
                                  .replace(/tarjetas? de (crédito|débito)/gi, 'efectivo o transferencia bancaria')
                                  .replace(/\bcuotas\b/gi, 'pago al contado')
                                  .replace(/\bche,?\s*/gi, '')
