@@ -471,8 +471,17 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
         let clienteId = cliente ? cliente.id : null;
         let historialPrevio = [];
 
-        if (clienteId) {
-            // 1. Obtener historial previo desde Supabase (y verificar si el Bot está pausado)
+        // 1. Si el cliente envió el historial directamente en el payload (web chat instantáneo de 0ms)
+        if (Array.isArray(messages) && messages.length > 1) {
+            historialPrevio = messages
+                .filter(m => m.role !== 'system')
+                .slice(0, -1)
+                .map(m => ({
+                    role: (m.role === 'model' || m.role === 'assistant') ? 'assistant' : 'user',
+                    content: m.content || (m.parts && m.parts[0]?.text) || ''
+                }));
+        } else if (clienteId) {
+            // 2. Si no vino en el payload (ej. webhook de WhatsApp), consultar Supabase
             try {
                 const { data: ultimosMsgs } = await supabase
                     .from('mensajes_chat')
@@ -508,7 +517,9 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
                         });
                 }
             } catch (e) {}
+        }
 
+        if (clienteId) {
             // 2. Guardar el mensaje del cliente y auto-actualizar datos del lead en segundo plano (0ms de bloqueo)
             (async () => {
                 try {
