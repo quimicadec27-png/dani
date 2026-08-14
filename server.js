@@ -741,15 +741,53 @@ app.get('/api/crm/chat/conversaciones', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Actualizar Datos de Lead / Cliente desde el CRM
+// Actualizar Datos de Lead / Cliente desde el CRM (con soporte para fusión automática si el teléfono ya existe)
 app.post('/api/crm/clientes/actualizar', async (req, res) => {
     try {
         const { cliente_id, razon_social, whatsapp, dni_cuit, tipo_envio, direccion, localidad, provincia, notas } = req.body;
         if (!cliente_id) return res.status(400).json({ error: 'ID de cliente requerido' });
 
+        const cleanWhatsapp = whatsapp ? String(whatsapp).replace(/[^\d+]/g, '').trim().substring(0, 20) : '';
+
+        // 1. Si se especificó un WhatsApp real (no temporal), verificar si ya pertenece a otro cliente registrado
+        let targetClientId = cliente_id;
+        let merged = false;
+
+        if (cleanWhatsapp && !cleanWhatsapp.startsWith('Web_')) {
+            const { data: existingClient } = await supabase
+                .from('clientes')
+                .select('id, razon_social, whatsapp')
+                .eq('whatsapp', cleanWhatsapp)
+                .neq('id', cliente_id)
+                .maybeSingle();
+
+            if (existingClient) {
+                targetClientId = existingClient.id;
+                merged = true;
+
+                // Reasignar mensajes de chat del lead temporal al cliente definitivo
+                await supabase
+                    .from('mensajes_chat')
+                    .update({ cliente_id: targetClientId })
+                    .eq('cliente_id', cliente_id);
+
+                // Reasignar pedidos si hubiera
+                await supabase
+                    .from('pedidos')
+                    .update({ cliente_id: targetClientId })
+                    .eq('cliente_id', cliente_id);
+
+                // Eliminar el lead temporal huérfano para evitar duplicados en la base
+                await supabase
+                    .from('clientes')
+                    .delete()
+                    .eq('id', cliente_id);
+            }
+        }
+
         const updatePayload = {};
         if (razon_social) updatePayload.razon_social = String(razon_social).trim();
-        if (whatsapp) updatePayload.whatsapp = String(whatsapp).replace(/[^\d+]/g, '').trim().substring(0, 20);
+        if (cleanWhatsapp) updatePayload.whatsapp = cleanWhatsapp;
         if (dni_cuit) updatePayload.cuit = String(dni_cuit).trim().substring(0, 30);
         if (provincia) updatePayload.provincia = String(provincia).trim();
 
@@ -764,11 +802,26 @@ app.post('/api/crm/clientes/actualizar', async (req, res) => {
         if (notas) contactoStr += (contactoStr ? ` | ${notas}` : notas);
         if (contactoStr) updatePayload.contacto_nombre = contactoStr.substring(0, 150);
 
-        const { data, error } = await supabase.from('clientes').update(updatePayload).eq('id', cliente_id).select().single();
+        const { data, error } = await supabase
+            .from('clientes')
+            .update(updatePayload)
+            .eq('id', targetClientId)
+            .select()
+            .single();
+
         if (error) throw error;
 
-        res.json({ success: true, mensaje: '✅ Datos del cliente y envío actualizados correctamente.', cliente: data });
-    } catch (err) { res.status(500).json({ error: err.message }); }
+        res.json({
+            success: true,
+            merged: merged,
+            nuevo_id: targetClientId,
+            mensaje: merged ? '✅ Lead vinculado con cliente existente y datos actualizados con éxito.' : '✅ Datos del cliente y envío actualizados correctamente.',
+            cliente: data
+        });
+    } catch (err) {
+        console.error('[CLIENTES ACTUALIZAR ERROR]:', err.message);
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // Promover Lead Web a Cliente Mayorista Oficial
@@ -872,6 +925,8 @@ async function fetchAllProductsFromSupabase(fields = 'id, sku, name, price, stoc
             .from('dec_products')
             .select(fields)
             .neq('status', 'borrador')
+            .not('sku', 'ilike', '%_ID%')
+            .gt('price', 0)
             .order('name', { ascending: true })
             .range(from, to);
 
@@ -1516,15 +1571,24 @@ app.get('/api/products/debug-search', async (req, res) => {
 });
 
 // Endpoint para limpiar productos obsoletos/borradores de Supabase dec_products
-
 app.get('/api/products/cleanup-outdated', async (req, res) => {
     try {
-        const { data, error } = await supabase
+        const { data: delId, error: errId } = await supabase
             .from('dec_products')
             .delete()
-            .or('name.ilike.%MAGISTRAL AZUL%,price.eq.785.02,status.eq.draft,status.eq.trash');
+            .ilike('sku', '%_ID%');
+
+        const { data: delZero, error: errZero } = await supabase
+            .from('dec_products')
+            .delete()
+            .or('price.eq.0,status.eq.draft,status.eq.trash,name.ilike.%MAGISTRAL AZUL%');
             
-        res.json({ success: true, message: 'Borradores y productos obsoletos eliminados de Supabase dec_products', data, error });
+        res.json({
+            success: true,
+            message: 'Borradores y productos obsoletos con sufijo _ID eliminados exitosamente de Supabase dec_products',
+            eliminados_id: delId,
+            eliminados_cero: delZero
+        });
     } catch(err) {
         res.status(500).json({ error: err.message });
     }
@@ -1532,11 +1596,12 @@ app.get('/api/products/cleanup-outdated', async (req, res) => {
 
 // Endpoint para obtener la lista completa de productos (para Carga Masiva por Lote)
 app.get('/api/products/all', async (req, res) => {
-
     try {
         const { data, error } = await supabase
             .from('dec_products')
             .select('id, name, sku, price, stock, image_url, stock_status')
+            .not('sku', 'ilike', '%_ID%')
+            .gt('price', 0)
             .order('name', { ascending: true })
             .limit(2000);
 
@@ -1545,7 +1610,8 @@ app.get('/api/products/all', async (req, res) => {
             const wcRes = await fetch(wcUrl);
             const wcData = await wcRes.json().catch(() => ({}));
             if (wcData && wcData.products) {
-                return res.json({ success: true, count: wcData.products.length, products: wcData.products });
+                const cleanProds = wcData.products.filter(p => !p.sku?.includes('_ID') && parseFloat(p.regular_price || p.price || 0) > 0);
+                return res.json({ success: true, count: cleanProds.length, products: cleanProds });
             }
             return res.json({ success: true, count: 0, products: [] });
         }
@@ -1554,8 +1620,8 @@ app.get('/api/products/all', async (req, res) => {
             id: p.id,
             name: p.name,
             sku: p.sku,
-            price: p.price || 0,
-            regular_price: p.price || 0,
+            price: parseFloat(p.price || 0),
+            regular_price: parseFloat(p.price || 0),
             stock: p.stock,
             image_url: p.image_url,
             stock_status: p.stock_status
@@ -1567,22 +1633,47 @@ app.get('/api/products/all', async (req, res) => {
     }
 });
 
-// Endpoint de búsqueda de productos por SKU o Nombre (Supabase + Fallback WooCommerce)
+// Endpoint de búsqueda de productos por SKU o Nombre (WooCommerce Live Search Primero + Fallback Supabase Limpio)
 app.get('/api/products/search', async (req, res) => {
-
     try {
         let query = (req.query.q || '').trim();
-        // Limpiar prefijos habituales como "SKU: ", "sku: ", "sku "
         query = query.replace(/^sku:\s*/i, '').replace(/^sku\s+/i, '').trim();
 
         if (!query || query.length < 2) {
             return res.json({ success: true, count: 0, products: [] });
         }
 
-        // 1. Consultar Supabase dec_products (columna es price, no regular_price)
+        // 1. WooCommerce Live Search PRIMERO (Garantiza productos 100% publicados y vigentes)
+        try {
+            const wcUrl = `https://quimicadec.com/?qdec_api=search_product&secret_key=qdec_crm_sec_2026&q=${encodeURIComponent(query)}`;
+            const wcRes = await fetch(wcUrl);
+            if (wcRes.ok) {
+                const wcData = await wcRes.json();
+                if (wcData && wcData.success && wcData.products && wcData.products.length > 0) {
+                    const validProds = wcData.products.filter(p => {
+                        const pSku = (p.sku || '').toUpperCase();
+                        const pName = (p.name || '').toUpperCase();
+                        const price = parseFloat(p.regular_price || p.price || 0);
+                        if (pSku.includes('_ID') || pSku.includes('QD-DTRG-1320') || (pName.includes('MAGISTRAL AZUL') && price < 1000) || price <= 0) {
+                            return false;
+                        }
+                        return true;
+                    });
+                    if (validProds.length > 0) {
+                        return res.json({ success: true, count: validProds.length, products: validProds });
+                    }
+                }
+            }
+        } catch (wcErr) {
+            console.error('Error live WooCommerce search:', wcErr.message);
+        }
+
+        // 2. Fallback Supabase dec_products (EXCLUYENDO borradores y SKUs obsoletos _ID)
         let { data, error } = await supabase
             .from('dec_products')
             .select('id, name, sku, price, stock, image_url, stock_status')
+            .not('sku', 'ilike', '%_ID%')
+            .gt('price', 0)
             .or(`name.ilike.%${query}%,sku.ilike.%${query}%`)
             .limit(30);
 
@@ -1591,36 +1682,18 @@ app.get('/api/products/search', async (req, res) => {
             data = [];
         }
 
-        // Si Supabase trajo resultados, responder formateando regular_price
-        if (data && data.length > 0) {
-            const formatted = data.map(p => ({
-                id: p.id,
-                name: p.name,
-                sku: p.sku,
-                price: p.price || 0,
-                regular_price: p.price || 0,
-                stock: p.stock,
-                image_url: p.image_url,
-                stock_status: p.stock_status
-            }));
-            return res.json({ success: true, count: formatted.length, products: formatted });
-        }
+        const formatted = (data || []).map(p => ({
+            id: p.id,
+            name: p.name,
+            sku: p.sku,
+            price: parseFloat(p.price || 0),
+            regular_price: parseFloat(p.price || 0),
+            stock: p.stock,
+            image_url: p.image_url,
+            stock_status: p.stock_status
+        }));
 
-        // 2. Fallback: Consultar directamente WooCommerce si no está en Supabase
-        try {
-            const wcUrl = `https://quimicadec.com/?qdec_api=search_product&secret_key=qdec_crm_sec_2026&q=${encodeURIComponent(query)}`;
-            const wcRes = await fetch(wcUrl);
-            if (wcRes.ok) {
-                const wcData = await wcRes.json();
-                if (wcData && wcData.success && wcData.products && wcData.products.length > 0) {
-                    return res.json({ success: true, count: wcData.products.length, products: wcData.products });
-                }
-            }
-        } catch (wcErr) {
-            console.error('Error fallback WooCommerce search:', wcErr.message);
-        }
-
-        res.json({ success: true, count: 0, products: [] });
+        return res.json({ success: true, count: formatted.length, products: formatted });
 
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });

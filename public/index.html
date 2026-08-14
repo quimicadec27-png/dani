@@ -2232,7 +2232,7 @@
             const direccion = document.getElementById('edit-lead-direccion')?.value.trim() || '';
             const localidad = document.getElementById('edit-lead-localidad')?.value.trim() || '';
             const provincia = document.getElementById('edit-lead-provincia')?.value.trim() || '';
-            const notas = document.getElementById('edit-lead-notas').value.trim();
+            const notas = document.getElementById('edit-lead-notas')?.value.trim() || '';
 
             try {
                 const res = await fetch(`${API_URL}/crm/clientes/actualizar`, {
@@ -2252,11 +2252,19 @@
                 });
                 const data = await res.json();
                 if (data.success) {
-                    alert('✅ Datos del cliente y envío guardados con éxito.');
-                    refreshData();
+                    alert(data.mensaje || '✅ Datos del cliente y envío guardados con éxito.');
+                    const finalId = data.nuevo_id || clienteId;
+                    activeClientId = finalId;
+                    await refreshData();
+                    if (typeof seleccionarCliente === 'function') {
+                        seleccionarCliente(finalId);
+                    }
+                } else {
+                    alert('❌ Error al guardar: ' + (data.error || 'No se pudo actualizar el cliente.'));
                 }
             } catch (e) {
-                alert('Error al guardar datos');
+                console.error('[GUARDAR LEAD ERROR]', e);
+                alert('❌ Error de conexión al guardar los datos del lead.');
             }
         }
 
@@ -4566,6 +4574,66 @@
         }
 
         
+        const defaultProductAttributes = [];
+
+        // ========================================================
+        // GESTOR DE BANNERS DE SECCIONES / CATEGORÍAS
+        // ========================================================
+        const bannersCategoriasDB = [
+            { id: 1, name: "Concentrados & Pastas", slug: "concentrados-pastas", desc: "Materias primas y fórmulas de alto rendimiento" },
+            { id: 2, name: "Lavandería & Ropa", slug: "lavanderia-ropa", desc: "Jabones líquidos, suavizantes y blanqueadores" },
+            { id: 3, name: "Cocina & Vajilla", slug: "cocina-vajilla", desc: "Detergentes, desengrasantes y limpiadores" },
+            { id: 4, name: "Pisos & Superficies", slug: "pisos-superficies", desc: "Desodorantes, ceras y limpiadores multiuso" },
+            { id: 5, name: "Sahumerios & Aromas", slug: "sahumerios-aromas", desc: "Líneas de la India, Prana, Sagrada Madre y más" },
+            { id: 6, name: "Insecticidas & Repelentes", slug: "insecticidas-repelentes", desc: "Aerosoles, espirales y repelentes de mosquitos" },
+            { id: 7, name: "Higiene & Cuidado Personal", slug: "higiene-personal", desc: "Jabones de tocador, champús y alcohol" },
+            { id: 8, name: "Automotor", slug: "automotor", desc: "Siliconas, shampoo y cuidado de vehículos" },
+            { id: 9, name: "Papelería & Descartables", slug: "papeleria-descartables", desc: "Rollos de papel higiénico, toallas y servilletas" },
+            { id: 10, name: "Accesorios de Limpieza", slug: "accesorios-limpieza", desc: "Escobillones, trapos, esponjas y mopas" },
+            { id: 11, name: "Plásticos & Envases", slug: "plasticos-envases", desc: "Bidones de 5L, botellas y atomizadores" }
+        ];
+
+        let bannersFilterQuery = '';
+
+        function renderBannersGridUI() {
+            const container = document.getElementById('banners-grid-container');
+            if (!container) return;
+            
+            const query = (bannersFilterQuery || '').toLowerCase().trim();
+            const filtered = bannersCategoriasDB.filter(c => !query || c.name.toLowerCase().includes(query) || c.slug.toLowerCase().includes(query));
+            
+            if (filtered.length === 0) {
+                container.innerHTML = `<div class="col-span-full text-center py-8 text-gray-400 text-xs font-mono">No se encontraron secciones para "${query}".</div>`;
+                return;
+            }
+            
+            container.innerHTML = filtered.map(c => `
+                <div class="p-4 rounded-xl bg-slate-900/80 border border-white/10 hover:border-cyan-500/50 transition-all flex flex-col justify-between gap-3 shadow-lg">
+                    <div>
+                        <div class="flex items-center justify-between gap-2 mb-1">
+                            <h4 class="font-bold text-white text-xs">${c.name}</h4>
+                            <span class="text-[10px] text-cyan-400 font-mono">#${c.id}</span>
+                        </div>
+                        <p class="text-[11px] text-gray-400 leading-snug">${c.desc}</p>
+                        <div class="text-[10px] text-gray-500 font-mono mt-1">Slug: ${c.slug}</div>
+                    </div>
+                    <div class="pt-2 border-t border-white/5 flex items-center justify-between gap-2">
+                        <span class="text-[10px] text-emerald-400 flex items-center gap-1 font-bold">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Activo
+                        </span>
+                        <button type="button" onclick="alert('Sección lista para vincular banners de portada en WooCommerce')" class="px-2.5 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 text-[10px] font-bold border border-cyan-500/30 transition-all">
+                            📷 Cambiar Banner
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function filtrarBannersUI(val) {
+            bannersFilterQuery = val || '';
+            renderBannersGridUI();
+        }
+
         // ========================================================
         // GESTOR DINÁMICO DE ATRIBUTOS Y VARIACIONES DE PRODUCTOS
         // ========================================================
