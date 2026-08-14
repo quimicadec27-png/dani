@@ -414,7 +414,7 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
         }
 
         const rawPhone = (phone || user_id || session_id || 'Cliente Web').toString().trim();
-        const clientePhone = rawPhone.substring(0, 100);
+        const clientePhone = rawPhone.substring(0, 20);
 
         if (!textoProcesado) return res.status(400).json({ error: 'Mensaje vacío' });
 
@@ -457,12 +457,21 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
         // 3. Si no existe, crear registro nuevo (CUIT SIEMPRE NULL para evitar códigos Web_ en DNI)
         if (!cliente) {
             try {
-                const { data: newC } = await supabase
+                const { data: newC, error: insertErr } = await supabase
                     .from('clientes')
                     .insert([{ razon_social: leadNombre, whatsapp: clientePhone, cuit: null }])
                     .select()
                     .maybeSingle();
-                cliente = newC;
+                if (newC) {
+                    cliente = newC;
+                } else {
+                    const { data: fallbackC } = await supabase
+                        .from('clientes')
+                        .select('id, razon_social, whatsapp, cuit, contacto_nombre')
+                        .eq('whatsapp', clientePhone)
+                        .maybeSingle();
+                    cliente = fallbackC;
+                }
             } catch (e) {
                 console.error('Error creando cliente lead web:', e.message);
             }
