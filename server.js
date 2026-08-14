@@ -459,127 +459,59 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
             } catch (e) {}
         }
 
-        // Cotizador matemático exacto para precios de productos y listas extensas (con memoria contextual)
-        let itemsExtraidos = [];
-        try {
-            // Extraer últimos 3 mensajes de contexto para saber de qué producto habla si el cliente solo dice "50 unidades"
-            const ultimosContexto = (historialPrevio || []).slice(-3).map(m => ({
-                role: m.role === 'assistant' ? 'assistant' : 'user',
-                content: m.content
-            }));
-
-            const parserMessages = [
-                { 
-                    role: "system", 
-                    content: `Analizá el último mensaje del usuario para extraer productos y cantidades solicitadas del catálogo.
-Si el mensaje contiene únicamente datos personales (nombre, teléfono, dirección, DNI), saludos o confirmaciones, respondé EXACTAMENTE: {"items": []}.
-Respondé en formato JSON estricto: {"items": [{"busqueda": "nombre del producto", "cantidad": number}]}` 
-                },
-                ...ultimosContexto
-            ];
-
-            if (ultimosContexto.length === 0 || ultimosContexto[ultimosContexto.length - 1].content !== textoProcesado) {
-                parserMessages.push({ role: "user", content: textoProcesado });
-            }
-
-            const parserCompletion = await groq.chat.completions.create({
-                messages: parserMessages,
-                model: "llama-3.1-8b-instant",
-                response_format: { type: "json_object" },
-                temperature: 0.1
-            });
-            const parsed = JSON.parse(parserCompletion.choices[0]?.message?.content || '{}');
-            itemsExtraidos = parsed.items || [];
-        } catch (e) {
-            console.error('[PARSER GROQ ERROR]', e.message);
-        }
-
+        // Cotizador instantáneo de productos en memoria RAM (0ms sin llamadas extras a la API)
         let cotizacionCalculada = "";
         let desgloses = [];
         let totalGeneralCotizacion = 0;
         let itemsCotizadosCuenta = 0;
 
-        if (itemsExtraidos && itemsExtraidos.length > 0) {
-            const busquedas = itemsExtraidos;
-            
-            for (const itemObj of busquedas) {
-                let prods = [];
-                let queryStr = (typeof itemObj === 'string' ? itemObj : (itemObj.busqueda || '')).toLowerCase().trim();
-                let cantidadDeseada = (typeof itemObj === 'object' && itemObj.cantidad) ? parseInt(itemObj.cantidad) || 1 : 1;
-                if (!queryStr) continue;
+        const isOnlyContactOrGreeting = /^(?:hola|buenas|chau|gracias|javier aguirre|mi whats|mi tel|mi nombre|mi dni|\d{7,11}|si|no|ok|dale|perfecto)[\s.,!]*$/i.test(textoProcesado.trim());
 
-                // Normalizar faltas de ortografía comunes, plurales y sinónimos (saumerio -> sahumerio, desinfectantes -> desinfectante, litros -> LT)
-                queryStr = queryStr.replace(/\bsaumerios?\b/gi, 'sahumerio')
-                                   .replace(/\bsahumerios?\b/gi, 'sahumerio')
-                                   .replace(/\bdesinfectantes?\b/gi, 'desinfectante')
-                                   .replace(/\bconcentrados?\b/gi, 'concentrado')
-                                   .replace(/\bjabones?\b/gi, 'jabon')
-                                   .replace(/\bsuavizantes?\b/gi, 'suavizante')
-                                   .replace(/\bdetergentes?\b/gi, 'detergente')
-                                   .replace(/\blimpiadores?\b/gi, 'limpiador')
-                                   .replace(/\baerosoles?\b/gi, 'aerosol')
-                                   .replace(/\bpastas?\b/gi, 'pasta')
-                                   .replace(/\bperfuminas?\b/gi, 'perfumina')
-                                   .replace(/\bdiluibles?\b/gi, 'diluir')
-                                   .replace(/\binsecticidas?\b/gi, 'insecticida')
-                                   .replace(/\blitros?\b/gi, 'LT')
-                                   .replace(/\blts?\b/gi, 'LT');
+        if (!isOnlyContactOrGreeting && PRODUCT_CATALOG_CACHE && PRODUCT_CATALOG_CACHE.length > 0) {
+            let searchContext = textoProcesado;
+            if (textoProcesado.length < 25 && historialPrevio.length > 0) {
+                const prevUserMsg = [...historialPrevio].reverse().find(m => m.role === 'user');
+                if (prevUserMsg) searchContext = prevUserMsg.content + " " + textoProcesado;
+            }
 
-                const stopWords = ['cuanto', 'sale', 'tenes', 'opciones', 'producto', 'precio', 'este', 'para', 'saber', 'quisiera', 'quiero', 'necesito', 'unidades', 'paquetes', 'cajas'];
-                const words = queryStr.split(' ').filter(w => w.length > 2 && !stopWords.includes(w));
-                if (words.length === 0) continue;
+            let normalized = searchContext.toLowerCase()
+                .replace(/\bsaumerios?\b/gi, 'sahumerio')
+                .replace(/\blitros?\b|\blts?\b/gi, 'LT')
+                .replace(/\bcloros?\b/gi, 'cloro');
 
-                // Búsqueda instantánea en caché RAM (0ms)
-                if (PRODUCT_CATALOG_CACHE && PRODUCT_CATALOG_CACHE.length > 0) {
-                    prods = PRODUCT_CATALOG_CACHE.filter(p => {
-                        const pName = (p.name || '').toLowerCase();
-                        return words.every(w => pName.includes(w));
+            const stopWords = ['hola', 'cuanto', 'sale', 'tenes', 'opciones', 'producto', 'precio', 'este', 'para', 'saber', 'quisiera', 'quiero', 'necesito', 'unidades', 'paquetes', 'cajas', 'favor', 'gracias', 'buenas', 'tardes', 'dias', 'envio', 'costo', 'extra', 'paso', 'nombre', 'numero', 'whats', 'whatsapp', 'dni'];
+            const tokens = normalized.match(/[a-záéíóúñ0-9+]{3,}/gi) || [];
+            const keywords = tokens.filter(t => !stopWords.includes(t));
+
+            const sizeMatch = normalized.match(/\b(20|40|60|120|200|5|10)\s*lt\b/i) || normalized.match(/\b(20|40|60|120|200|5|10)\b/);
+            const requestedSize = sizeMatch ? sizeMatch[1] : null;
+
+            if (keywords.length > 0) {
+                let matches = PRODUCT_CATALOG_CACHE.filter(p => {
+                    const pName = (p.name || '').toLowerCase();
+                    return keywords.some(k => pName.includes(k));
+                });
+
+                if (requestedSize && matches.length > 0) {
+                    matches.sort((a, b) => {
+                        const aHas = (a.name || '').toLowerCase().includes(`${requestedSize} lt`) || (a.name || '').toLowerCase().includes(requestedSize);
+                        const bHas = (b.name || '').toLowerCase().includes(`${requestedSize} lt`) || (b.name || '').toLowerCase().includes(requestedSize);
+                        return bHas - aHas;
                     });
-
-                    if (prods.length === 0) {
-                        const sortedWords = [...words].sort((a,b) => b.length - a.length);
-                        const longestWord = sortedWords[0];
-                        if (longestWord && longestWord.length > 2) {
-                            prods = PRODUCT_CATALOG_CACHE.filter(p => (p.name || '').toLowerCase().includes(longestWord));
-                        }
-                    }
                 }
 
-                if (prods && prods.length > 0) {
-                    const bestMatch = prods[0];
-                    const rawPrice = parseFloat(bestMatch.regular_price || bestMatch.price || 0);
-                    const stockText = bestMatch.stock_status === 'instock' || !bestMatch.stock_status ? 'Disponible ✅' : 'Consultar ⚠️';
-                    const cleanName = bestMatch.name.replace(/\(SKU:.*?\)/gi, '').trim();
+                if (matches.length > 0) {
+                    matches.slice(0, 5).forEach(prod => {
+                        const rawPrice = parseFloat(prod.price || 0);
+                        const stockText = prod.stock_status === 'instock' || !prod.stock_status ? 'Disponible ✅' : 'Consultar ⚠️';
+                        const cleanName = prod.name.replace(/\(SKU:.*?\)/gi, '').trim();
 
-                    if (rawPrice > 0) {
-                        const subtotal = rawPrice * cantidadDeseada;
-                        totalGeneralCotizacion += subtotal;
-                        itemsCotizadosCuenta++;
-
-                        let lineText = `• ${cleanName}: ${cantidadDeseada} u. x $${rawPrice.toLocaleString('es-AR')} = $${subtotal.toLocaleString('es-AR')} [Stock: ${stockText}]`;
-                        
-                        // Si el cliente consultó por $80.000 para un solo ítem
-                        if (cantidadDeseada === 1) {
-                            const minQty80k = Math.ceil(80000 / rawPrice);
-                            const minTotal80k = minQty80k * rawPrice;
-                            lineText += `\n  * Para alcanzar la compra mínima de $80.000 se necesitan ${minQty80k} unidades ($${minTotal80k.toLocaleString('es-AR')} en total).`;
+                        if (rawPrice > 0) {
+                            totalGeneralCotizacion += rawPrice;
+                            itemsCotizadosCuenta++;
+                            desgloses.push(`• ${cleanName}: $${rawPrice.toLocaleString('es-AR')} [Stock: ${stockText}]`);
                         }
-                        
-                        desgloses.push(lineText);
-                    } else {
-                        desgloses.push(`• ${cleanName}: Consultar presentaciones y precios disponibles. [Stock: ${stockText}]`);
-                    }
-
-                    // Sugerir variantes si hay otras opciones
-                    if (prods.length > 1 && busquedas.length <= 2) {
-                        prods.slice(1, 4).forEach(otherP => {
-                            const pPrice = parseFloat(otherP.regular_price || otherP.price || 0);
-                            const otherCleanName = otherP.name.replace(/\(SKU:.*?\)/gi, '').trim();
-                            if (pPrice > 0) {
-                                desgloses.push(`  - Variante / Opción: ${otherCleanName} ($${pPrice.toLocaleString('es-AR')} c/u)`);
-                            }
-                        });
-                    }
+                    });
                 }
             }
 
@@ -592,11 +524,9 @@ Respondé en formato JSON estricto: {"items": [{"busqueda": "nombre del producto
                 cotizacionCalculada = "\n[DATOS REALES Y CÁLCULOS MATEMÁTICOS OFICIALES DE QUÍMICA DEC]:\n" + desgloses.join('\n') + resumenTotalGlobal +
                 "\n\n⚠️ INSTRUCCIONES ESTRICTAS PARA PRESENTAR LA LISTA DE PRECIOS Y ATENDER AL CLIENTE:" +
                 "\n1. SIN CÓDIGOS TÉCNICOS NI SKUs: Queda ROTUNDAMENTE PROHIBIDO mostrar códigos técnicos, SKUs o choclos de texto confuso (ej: QD-LCHL-1277). Presentá nombres de productos limpios, claros y comerciales." +
-                "\n2. MANEJO INTELIGENTE DE FRAGANCIAS Y PRESENTACIONES: Si el cliente pidió un producto general que tiene diferentes aromas (ej: sahumerios) o medidas (ej: bidones de 5L vs tambor 100L), explicale la presentación de referencia y decile amablemente que si busca una fragancia o medida específica, puede ingresar a nuestro catálogo en quimicadec.com/catalogo y buscar directamente con la LUPITA DE BÚSQUEDA 🔍 por el nombre del producto para ver todas las variantes disponibles y agregarlas al carrito." +
-                "\n3. CALCULADORA MATEMÁTICA EXACTA: Usá ÚNICAMENTE los números exactos calculados arriba. Al final del desglose de productos, mostrá de forma clara el TOTAL ESTIMADO GENERAL CALCULADO." +
-                "\n4. MEDIOS DE PAGO (RECORDATORIO CRÍTICO): ÚNICAMENTE aceptamos pago en EFECTIVO o TRANSFERENCIA BANCARIA. Jamás menciones tarjetas de crédito, débito ni cuotas.";
-            } else {
-                cotizacionCalculada = "\n⚠️ INSTRUCCIÓN SI NO SE ENCONTRÓ EN BÚSQUEDA AUTOMÁTICA:\nInformá amablemente al cliente que puede revisar el catálogo completo en quimicadec.com/catalogo buscando directamente con la LUPITA DE BÚSQUEDA 🔍 por el nombre del producto. JAMÁS INVENTES PRECIOS FALSOS NI PRODUCTOS EN BORRADOR.";
+                "\n2. MANEJO INTELIGENTE DE FRAGANCIAS Y PRESENTACIONES: Si el cliente pidió un producto general que tiene diferentes aromas o medidas, explicale la presentación de referencia y decile amablemente que si busca una fragancia o medida específica, puede ingresar a nuestro catálogo en quimicadec.com/catalogo y buscar directamente con la LUPITA DE BÚSQUEDA 🔍 por el nombre del producto." +
+                "\n3. CALCULADORA MATEMÁTICA EXACTA: Usá ÚNICAMENTE los números exactos calculados arriba." +
+                "\n4. MEDIOS DE PAGO: ÚNICAMENTE aceptamos pago en EFECTIVO o TRANSFERENCIA BANCARIA. Jamás menciones tarjetas ni cuotas.";
             }
         }
 
