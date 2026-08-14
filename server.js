@@ -703,9 +703,15 @@ Respondé en formato JSON estricto: {"items": [{"busqueda": "nombre del producto
             choices: [{ message: { content: respuestaIA } }]
         });
 
-        // Guardar respuesta del Bot en segundo plano para el CRM
+        // Guardar respuesta del Bot en segundo plano para el CRM de forma segura
         if (clienteId) {
-            supabase.from('mensajes_chat').insert([{ cliente_id: clienteId, emisor: 'bot', texto: respuestaIA }]).catch(() => {});
+            (async () => {
+                try {
+                    await supabase.from('mensajes_chat').insert([{ cliente_id: clienteId, emisor: 'bot', texto: respuestaIA }]);
+                } catch (e) {
+                    console.error('[BOT MSG INSERT ERROR]', e.message);
+                }
+            })();
         }
 
     } catch (err) { res.status(500).json({ error: err.message }); }
