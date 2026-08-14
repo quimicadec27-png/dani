@@ -226,53 +226,30 @@ async function autoExtractAndUpdateLead(clienteId, clienteObj, textoUsuario) {
     try {
         let extracted = { nombre: null, telefono: null, dni: null };
 
-        // 1. Usar Groq para extracción inteligente con JSON estructurado
-        try {
-            const extraction = await groq.chat.completions.create({
-                messages: [
-                    {
-                        role: 'system',
-                        content: `Sos un extractor de datos de clientes. Analizá el mensaje y extraé ÚNICAMENTE estos datos si están presentes de forma EXPLÍCITA:
-- "nombre": Nombre y apellido completo de la persona (SOLO si la persona dice su propio nombre. NUNCA pongas nombres de ciudades, provincias, países ni productos como nombre).
-- "telefono": Número de teléfono o WhatsApp (solo dígitos, formato argentino: 10 o 13 dígitos con 549).
-- "dni": Número de DNI argentino (7 u 8 dígitos) o CUIT/CUIL (11 dígitos).
+        // 1. Extraer DNI / CUIT
+        const dniMatch = textoUsuario.match(/(?:dni|cuit|cuil|documento|doc)?:?\s*(\d{7,11})\b/i);
+        if (dniMatch) {
+            extracted.dni = dniMatch[1];
+        }
 
-REGLAS CRÍTICAS:
-- Si el mensaje menciona una ciudad ("para paraná", "soy de rosario", "vivo en córdoba") NO la pongas como nombre.
-- Si el mensaje es una consulta genérica sin datos personales, devolvé null en todos los campos.
-- El "nombre" debe ser claramente el nombre de una persona física (ej: "Iago De Mello", "Juan Pérez", "María González").
-- Para DNI buscá patrones como: "dni 12345678", "mi dni es 12345678", "documento: 12345678".
-- Si no encontrás el dato con certeza absoluta, devolvé null para ese campo.
+        // 2. Extraer Teléfono / WhatsApp
+        const telMatch = textoUsuario.match(/(?:(?:whats|whatsapp|tel|telefono|cel|celular|numero|num)?:?\s*(?:\+?54\s*9?)?)(\d{8,12})\b/i);
+        if (telMatch) {
+            const digits = telMatch[0].replace(/\D/g, '');
+            if (digits.length >= 8 && digits.length <= 13) {
+                extracted.telefono = digits;
+            }
+        }
 
-Respondé ÚNICAMENTE con JSON válido sin ninguna explicación: {"nombre": "string o null", "telefono": "string o null", "dni": "string o null"}`
-                    },
-                    { role: 'user', content: textoUsuario }
-                ],
-                model: 'llama-3.1-8b-instant',
-                response_format: { type: 'json_object' },
-                temperature: 0.05
-            });
-            const raw = JSON.parse(extraction.choices[0]?.message?.content || '{}');
-            if (raw.nombre && typeof raw.nombre === 'string' && raw.nombre.length > 1) {
-                extracted.nombre = raw.nombre.trim();
-            }
-            if (raw.telefono && typeof raw.telefono === 'string') {
-                const digits = raw.telefono.replace(/\D/g, '');
-                if (digits.length >= 8) extracted.telefono = digits;
-            }
-            if (raw.dni && typeof raw.dni === 'string') {
-                const dniDigits = raw.dni.replace(/\D/g, '');
-                if (dniDigits.length >= 7) extracted.dni = dniDigits;
-            }
-        } catch (groqErr) {
-            // Fallback regex para teléfonos si Groq falla
-            console.warn('[AUTO LEAD EXTRACT] Groq falló, usando regex fallback:', groqErr.message);
-            const phoneMatch = textoUsuario.match(/(?:\+?54\s*9?\s*)?(\d[\s.-]*){8,13}/);
-            if (phoneMatch) {
-                const digits = phoneMatch[0].replace(/\D/g, '');
-                if (digits.length >= 8 && digits.length <= 13) {
-                    extracted.telefono = digits.length === 10 ? '549' + digits : digits;
-                }
+        // 3. Extraer Nombre
+        const nameExplicit = textoUsuario.match(/(?:me llamo|soy|mi nombre es)\s+([A-Za-zÁÉÍÓÚáéíóúñÑ ]{3,30})/i);
+        if (nameExplicit) {
+            const possibleName = nameExplicit[1].split(/\b(y|mi|el|la|en|de|para|con|mi numero|mi tel|mi whats)\b/i)[0].trim();
+            if (possibleName.length > 2) extracted.nombre = possibleName;
+        } else if (!/(?:quiero|precio|litros|costo|envio|hola|cloro|desinfectante|lavandina|jabón|cera|detergente)/i.test(textoUsuario)) {
+            const words = textoUsuario.split(/\s+(?:y|mi|con)\s+/i)[0].trim().split(/\s+/);
+            if (words.length >= 2 && words.length <= 3 && words.every(w => /^[A-Za-zÁÉÍÓÚáéíóúñÑ]{2,}$/.test(w))) {
+                extracted.nombre = words.join(' ');
             }
         }
 
