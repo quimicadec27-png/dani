@@ -307,22 +307,13 @@ async function autoExtractAndUpdateLead(clienteId, clienteObj, textoUsuario) {
                 .maybeSingle();
 
             if (existingWithPhone && existingWithPhone.id !== clienteId) {
-                console.log(`[AUTO LEAD EXTRACT] Teléfono ${cleanTel} ya pertenece a cliente ${existingWithPhone.id}. Unificando ficha...`);
-                const mergeData = {};
-                if (extracted.nombre && (!existingWithPhone.razon_social || existingWithPhone.razon_social.startsWith('Lead Web') || existingWithPhone.razon_social.startsWith('Cliente Web'))) {
-                    mergeData.razon_social = updateData.razon_social || extracted.nombre;
-                    mergeData.contacto_nombre = updateData.contacto_nombre || extracted.nombre;
-                }
-                if (extracted.dni && (!existingWithPhone.cuit || existingWithPhone.cuit.startsWith('Web_'))) {
-                    mergeData.cuit = extracted.dni;
-                }
-                if (Object.keys(mergeData).length > 0) {
-                    await supabase.from('clientes').update(mergeData).eq('id', existingWithPhone.id);
-                }
-                // Migrar mensajes de chat al cliente existente y remover el temporal
-                await supabase.from('mensajes_chat').update({ cliente_id: existingWithPhone.id }).eq('cliente_id', clienteId);
-                await supabase.from('clientes').delete().eq('id', clienteId);
-                return;
+                console.log(`[AUTO LEAD EXTRACT] Teléfono ${cleanTel} ya pertenece a cliente ${existingWithPhone.id}. Unificando historial en ${clienteId}...`);
+                // 1. Migrar mensajes previos del cliente viejo al cliente activo actual
+                await supabase.from('mensajes_chat').update({ cliente_id: clienteId }).eq('cliente_id', existingWithPhone.id);
+                // 2. Eliminar el registro viejo para liberar el número de WhatsApp y evitar duplicados
+                await supabase.from('clientes').delete().eq('id', existingWithPhone.id);
+                // 3. Asignar el teléfono al cliente activo
+                updateData.whatsapp = cleanTel;
             } else {
                 updateData.whatsapp = cleanTel;
             }
