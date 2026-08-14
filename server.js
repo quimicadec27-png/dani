@@ -120,10 +120,14 @@ Hablas en primera persona como representante oficial de la empresa ("en Química
 Sí vendemos y distribuimos:
 - Productos Líquidos: Jabones para ropa (Skip, Ariel), Suavizantes (Downy, Vivere, Mary Cher, Eco Plus), Detergentes (Amarillo Limón, Magenta, Tipo CIF), Desodorantes de piso, Lavandina (dilución 1+2), Cloro, Desengrasantes, Ceras, Siliconas.
 - Sahumerios Tuk Tuk, Amogh, Prana, Sree Vani, Nuna Terra: Sahumerios x50u, Dhoop Sticks, etc. ¡SÍ LOS VENDEMOS!
-- Aerosoles y Desinfectantes: Raid, Lysoform, Fuyi, Off, Perfuminas.
+- Desinfectantes en Aerosol: DESINFECTANTE CIF (Floral, Frescura Cítrica, Lavanda, Original 360gr).
+- Insecticidas: Raid, Fuyi (exclusivamente insecticidas en aerosol / espirales / tabletas, NUNCA ofrecerlos como desinfectantes).
+- Repelentes: Off.
+- Aromatizantes de Ambientes: Glade, Poett, Perfuminas textiles y de ambientes.
 - Pastas Concentradas: Rinden 50 Litros.
 - Productos para Diluir (Línea 1+4).
 - Combos Emprendedores y Ofertas Semanales.
+⚠️ REGLA CRÍTICA ANTI-ALUCINACIÓN DE MARCAS: Queda ROTUNDAMENTE PROHIBIDO inventar marcas o productos inexistentes como "desinfectante concentrado Lysoform" o "desinfectante Fuyi". Los desinfectantes oficiales son ÚNICAMENTE DESINFECTANTE CIF (en aerosol) y Lavandina (concentrada y diluible).
 
 ⚠️ MEDIOS DE PAGO OFICIALES DE QUÍMICA DEC (ESTRICTO - PROHIBIDO INVENTAR OTROS):
 - ÚNICAMENTE ACEPTAMOS DOS MEDIOS DE PAGO:
@@ -466,9 +470,20 @@ Devuelve JSON: {"items": [{"busqueda": "string", "cantidad": number}]}`
                 let cantidadDeseada = (typeof itemObj === 'object' && itemObj.cantidad) ? parseInt(itemObj.cantidad) || 1 : 1;
                 if (!queryStr) continue;
 
-                // Normalizar faltas de ortografía comunes (saumerio -> sahumerio, litros -> LT)
-                queryStr = queryStr.replace(/\bsaumerios?\b/g, 'sahumerio')
-                                   .replace(/\bsahumerios?\b/g, 'sahumerio')
+                // Normalizar faltas de ortografía comunes, plurales y sinónimos (saumerio -> sahumerio, desinfectantes -> desinfectante, litros -> LT)
+                queryStr = queryStr.replace(/\bsaumerios?\b/gi, 'sahumerio')
+                                   .replace(/\bsahumerios?\b/gi, 'sahumerio')
+                                   .replace(/\bdesinfectantes?\b/gi, 'desinfectante')
+                                   .replace(/\bconcentrados?\b/gi, 'concentrado')
+                                   .replace(/\bjabones?\b/gi, 'jabon')
+                                   .replace(/\bsuavizantes?\b/gi, 'suavizante')
+                                   .replace(/\bdetergentes?\b/gi, 'detergente')
+                                   .replace(/\blimpiadores?\b/gi, 'limpiador')
+                                   .replace(/\baerosoles?\b/gi, 'aerosol')
+                                   .replace(/\bpastas?\b/gi, 'pasta')
+                                   .replace(/\bperfuminas?\b/gi, 'perfumina')
+                                   .replace(/\bdiluibles?\b/gi, 'diluir')
+                                   .replace(/\binsecticidas?\b/gi, 'insecticida')
                                    .replace(/\blitros?\b/gi, 'LT')
                                    .replace(/\blts?\b/gi, 'LT');
 

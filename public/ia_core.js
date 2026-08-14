@@ -220,15 +220,10 @@
         '.dani-history-box.dani-history-visible{',
             'display:flex;',
         '}',
-        /* --- CORRECCIÓN GLOBAL DE ESTILOS Y RESPONSIVE MÓVIL --- */,
-        'html, body { max-width: 100vw !important; overflow-x: hidden !important; }',
-        /* Ocultar el acordeón no deseado de Marcas y Subcategorías Disponibles */,
-        '.woocommerce-widget-layered-nav, .widget_layered_nav, .wc-block-attribute-filter, details.wc-block-attribute-filter, div[class*="marcas-subcat"], div[class*="subcategorias-disponibles"] { display: none !important; }',
-        /* Legibilidad en el formulario de valoraciones / reseñas sobre fondo oscuro */,
-        '#reviews, #review_form, .comment-respond, .comment-reply-title, .comment-form label, .comment-form-comment label, .comment-form-author label, .comment-form-email label, .stars a, p.stars span a { color: #ffffff !important; }',
-        '.comment-form input[type="text"], .comment-form input[type="email"], .comment-form textarea { background-color: rgba(255, 255, 255, 0.08) !important; color: #ffffff !important; border: 1px solid rgba(255, 255, 255, 0.25) !important; border-radius: 8px !important; }',
-        /* Ajuste de imágenes de productos para no desbordar en móvil */,
-        '.woocommerce-product-gallery, .woocommerce-product-gallery img { max-width: 100% !important; height: auto !important; }'
+        /* Auto-expandir subcategorías en el filtro para eliminar el doble clic */
+        'div[class*="subcat"] ul, div[class*="subcat"] div, [class*="otras-subcat"] + div, details[class*="subcat"] > div {',
+            'display:block!important;visibility:visible!important;opacity:1!important;',
+        '}'
     ].join('');
 
     // ---------------------------------------------------------
@@ -300,8 +295,6 @@
 
         // NUNCA auto-abrir la ventana del chat en recargas ni pestañas (siempre empieza cerrada y limpia)
         win.classList.remove('dani-active');
-        // Limpiar flag de interacción (cada pestaña empieza fresca)
-        sessionStorage.removeItem('dani_interacted');
 
         // Mostrar CTA discreto solo si no fue descartado
         var ctaTimeout = null;
@@ -578,13 +571,12 @@
             messages.push({ role: role, content: item.parts[0].text });
         }
 
-        // sessionStorage: cada pestaña/recarga arranca con sesión nueva (aislada)
-        var sessionId = sessionStorage.getItem('dani_session_id');
+        // Obtener o generar un ID único de sesión persistente para la conversación web
+        var sessionId = localStorage.getItem('dani_session_id');
         if (!sessionId) {
             sessionId = 'Web_' + Math.random().toString(36).substring(2, 7) + '_' + Date.now().toString().slice(-6);
-            sessionStorage.setItem('dani_session_id', sessionId);
+            localStorage.setItem('dani_session_id', sessionId);
         }
-        sessionStorage.setItem('dani_interacted', 'true');
 
         var payload = {
             model: 'llama-3.3-70b-versatile',
@@ -630,12 +622,11 @@
     // 9. LLAMADA DE RESPALDO (Reintento via CRM con formato Gemini)
     // ---------------------------------------------------------
     function callGeminiDirect(userMsg, brain) {
-        var sessionId = sessionStorage.getItem('dani_session_id');
+        var sessionId = localStorage.getItem('dani_session_id');
         if (!sessionId) {
             sessionId = 'Web_' + Math.random().toString(36).substring(2, 7) + '_' + Date.now().toString().slice(-6);
-            sessionStorage.setItem('dani_session_id', sessionId);
+            localStorage.setItem('dani_session_id', sessionId);
         }
-        sessionStorage.setItem('dani_interacted', 'true');
 
         // Enviar en formato contents (Gemini style) al mismo CRM
         var payload = {
@@ -795,11 +786,8 @@
     var knownVendorMsgTexts = {};
     function pollVendorMessages() {
         try {
-            var sessionId = sessionStorage.getItem('dani_session_id');
+            var sessionId = localStorage.getItem('dani_session_id');
             if (!sessionId) return;
-            // Solo mostrar mensajes de vendedor si el usuario ya interactuó en esta pestaña
-            var interacted = sessionStorage.getItem('dani_interacted') === 'true';
-            if (!interacted) return;
 
             var msgsContainer = document.getElementById('dani-msgs');
             if (!msgsContainer) return;
@@ -828,12 +816,10 @@
                                     var ok = appendMsg('👤 **' + vendorName + ':**\n' + cleanTxt, 'ai');
                                     if (ok) {
                                         knownVendorMsgTexts[m.id] = true;
-                                        // Solo auto-abrir si el usuario ya abrió el chat manualmente en esta sesión
-                                         var chatWasOpenedByUser = sessionStorage.getItem('dani_chat_open') === 'true';
-                                         var win = document.getElementById('ai-chat-window');
-                                         if (win && !win.classList.contains('dani-active') && chatWasOpenedByUser) {
-                                             win.classList.add('dani-active');
-                                         }
+                                        var win = document.getElementById('ai-chat-window');
+                                        if (win && !win.classList.contains('dani-active')) {
+                                            win.classList.add('dani-active');
+                                        }
                                         pushToHistory('model', '👤 **' + vendorName + ':**\n' + cleanTxt);
                                     }
                                 }
