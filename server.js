@@ -337,14 +337,14 @@ async function isBotPausado(clienteId) {
 
 // Motor de IA Doble Ultra-Resiliente (Groq Llama-3.1 + Gemini 2.5 Flash)
 async function generateDaniResponse(messagesPayload) {
-    // 1. Intentar Groq Llama-3.1-8b-instant con timeout de 3.5s
+    // 1. Intentar Groq Llama-3.1-8b-instant con timeout de 7.5s
     try {
         const groqPromise = groq.chat.completions.create({
             messages: messagesPayload,
             model: "llama-3.1-8b-instant",
             temperature: 0.2
         });
-        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Groq timeout 3.5s')), 3500));
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Groq timeout 7.5s')), 7500));
         const completion = await Promise.race([groqPromise, timeoutPromise]);
         if (completion && completion.choices && completion.choices[0]?.message?.content) {
             return completion.choices[0].message.content;
@@ -372,7 +372,7 @@ async function generateDaniResponse(messagesPayload) {
                 systemInstruction: { parts: [{ text: systemMsg }] },
                 generationConfig: { temperature: 0.2 }
             }),
-            signal: AbortSignal.timeout(4000)
+            signal: AbortSignal.timeout(6000)
         });
 
         if (geminiRes.ok) {
