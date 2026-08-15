@@ -34,23 +34,26 @@ Al navegar entre pestañas (ej: pasar de `/catalogo` a `/tienda` o al `/`), la v
 
 ---
 
-## 🗃️ 3. GESTIÓN DE LEADS Y LIMPIEZA DE BASE DE DATOS (`clientes` en Supabase)
+## 🗃️ 3. GESTIÓN DE LEADS Y DIFERENCIACIÓN ESTRICTA DNI VS WHATSAPP (`clientes` en Supabase)
 
 ### ⚠️ Los Problemas que existían:
-1. **Polución de Códigos Técnicos en DNI/CUIT:** El campo `cuit` se autocompletaba con códigos internos como `Web_ZPA39`, arruinando la base de clientes.
-2. **Duplicación de Leads y Ruptura de Hilo:** Cuando el cliente decía su nombre (ej: "Javier Aguirre"), el sistema creaba un segundo registro vacío en lugar de actualizar la ficha existente.
-3. **Error de Longitud en PostgreSQL (`varchar(20)`):** La columna `clientes.whatsapp` tiene un límite de 20 caracteres. Session IDs largos causaban un error de base de datos (`value too long for type character varying(20)`).
+1. **Confusión de Teléfono como DNI:** Expresiones regulares no delimitadas capturaban secuencias numéricas (ej: `344854263` o `3442546484`) y las guardaban en el campo `cuit` (DNI), dejando el campo `whatsapp` vacío y bloqueando el botón de chat directo.
+2. **Polución de Códigos Técnicos en DNI/CUIT:** El campo `cuit` se autocompletaba con códigos internos como `Web_ZPA39`.
+3. **Error de Longitud en PostgreSQL (`varchar(20)`):** La columna `clientes.whatsapp` tiene un límite de 20 caracteres.
 
 ### 🛠️ Solución Implementada y Reglas Estrictas:
-1. **CUIT / DNI Limpio por Defecto:**
-   * Al registrar un nuevo visitante web, `cuit: null`. Nunca asignar strings con prefijos `Web_` a este campo.
-   * En la interfaz del CRM (`renderFichaLead`), se filtran e ignoran todos los identificadores técnicos para que la casilla quede impecable.
-2. **Límite Seguro de Teléfono/Sesión:**
-   * En `server.js`, `const clientePhone = rawPhone.substring(0, 20);` para respetar el tipo de dato de PostgreSQL.
-3. **Actualización de Ficha Única en Segundo Plano (`autoExtractAndUpdateLead`):**
-   * La extracción de nombre, DNI, teléfono y dirección se realiza en segundo plano (0ms de bloqueo a la respuesta del chat).
-   * Se actualiza la ficha activa existente (`clienteId`) con `razon_social: extracted.nombre`, `contacto_nombre: extracted.nombre`, `cuit: extracted.dni`, `whatsapp: extracted.telefono`.
-   * Si ocurre un conflicto de unicidad en `whatsapp`, se preserva el registro original sin romper la transacción.
+1. **Regla Obligatoria de Palabra Clave para DNI/CUIT:**
+   * Un número **SOLO se considera DNI si está precedido explícitamente por palabras clave** (`dni:`, `cuit:`, `documento:`, `doc:`) o si tiene formato con guiones (`XX-XXXXXXXX-X`).
+   * Si no hay palabra clave, **PROHIBIDO adivinar que un número es DNI**.
+   * Validación cruzada: Si un número es idéntico o termina con el número de teléfono, **nunca se asigna a DNI**.
+2. **Normalización Automática a Estándar WhatsApp Argentina (`549...`):**
+   * Números de 10 dígitos (ej: `3442546484` u `1123456789`) se normalizan automáticamente a `5493442546484`.
+   * Números con `0` inicial o `15` se limpian y convierten al formato internacional.
+3. **Enlace y Botón Dinámico de WhatsApp en Tiempo Real:**
+   * En la ficha del CRM, el botón `📲 Abrir Chat en WhatsApp (+549...)` se actualiza y activa en vivo mientras el operador tipea en el campo de teléfono, generando el enlace directo `https://wa.me/549...`.
+4. **CUIT / DNI Limpio por Defecto:**
+   * Al registrar un nuevo visitante web, `cuit: null`.
+   * En la ficha (`renderClienteFicha`), si detecta un teléfono guardado erróneamente en el DNI de un lead previo, lo migra automáticamente a `whatsapp`.
 
 ---
 
@@ -142,9 +145,6 @@ El ciclo de un pedido en el CRM debe respetar **estrictamente las 4 etapas secue
 ---
 
 ## 🚚 8. CAPTURA Y RESOLUCIÓN DE DATOS DE ENVÍO Y DIRECCIÓN
-
-### ⚠️ El Problema que existía:
-Los presupuestos armados desde el Embudo mostraban erróneamente *"Retira en Local / Sin Dirección"* porque el modal de nuevo pedido no tenía campos directos de Dirección/Ciudad y forzaba el retiro en local por falta de datos.
 
 ### 🛠️ Solución Implementada:
 1. **Campos Directos en el Modal de Presupuestos:**

@@ -2111,7 +2111,18 @@
                 botBtn.innerText = "🤖 Bot Activo";
             }
 
-            const tieneWhatsappReal = c.whatsapp && !c.whatsapp.startsWith('Web_') && !c.whatsapp.includes('Cliente Web');
+            // Autocorrección inteligente si el DNI contiene un número telefónico por captura previa
+            let telefonoVal = (c.whatsapp || '').trim();
+            let dniVal = (c.cuit || '').trim();
+            if (dniVal.startsWith('Web_') || dniVal.startsWith('cli_')) dniVal = '';
+            if (telefonoVal.startsWith('Web_') || telefonoVal.startsWith('cli_')) telefonoVal = '';
+
+            if (dniVal && (dniVal.length >= 10 || dniVal.startsWith('344') || dniVal.startsWith('343') || dniVal.startsWith('549') || dniVal.startsWith('11') || dniVal.startsWith('15'))) {
+                if (!telefonoVal) {
+                    telefonoVal = dniVal;
+                    dniVal = '';
+                }
+            }
 
             // Determinar valores de envío guardados
             const tipoEnvioPrev = c.contacto_nombre && c.contacto_nombre.includes('Envío: ') ? c.contacto_nombre.split('Envío: ')[1].split('|')[0].trim() : 'Retira en Local';
@@ -2127,11 +2138,11 @@
                     <div class="grid grid-cols-2 gap-2">
                         <div>
                             <label class="text-[10px] uppercase font-bold text-gray-400 block mb-1">WhatsApp / Teléfono:</label>
-                            <input type="text" id="edit-lead-telefono" value="${tieneWhatsappReal ? c.whatsapp : ''}" placeholder="5493442586974" class="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-brand-yellow focus:outline-none font-mono">
+                            <input type="text" id="edit-lead-telefono" oninput="actualizarBotonWhatsappLive()" value="${telefonoVal}" placeholder="Ej: 3442546484 o +549..." class="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-brand-yellow focus:outline-none font-mono">
                         </div>
                         <div>
                             <label class="text-[10px] uppercase font-bold text-gray-400 block mb-1">DNI / CUIT:</label>
-                            <input type="text" id="edit-lead-dni" value="${(c.cuit && !c.cuit.startsWith('Web_') && !c.cuit.startsWith('cli_')) ? c.cuit : ((c.contacto_nombre && c.contacto_nombre.includes('DNI:') && !c.contacto_nombre.includes('Web_')) ? c.contacto_nombre.split('DNI:')[1].split('|')[0].trim() : '')}" placeholder="DNI o CUIT" class="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-brand-yellow focus:outline-none">
+                            <input type="text" id="edit-lead-dni" value="${dniVal}" placeholder="DNI o CUIT (opcional)" class="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-brand-yellow focus:outline-none">
                         </div>
                     </div>
 
@@ -2160,7 +2171,7 @@
                         <div class="grid grid-cols-2 gap-2">
                             <div>
                                 <label class="text-[9px] uppercase font-bold text-gray-400 block mb-0.5">Localidad:</label>
-                                <input type="text" id="edit-lead-localidad" oninput="actualizarAlertaDireccionFicha()" value="${locPrev.includes(',') ? locPrev.split(',')[1].trim() : 'Concepción del Uruguay'}" placeholder="Ej: C. del Uruguay" class="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-yellow select-text">
+                                <input type="text" id="edit-lead-localidad" oninput="actualizarAlertaDireccionFicha()" value="${locPrev.includes(',') ? locPrev.split(',')[1].trim() : (locPrev || 'Concepción del Uruguay')}" placeholder="Ej: C. del Uruguay" class="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-yellow select-text">
                             </div>
                             <div>
                                 <label class="text-[9px] uppercase font-bold text-gray-400 block mb-0.5">Provincia:</label>
@@ -2191,20 +2202,15 @@
                     </button>
                 </div>
 
-                <div class="pt-3 border-t border-white/10 space-y-2">
-                    ${tieneWhatsappReal ? `
-                        <a href="https://wa.me/${c.whatsapp.replace(/[^0-9]/g, '')}" target="_blank" class="w-full py-2 bg-emerald-500/20 text-emerald-400 rounded-xl text-xs font-bold text-center block border border-emerald-500/30 hover:bg-emerald-500/30 transition-all">
-                            📲 Abrir Chat en WhatsApp
-                        </a>
-                    ` : `
-                        <div class="text-center py-2 text-[10px] text-gray-500 bg-white/5 rounded-xl border border-white/5">
-                            🔒 Ingresá el WhatsApp arriba para activar el enlace directo.
-                        </div>
-                    `}
+                <!-- BOTÓN WHATSAPP DINÁMICO EN TIEMPO REAL -->
+                <div id="ficha-whatsapp-btn-container" class="pt-3 border-t border-white/10 space-y-2">
                 </div>
             `;
 
-            setTimeout(actualizarAlertaDireccionFicha, 100);
+            setTimeout(() => {
+                actualizarAlertaDireccionFicha();
+                actualizarBotonWhatsappLive();
+            }, 50);
         }
 
         function actualizarAlertaDireccionFicha() {
@@ -2224,15 +2230,61 @@
             }
         }
 
+        function actualizarBotonWhatsappLive() {
+            const telInput = document.getElementById('edit-lead-telefono');
+            const container = document.getElementById('ficha-whatsapp-btn-container');
+            if (!container) return;
+
+            let raw = (telInput?.value || '').trim();
+            let digits = raw.replace(/\D/g, '');
+
+            if (digits.startsWith('0')) digits = digits.substring(1);
+            if (digits.length === 10) {
+                digits = '549' + digits;
+            } else if (digits.startsWith('54') && !digits.startsWith('549') && digits.length === 12) {
+                digits = '549' + digits.substring(2);
+            }
+
+            if (digits.length >= 8 && !raw.startsWith('Web_') && !raw.startsWith('cli_')) {
+                container.innerHTML = `
+                    <a href="https://wa.me/${digits}" target="_blank" class="w-full py-2.5 bg-emerald-500/20 text-emerald-400 rounded-xl text-xs font-bold text-center flex items-center justify-center gap-2 border border-emerald-500/30 hover:bg-emerald-500/30 transition-all shadow-md cursor-pointer">
+                        <span class="material-symbols-outlined text-[18px]">chat</span>
+                        <span>📲 Abrir Chat en WhatsApp (+${digits})</span>
+                    </a>
+                `;
+            } else {
+                container.innerHTML = `
+                    <div class="text-center py-2 text-[10px] text-gray-500 bg-white/5 rounded-xl border border-white/5 flex items-center justify-center gap-1.5">
+                        <span class="material-symbols-outlined text-[14px]">lock</span>
+                        <span>Ingresá el WhatsApp arriba para activar el enlace directo.</span>
+                    </div>
+                `;
+            }
+        }
+
         async function guardarDatosLead(clienteId) {
             const nombre = document.getElementById('edit-lead-nombre').value.trim();
-            const tel = document.getElementById('edit-lead-telefono').value.trim();
-            const dni = document.getElementById('edit-lead-dni').value.trim();
+            let rawTel = document.getElementById('edit-lead-telefono').value.trim();
+            let dni = document.getElementById('edit-lead-dni').value.trim();
             const tipoEnvio = document.getElementById('edit-lead-tipo-envio')?.value || 'Retira en Local';
             const direccion = document.getElementById('edit-lead-direccion')?.value.trim() || '';
             const localidad = document.getElementById('edit-lead-localidad')?.value.trim() || '';
             const provincia = document.getElementById('edit-lead-provincia')?.value.trim() || '';
             const notas = document.getElementById('edit-lead-notas')?.value.trim() || '';
+
+            // Formatear teléfono a estándar WhatsApp
+            let cleanDigits = rawTel.replace(/\D/g, '');
+            if (cleanDigits.startsWith('0')) cleanDigits = cleanDigits.substring(1);
+            if (cleanDigits.length === 10) cleanDigits = '549' + cleanDigits;
+            else if (cleanDigits.startsWith('54') && !cleanDigits.startsWith('549') && cleanDigits.length === 12) {
+                cleanDigits = '549' + cleanDigits.substring(2);
+            }
+            const telFinal = cleanDigits ? cleanDigits.substring(0, 20) : '';
+
+            // Si el DNI es idéntico al teléfono o fue un teléfono mal puesto, limpiarlo
+            if (dni && (dni === telFinal || telFinal.endsWith(dni) || dni.replace(/\D/g, '').length >= 10)) {
+                if (dni === telFinal || telFinal.endsWith(dni)) dni = '';
+            }
 
             try {
                 const res = await fetch(`${API_URL}/crm/clientes/actualizar`, {
@@ -2241,7 +2293,7 @@
                     body: JSON.stringify({
                         cliente_id: clienteId,
                         razon_social: nombre,
-                        whatsapp: tel,
+                        whatsapp: telFinal,
                         dni_cuit: dni,
                         tipo_envio: tipoEnvio,
                         direccion: direccion,

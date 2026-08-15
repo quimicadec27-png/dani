@@ -229,57 +229,95 @@ const SPANISH_STOP_WORDS = [
     'muchos', 'muchas', 'poco', 'poca', 'todo', 'toda', 'todos', 'todas'
 ];
 
-// Extractor Automático de Datos de Lead usando IA (Nombre, Teléfono, DNI/CUIT)
-// Usa Groq LLM para extracción inteligente — solo actualiza campos vacíos o con valor placeholder
+// Extractor Automático de Datos de Lead con Validación Cruzada (Nombre, Teléfono WhatsApp, DNI/CUIT)
+// Evita mezclar teléfonos con DNI requiriendo palabras clave explícitas para DNI
 async function autoExtractAndUpdateLead(clienteId, clienteObj, textoUsuario) {
     if (!clienteId || !textoUsuario) return;
 
     // Filtro rápido: solo procesar si hay pistas de datos personales
     const TRIGGER_HINTS = [
-        /\b(me llamo|mi nombre|soy|llaman|apellido)\b/i,
-        /\b(dni|cuit|cuil|documento|número|nro\.?)\b/i,
-        /\b\d{7,11}\b/,
-        /\b(\+?54\s*9?\s*\d[\d\s.-]{7,})\b/
+        /\b(me llamo|mi nombre|soy|llaman|apellido|nombre)\b/i,
+        /\b(dni|cuit|cuil|documento|número|nro\.?|doc\.?)\b/i,
+        /\b\d{7,13}\b/,
+        /\b(\+?54\s*9?\s*\d[\d\s.-]{6,})\b/
     ];
     if (!TRIGGER_HINTS.some(rx => rx.test(textoUsuario))) return;
 
     try {
-        let extracted = { nombre: null, telefono: null, dni: null };
+        let extracted = { nombre: null, telefono: null, dni: null, direccion: null };
 
-        // 1. Extraer DNI / CUIT
-        const dniMatch = textoUsuario.match(/(?:dni|cuit|cuil|documento|doc)?:?\s*(\d{7,11})\b/i);
-        if (dniMatch) {
-            extracted.dni = dniMatch[1];
-        }
-
-        // 2. Extraer Teléfono / WhatsApp
-        const telMatch = textoUsuario.match(/(?:(?:whats|whatsapp|tel|telefono|cel|celular|numero|num)?:?\s*(?:\+?54\s*9?)?)(\d{8,12})\b/i);
-        if (telMatch) {
-            const digits = telMatch[0].replace(/\D/g, '');
-            if (digits.length >= 8 && digits.length <= 13) {
-                extracted.telefono = digits;
+        // 1. Extraer Teléfono / WhatsApp
+        const telExplicit = textoUsuario.match(/(?:(?:whats(?:app)?|wsp|wa|tel(?:efono|éfono)?|cel(?:ular)?|contacto|movil|móvil)\s*[:=]?\s*)(\+?54\s*9?\s*[\d\s.-]{7,16})\b/i);
+        let rawTel = null;
+        if (telExplicit) {
+            rawTel = telExplicit[1];
+        } else {
+            const telGeneric = textoUsuario.match(/\b(?:\+?54\s*9?\s*|0)?(?:11|[23]\d{2,3})[\s.-]?\d{3,4}[\s.-]?\d{3,4}\b/);
+            if (telGeneric) {
+                rawTel = telGeneric[0];
             }
         }
 
-        // 3. Extraer Nombre
-        const nameExplicit = textoUsuario.match(/(?:me llamo|soy|mi nombre es)\s+([A-Za-zÁÉÍÓÚáéíóúñÑ ]{3,30})/i);
+        if (rawTel) {
+            let digits = rawTel.replace(/\D/g, '');
+            if (digits.startsWith('0')) digits = digits.substring(1);
+            if (digits.length === 9 || digits.length === 10) {
+                digits = '549' + digits;
+            } else if (digits.startsWith('54') && !digits.startsWith('549') && (digits.length === 11 || digits.length === 12)) {
+                digits = '549' + digits.substring(2);
+            }
+            if (digits.length >= 8 && digits.length <= 15) {
+                extracted.telefono = digits.substring(0, 20);
+            }
+        }
+
+        // 2. Extraer DNI / CUIT (REQUIERE OBLIGATORIAMENTE PALABRA CLAVE DNI/CUIT/DOCUMENTO O FORMATO XX-XXXXXXXX-X)
+        const dniExplicit = textoUsuario.match(/\b(?:dni|cuit|cuil|documento|doc\.?)\s*[:=]?\s*(\d{7,11}|\d{2}-\d{7,8}-\d)\b/i);
+        if (dniExplicit) {
+            const cleanDni = dniExplicit[1].replace(/\D/g, '');
+            if (cleanDni.length >= 7 && cleanDni.length <= 11) {
+                // Validar que NO sea el mismo número de teléfono
+                if (!extracted.telefono || (!extracted.telefono.endsWith(cleanDni) && extracted.telefono !== cleanDni)) {
+                    extracted.dni = cleanDni;
+                }
+            }
+        }
+
+        // 3. Extraer Dirección
+        const dirMatch = textoUsuario.match(/\b(?:calle|direccion|dirección|domicilio)\s*[:=]?\s*([A-Za-z0-9ÁÉÍÓÚáéíóúñÑ\s,.-]{5,40})/i);
+        if (dirMatch) {
+            extracted.direccion = dirMatch[1].trim();
+        }
+
+        // 4. Extraer Nombre
+        const nameExplicit = textoUsuario.match(/(?:me llamo|soy|mi nombre es|nombre:?)\s+([A-Za-zÁÉÍÓÚáéíóúñÑ ]{3,40})/i);
         if (nameExplicit) {
-            const possibleName = nameExplicit[1].split(/\b(y|mi|el|la|en|de|para|con|mi numero|mi tel|mi whats)\b/i)[0].trim();
+            const possibleName = nameExplicit[1].split(/\b(y|mi|el|la|en|para|con|mi numero|mi tel|mi whats|dni|tel|cel|direccion|dirección|calle)\b/i)[0].trim();
             if (possibleName.length > 2) extracted.nombre = possibleName;
-        } else if (!/(?:quiero|precio|litros|costo|envio|hola|cloro|desinfectante|lavandina|jabón|cera|detergente)/i.test(textoUsuario)) {
-            const words = textoUsuario.split(/\s+(?:y|mi|con)\s+/i)[0].trim().split(/\s+/);
-            if (words.length >= 2 && words.length <= 3 && words.every(w => /^[A-Za-zÁÉÍÓÚáéíóúñÑ]{2,}$/.test(w))) {
-                extracted.nombre = words.join(' ');
+        } else {
+            let temp = textoUsuario;
+            if (rawTel) temp = temp.replace(rawTel, '');
+            if (dniExplicit) temp = temp.replace(dniExplicit[0], '');
+            if (dirMatch) temp = temp.replace(dirMatch[0], '');
+            temp = temp.replace(/\b(?:tel(?:efono|éfono)?|cel(?:ular)?|whats(?:app)?|wsp|wa|dni|cuit|cuil|doc|calle|direccion|dirección|soy|me llamo|mi nombre es)\b/gi, '');
+            temp = temp.replace(/[,;:.+?¿!¡-]/g, ' ');
+            temp = temp.replace(/\s+/g, ' ').trim();
+            const words = temp.split(' ').filter(w => /^[A-Za-zÁÉÍÓÚáéíóúñÑ]+$/.test(w));
+            if (words.length >= 2 && words.length <= 8) {
+                const clean_words = words.filter(w => !['cloro', 'jabon', 'jabón', 'detergente', 'sahumerio', 'presupuesto', 'pedido', 'parana', 'paraná', 'uruguay', 'concepcion', 'concepción', 'hola', 'buenas'].includes(w.toLowerCase()));
+                if (clean_words.length >= 2) {
+                    extracted.nombre = clean_words.join(' ');
+                }
             }
         }
 
-        // 2. Solo actualizar campos que son vacíos o placeholders genéricos
+        // 5. Solo actualizar campos que son vacíos o placeholders genéricos
         const currentNombre   = (clienteObj?.razon_social || '').trim();
         const currentWhatsapp = (clienteObj?.whatsapp || '').trim();
         const currentCuit     = (clienteObj?.cuit || '').trim();
         const isPlaceholderNombre   = !currentNombre   || currentNombre.startsWith('Lead Web')   || currentNombre.startsWith('Cliente Web');
-        const isPlaceholderWhatsapp = !currentWhatsapp || currentWhatsapp.startsWith('Web_');
-        const isPlaceholderCuit     = !currentCuit     || currentCuit.startsWith('Web_');
+        const isPlaceholderWhatsapp = !currentWhatsapp || currentWhatsapp.startsWith('Web_') || currentWhatsapp.startsWith('cli_');
+        const isPlaceholderCuit     = !currentCuit     || currentCuit.startsWith('Web_') || currentCuit.startsWith('cli_');
 
         const updateData = {};
 
@@ -292,13 +330,16 @@ async function autoExtractAndUpdateLead(clienteId, clienteObj, textoUsuario) {
             updateData.contacto_nombre = nombreCapitalizado;
         }
 
-        if (extracted.dni && extracted.dni.length >= 7 && isPlaceholderCuit) {
+        if (extracted.dni && isPlaceholderCuit) {
             updateData.cuit = extracted.dni.substring(0, 13);
         }
 
-        if (extracted.telefono && extracted.telefono.length >= 8 && isPlaceholderWhatsapp) {
-            const cleanTel = extracted.telefono.substring(0, 20);
-            updateData.whatsapp = cleanTel;
+        if (extracted.telefono && isPlaceholderWhatsapp) {
+            updateData.whatsapp = extracted.telefono.substring(0, 20);
+        }
+
+        if (extracted.direccion && !clienteObj?.localidad) {
+            updateData.localidad = extracted.direccion;
         }
 
         if (Object.keys(updateData).length > 0) {
