@@ -529,6 +529,10 @@
                                 <span class="material-symbols-outlined text-sm text-purple-400">view_carousel</span> 🎁 Combos Emprendedores
                             </button>
 
+                            <button id="btn-subtab-precios" onclick="switchCatSubTab('precios')" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all text-gray-400 hover:bg-white/5">
+                                <span class="material-symbols-outlined text-sm text-emerald-400">price_change</span> 💵 Actualizador de Precios (% y $)
+                            </button>
+
                             <button id="btn-subtab-atributos" onclick="switchCatSubTab('atributos')" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all text-gray-400 hover:bg-white/5">
                                 <span class="material-symbols-outlined text-sm text-amber-400">tune</span> 🧩 Gestor de Atributos
                             </button>
@@ -560,6 +564,148 @@
 
                         <!-- CONTENIDO DERECHO (SE MUESTRA SOLO LA PESTAÑA SELECCIONADA EN EL MENÚ LATERAL) -->
                         <div class="lg:col-span-3 space-y-6">
+
+                            <!-- SUB-TAB 0: ACTUALIZADOR MASIVO DE PRECIOS (% Y MONTO FIJO) -->
+                            <div id="subtab-content-precios" class="hidden space-y-6">
+                                
+                                <!-- ENCABEZADO Y EXPLICACIÓN -->
+                                <div class="glass-panel p-5 rounded-2xl border border-emerald-500/30 bg-gradient-to-r from-emerald-950/40 via-slate-900 to-slate-900 shadow-xl space-y-2">
+                                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                                        <div>
+                                            <h3 class="font-title text-base font-extrabold uppercase text-white tracking-wider flex items-center gap-2">
+                                                <span class="material-symbols-outlined text-emerald-400 text-xl">price_change</span>
+                                                <span>Actualizador Masivo de Precios (% y Monto Fijo $)</span>
+                                            </h3>
+                                            <p class="text-xs text-gray-300 mt-1">
+                                                Seleccioná categorías o productos específicos, elegí el aumento o descuento en porcentaje o monto fijo, visualizá el impacto en vivo y guardá en Supabase.
+                                            </p>
+                                        </div>
+                                        <button onclick="cargarCatalogoPreciosMasivo()" class="px-3.5 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all shadow shrink-0 cursor-pointer">
+                                            <span class="material-symbols-outlined text-base">refresh</span>
+                                            <span>Recargar Catálogo</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- FILTROS DE CATEGORÍA Y BÚSQUEDA -->
+                                <div class="glass-panel p-4 rounded-2xl border border-white/10 flex flex-col md:flex-row items-center justify-between gap-3">
+                                    <div class="flex flex-wrap items-center gap-3 w-full md:w-auto flex-grow">
+                                        <div class="w-full sm:w-auto min-w-[200px]">
+                                            <label class="block text-[10px] font-bold uppercase text-gray-400 mb-1">Filtrar por Categoría:</label>
+                                            <select id="precios-filter-cat" onchange="filtrarProductosPrecios()" class="w-full bg-black/40 border border-white/20 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-yellow font-bold">
+                                                <option value="TODAS">📂 Todas las Categorías</option>
+                                            </select>
+                                        </div>
+                                        <div class="w-full sm:w-auto flex-grow min-w-[220px]">
+                                            <label class="block text-[10px] font-bold uppercase text-gray-400 mb-1">Buscar Producto o SKU:</label>
+                                            <div class="relative">
+                                                <span class="material-symbols-outlined absolute left-3 top-2 text-gray-400 text-[18px]">search</span>
+                                                <input type="text" id="precios-filter-search" oninput="filtrarProductosPrecios()" placeholder="🔍 Escribí nombre, aroma o medida (ej: Cloro 120, Amogh, Jazmín)..." class="w-full bg-black/40 border border-white/20 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-yellow">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- PANEL DE CONTROL DE OPERACIÓN (IDÉNTICO A PEDIX) -->
+                                <div class="glass-panel p-5 rounded-2xl border border-amber-500/30 bg-slate-900/90 shadow-2xl space-y-5">
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                                        
+                                        <!-- 1. Operación -->
+                                        <div>
+                                            <label class="block text-[11px] font-extrabold uppercase text-gray-300 tracking-wider mb-2">1. Operación</label>
+                                            <div class="grid grid-cols-3 gap-1.5 bg-black/40 p-1.5 rounded-xl border border-white/10">
+                                                <button type="button" id="btn-op-aumentar" onclick="setOperacionPrecios('Aumentar')" class="py-2 px-1 rounded-lg text-xs font-black uppercase transition-all bg-emerald-500 text-slate-950 shadow-md flex items-center justify-center gap-1">
+                                                    <span>🟢</span> Aumentar
+                                                </button>
+                                                <button type="button" id="btn-op-restar" onclick="setOperacionPrecios('Restar')" class="py-2 px-1 rounded-lg text-xs font-bold uppercase transition-all text-gray-400 hover:text-white flex items-center justify-center gap-1">
+                                                    <span>🔴</span> Restar
+                                                </button>
+                                                <button type="button" id="btn-op-igualar" onclick="setOperacionPrecios('Igualar')" class="py-2 px-1 rounded-lg text-xs font-bold uppercase transition-all text-gray-400 hover:text-white flex items-center justify-center gap-1">
+                                                    <span>🔵</span> Fijar
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <!-- 2. Método de Actualización -->
+                                        <div>
+                                            <label class="block text-[11px] font-extrabold uppercase text-gray-300 tracking-wider mb-2">2. Método de Cálculo</label>
+                                            <div class="grid grid-cols-2 gap-1.5 bg-black/40 p-1.5 rounded-xl border border-white/10">
+                                                <button type="button" id="btn-metodo-porcentaje" onclick="setMetodoPrecios('porcentaje')" class="py-2 px-2 rounded-lg text-xs font-black uppercase transition-all bg-brand-yellow text-slate-950 shadow-md flex items-center justify-center gap-1">
+                                                    <span>📊</span> Porcentaje (%)
+                                                </button>
+                                                <button type="button" id="btn-metodo-fijo" onclick="setMetodoPrecios('fijo')" class="py-2 px-2 rounded-lg text-xs font-bold uppercase transition-all text-gray-400 hover:text-white flex items-center justify-center gap-1">
+                                                    <span>💵</span> Monto Fijo ($)
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <!-- 3. Cantidad / Valor y Redondeo -->
+                                        <div>
+                                            <label class="block text-[11px] font-extrabold uppercase text-gray-300 tracking-wider mb-2">3. Cantidad a Aplicar</label>
+                                            <div class="flex items-center gap-2">
+                                                <div class="relative flex-grow">
+                                                    <span id="label-signo-precios" class="absolute left-3 top-2 font-black text-sm text-emerald-400">+</span>
+                                                    <input type="number" id="input-valor-precios" value="5" step="any" oninput="recalcularPreciosEnVivo()" class="w-full bg-black/60 border border-brand-yellow/50 rounded-xl pl-7 pr-10 py-2 text-base font-black text-brand-yellow focus:outline-none focus:border-brand-yellow font-mono shadow-inner">
+                                                    <span id="label-unidad-precios" class="absolute right-3 top-2.5 font-bold text-xs text-gray-400">%</span>
+                                                </div>
+                                            </div>
+                                            <div class="flex items-center gap-4 mt-2">
+                                                <label class="flex items-center gap-1.5 text-xs text-gray-300 cursor-pointer">
+                                                    <input type="checkbox" id="check-descartar-decimales" checked onchange="recalcularPreciosEnVivo()" class="rounded bg-white/10 border-white/20 text-brand-yellow focus:ring-0">
+                                                    <span>Descartar decimales (enteros)</span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- BARRA DE ESTADO DE SELECCIÓN & BOTÓN GUARDAR -->
+                                <div class="p-4 rounded-2xl bg-slate-900 border border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
+                                    <div class="flex flex-wrap items-center gap-3">
+                                        <label class="flex items-center gap-2 text-xs font-bold text-white cursor-pointer bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-xl border border-white/10 transition-all">
+                                            <input type="checkbox" id="check-select-all-precios" onchange="toggleSelectAllPrecios(this.checked)" checked class="rounded bg-black/40 border-white/30 text-brand-yellow focus:ring-0">
+                                            <span>Seleccionar Todos los filtrados</span>
+                                        </label>
+                                        <span class="text-xs text-gray-400">
+                                            Seleccionados: <strong id="count-precios-seleccionados" class="text-brand-yellow font-mono">0</strong> de <span id="count-precios-total" class="font-mono">0</span>
+                                        </span>
+                                    </div>
+
+                                    <div class="flex items-center gap-3 w-full sm:w-auto justify-end">
+                                        <button onclick="aplicarAumentoPreciosMasivo()" id="btn-guardar-precios-masivo" class="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-title text-xs font-black uppercase tracking-wider shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 transition-all cursor-pointer">
+                                            <span class="material-symbols-outlined text-base">save</span>
+                                            <span>💾 Aplicar y Guardar Cambios en Supabase</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- TABLA DE VISTA PREVIA EN VIVO (LIVE PREVIEW) -->
+                                <div class="glass-panel rounded-2xl border border-white/10 overflow-hidden shadow-2xl">
+                                    <div class="overflow-x-auto max-h-[500px] overflow-y-auto">
+                                        <table class="w-full text-left text-xs">
+                                            <thead class="bg-black/60 sticky top-0 z-10 text-gray-400 uppercase text-[10px] tracking-wider border-b border-white/10">
+                                                <tr>
+                                                    <th class="py-3 px-3 w-10 text-center">Sel.</th>
+                                                    <th class="py-3 px-3">Producto & Variación</th>
+                                                    <th class="py-3 px-3">SKU</th>
+                                                    <th class="py-3 px-3">Categoría</th>
+                                                    <th class="py-3 px-3 text-right">P. Original</th>
+                                                    <th class="py-3 px-3 text-center">Variación</th>
+                                                    <th class="py-3 px-3 text-right text-emerald-400">P. Actualizado (Live)</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="tbody-precios-masivo" class="divide-y divide-white/5 font-sans">
+                                                <tr>
+                                                    <td colspan="7" class="text-center py-12 text-gray-400">
+                                                        ⏳ Cargando catálogo de productos...
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                            </div>
 
                             <!-- SUB-TAB 1: COMBOS EMPRENDEDORES -->
                             <div id="subtab-content-combos" class="space-y-6">
@@ -4830,7 +4976,7 @@
         }
 
         function switchCatSubTab(subtab) {
-            const subtabs = ['combos', 'atributos', 'ofertas', 'banners', 'single', 'excel', 'ia', 'sync'];
+            const subtabs = ['precios', 'combos', 'atributos', 'ofertas', 'banners', 'single', 'excel', 'ia', 'sync'];
             subtabs.forEach(s => {
                 const content = document.getElementById(`subtab-content-${s}`);
                 const btn = document.getElementById(`btn-subtab-${s}`);
@@ -4847,6 +4993,7 @@
                 activeBtn.className = "w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all bg-white/15 border border-white/30 text-white shadow-md";
             }
 
+            if (subtab === 'precios') cargarCatalogoPreciosMasivo();
             if (subtab === 'combos') cargarVisorCombos();
             if (subtab === 'atributos') cargarTablaAtributos();
             if (subtab === 'ofertas') cargarVisorOfertas();

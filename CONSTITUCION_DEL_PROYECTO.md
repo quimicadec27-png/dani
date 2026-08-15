@@ -188,22 +188,45 @@ Los tickets impresos desde plataformas externas (Pedix / WooCommerce) contenían
 
 ---
 
-## 📱 10. ARQUITECTURA PWA E INSTALACIÓN NATIVA EN CELULARES (Android & iOS)
+## 📱 10. ARQUITECTURA PWA E IDENTIDAD GRÁFICA NATIVA
 
 ### 🛠️ Características Implementadas:
-1. **Web App Manifest (`manifest.json`):**
+1. **Logo e Íconos Oficiales de Química DEC:**
+   * Se utiliza exclusivamente el **logo circular oficial de Química DEC** (el matraz químico azul con letras doradas y borde amarillo).
+   * Generados en resoluciones 192x192, 512x512, maskable, apple-touch-icon y favicon.ico.
+2. **Web App Manifest (`manifest.json`):**
    * Nombre: `Química DEC CRM - Gestión & Ventas`.
    * Modo: `standalone` (pantalla completa sin barra de navegador).
-   * Color de tema: `#fbbf24` (Dorado Química DEC) y fondo `#0a1628`.
-   * Íconos oficiales generados: 192x192, 512x512, maskable y Apple Touch Icon.
-2. **Service Worker (`sw.js`):**
+   * Color de tema: `#f5c400` (Dorado Química DEC) y fondo `#0a1628`.
+3. **Service Worker (`sw.js`):**
    * Estrategia *Network-First* para datos en tiempo real de Supabase y caché inteligente para arranque instantáneo de la app.
-3. **Botón de Instalación en la Interfaz (`📲 Instalar App`):**
+4. **Botón de Instalación en la Interfaz (`📲 Instalar App`):**
    * Detecta automáticamente si el dispositivo es Android/PC (dispara el prompt nativo de Google Play/Chrome) o iOS (muestra guía paso a paso para Safari).
 
 ---
 
-## 💼 11. POLÍTICAS COMERCIALES Y DE LOGÍSTICA OFICIALES
+## 💵 11. GESTOR DE ACTUALIZACIÓN MASIVA DE PRECIOS (% Y MONTO FIJO)
+
+### 🛠️ Características Implementadas:
+1. **Ubicación:** Pestaña `Catálogo e IA` $\rightarrow$ Herramienta `💵 Actualizador de Precios (% y $)`.
+2. **Filtros por Categoría y Buscador en Tiempo Real:**
+   * Selector dinámico que agrupa las 32 categorías oficiales del catálogo.
+   * Buscador de texto instantáneo por nombre de producto, fragancia o SKU.
+3. **Panel de Control de Cálculo (Estándar Pedix):**
+   * **Operación:** `[ 🟢 Aumentar (+) ]` | `[ 🔴 Restar (-) ]` | `[ 🔵 Fijar / Igualar (=) ]`.
+   * **Método:** `[ 📊 Porcentaje (%) ]` | `[ 💵 Monto Fijo ($) ]`.
+   * **Cantidad:** Input interactivo con recálculo dinámico en vivo en 0ms.
+   * **Redondeo:** Opción para descartar decimales y redondear al entero más cercano.
+4. **Tabla de Vista Previa en Vivo (Live Preview):**
+   * Checkbox de selección individual y botón para seleccionar todos los filtrados.
+   * Columnas: `P. Original`, `Variación (+/- % y $)` y `P. Actualizado (badge verde brillante)`.
+5. **Persistencia Directa en Supabase y Memoria RAM de Dani:**
+   * Al guardar, se actualiza `dec_products` en Supabase y se refresca `PRODUCT_CATALOG_CACHE` en RAM de inmediato.
+   * Dani cotiza automáticamente con los nuevos precios vigentes en el chat.
+
+---
+
+## 💼 12. POLÍTICAS COMERCIALES Y DE LOGÍSTICA OFICIALES
 * **Compra Mínima Inicial Mayorista:** **$80.000** (para clientes nuevos).
 * **Retiro en Local Mayorista:** A partir de **$2.500** (exclusivamente para clientes mayoristas ya registrados).
 * **Medios de Pago:** **Efectivo** o **Transferencia Bancaria**. (Prohibido mencionar tarjetas o cuotas).

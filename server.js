@@ -42,7 +42,7 @@ app.use(express.static(path.join(__dirname, 'public'), {
 }));
 
 app.get('/favicon.ico', (req, res) => {
-    res.redirect('https://quimicadec.com/wp-content/uploads/2026/04/logo_quimicadec.png');
+    res.sendFile(path.join(__dirname, 'public', 'icon-192.png'));
 });
 
 // Inicialización de Clientes
@@ -2247,6 +2247,123 @@ app.post('/api/products/bulk-upload-images', async (req, res) => {
             total: images.length,
             processed: results.length,
             results: results
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+
+// =========================================================================
+// GESTOR DE ACTUALIZACIÓN MASIVA DE PRECIOS (% Y MONTO FIJO)
+// =========================================================================
+
+// 1. Obtener lista completa de productos para la grilla de precios
+app.get('/api/crm/catalogo-precios-lista', async (req, res) => {
+    try {
+        let { data, error } = await supabase
+            .from('dec_products')
+            .select('id, sku, name, price, regular_price, category, stock_status, status')
+            .not('sku', 'ilike', '%_ID%')
+            .gt('price', 0)
+            .order('name', { ascending: true })
+            .limit(4000);
+
+        if (error || !data || data.length === 0) {
+            data = PRODUCT_CATALOG_CACHE.map((p, idx) => ({
+                id: p.id || `cache_${idx}`,
+                sku: p.sku || `QD-AUTO-${idx}`,
+                name: p.name,
+                price: parseFloat(p.price || 0),
+                regular_price: parseFloat(p.price || 0),
+                category: p.category || 'General',
+                stock_status: p.stock_status || 'instock',
+                status: 'publish'
+            }));
+        }
+
+        const categoriasSet = new Set();
+        (data || []).forEach(p => {
+            if (p.category) {
+                p.category.split(',').forEach(c => {
+                    const clean = c.trim();
+                    if (clean) categoriasSet.add(clean);
+                });
+            }
+        });
+
+        res.json({
+            success: true,
+            total: (data || []).length,
+            categorias: Array.from(categoriasSet).sort(),
+            productos: data || []
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// 2. Guardar actualización masiva de precios en Supabase y refrescar memoria RAM de Dani
+app.post('/api/crm/productos/actualizar-precios-masivo', async (req, res) => {
+    try {
+        const { actualizaciones, operacion, metodo, valor, motivo, usuario } = req.body;
+
+        if (!Array.isArray(actualizaciones) || actualizaciones.length === 0) {
+            return res.status(400).json({ success: false, error: 'No se enviaron productos para actualizar.' });
+        }
+
+        let actualizadosCount = 0;
+        const errores = [];
+
+        for (const item of actualizaciones) {
+            try {
+                const nuevoPrecio = parseFloat(item.precio_nuevo);
+                if (isNaN(nuevoPrecio) || nuevoPrecio < 0) continue;
+
+                let updateQuery = supabase.from('dec_products').update({
+                    price: nuevoPrecio,
+                    regular_price: nuevoPrecio
+                });
+
+                if (item.id && !String(item.id).startsWith('cache_')) {
+                    updateQuery = updateQuery.eq('id', item.id);
+                } else if (item.sku) {
+                    updateQuery = updateQuery.eq('sku', item.sku);
+                } else {
+                    updateQuery = updateQuery.eq('name', item.name);
+                }
+
+                const { error: sbErr } = await updateQuery;
+                if (!sbErr) {
+                    actualizadosCount++;
+                } else {
+                    errores.push(`${item.name || item.sku}: ${sbErr.message}`);
+                }
+            } catch (e) {
+                errores.push(`${item.name || item.sku}: ${e.message}`);
+            }
+        }
+
+        // Refrescar memoria RAM inmediatamente para que Dani cotice con los nuevos precios en 0ms
+        await refreshProductCatalog();
+
+        const descAuditoria = `Actualización Masiva de Precios: ${actualizadosCount} productos actualizados (${operacion || 'Aumento'} ${valor || ''}${metodo === 'porcentaje' ? '%' : '$'}). Motivo: ${motivo || 'Actualización de lista'}. Por: ${usuario || 'Administrador'}`;
+        try {
+            await supabase.from('auditoria_eventos').insert([{
+                tipo_evento: 'ACTUALIZACION_PRECIOS_MASIVA',
+                descripcion: descAuditoria,
+                usuario_email: usuario || 'admin@quimicadec.com',
+                metadata: { total_actualizados: actualizadosCount, operacion, metodo, valor }
+            }]);
+        } catch (_) {}
+
+        console.log(`[PRECIOS MASIVOS] ✅ ${descAuditoria}`);
+
+        res.json({
+            success: true,
+            actualizados: actualizadosCount,
+            mensaje: `🎉 ¡Actualización exitosa! Se actualizaron los precios de ${actualizadosCount} productos en Supabase y el catálogo de la IA Dani.`,
+            errores: errores.slice(0, 5)
         });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
