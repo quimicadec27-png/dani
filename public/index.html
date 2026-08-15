@@ -7,8 +7,17 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Química DEC — Panel CRM Mayorista B2B</title>
-    <link rel="icon" href="https://quimicadec.com/wp-content/uploads/2026/04/logo_quimicadec.png" type="image/png">
-    <link rel="shortcut icon" href="https://quimicadec.com/wp-content/uploads/2026/04/logo_quimicadec.png" type="image/png">
+    <!-- PWA & Mobile Web App Meta Tags -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0a1628">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Química DEC">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png">
+    <link rel="shortcut icon" href="/icon-192.png" type="image/png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Work+Sans:wght@400;600&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1" rel="stylesheet">
@@ -203,9 +212,15 @@
                         <span class="material-symbols-outlined text-[16px] text-purple-400">history</span> Registro de Auditoría
                     </button>
                 </div>
-                <button onclick="refreshData()" class="px-4 py-2.5 rounded-xl bg-accent-blue/10 border border-accent-blue/30 text-accent-blue hover:bg-accent-blue/20 text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-all">
-                    <span class="material-symbols-outlined text-[18px]">refresh</span> Actualizar Datos
-                </button>
+                <div class="flex items-center gap-2">
+                    <button id="btn-instalar-pwa" onclick="instalarAppPWA()" class="hidden px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-lg hover:brightness-110 transition-all cursor-pointer">
+                        <span class="material-symbols-outlined text-[18px]">install_mobile</span>
+                        <span>📲 Instalar App</span>
+                    </button>
+                    <button onclick="refreshData()" class="px-4 py-2.5 rounded-xl bg-accent-blue/10 border border-accent-blue/30 text-accent-blue hover:bg-accent-blue/20 text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-all">
+                        <span class="material-symbols-outlined text-[18px]">refresh</span> Actualizar Datos
+                    </button>
+                </div>
             </div>
 
             <!-- TAB 1: EMBUDO DE PEDIDOS REDISEÑADO -->

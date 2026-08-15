@@ -1,0 +1,30 @@
+{
+  "name": "Química DEC CRM - Gestión & Ventas",
+  "short_name": "Química DEC",
+  "description": "Sistema Mayorista de Gestión Comercial, CRM, Embudo de Ventas y Chat en Vivo con IA Dani",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0f1d",
+  "theme_color": "#fbbf24",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

@@ -188,7 +188,22 @@ Los tickets impresos desde plataformas externas (Pedix / WooCommerce) contenían
 
 ---
 
-## 💼 10. POLÍTICAS COMERCIALES Y DE LOGÍSTICA OFICIALES
+## 📱 10. ARQUITECTURA PWA E INSTALACIÓN NATIVA EN CELULARES (Android & iOS)
+
+### 🛠️ Características Implementadas:
+1. **Web App Manifest (`manifest.json`):**
+   * Nombre: `Química DEC CRM - Gestión & Ventas`.
+   * Modo: `standalone` (pantalla completa sin barra de navegador).
+   * Color de tema: `#fbbf24` (Dorado Química DEC) y fondo `#0a1628`.
+   * Íconos oficiales generados: 192x192, 512x512, maskable y Apple Touch Icon.
+2. **Service Worker (`sw.js`):**
+   * Estrategia *Network-First* para datos en tiempo real de Supabase y caché inteligente para arranque instantáneo de la app.
+3. **Botón de Instalación en la Interfaz (`📲 Instalar App`):**
+   * Detecta automáticamente si el dispositivo es Android/PC (dispara el prompt nativo de Google Play/Chrome) o iOS (muestra guía paso a paso para Safari).
+
+---
+
+## 💼 11. POLÍTICAS COMERCIALES Y DE LOGÍSTICA OFICIALES
 * **Compra Mínima Inicial Mayorista:** **$80.000** (para clientes nuevos).
 * **Retiro en Local Mayorista:** A partir de **$2.500** (exclusivamente para clientes mayoristas ya registrados).
 * **Medios de Pago:** **Efectivo** o **Transferencia Bancaria**. (Prohibido mencionar tarjetas o cuotas).
