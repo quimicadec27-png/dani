@@ -1571,7 +1571,7 @@ app.post('/api/crm/clientes/importar-lote', async (req, res) => {
 app.get('/api/crm/pedidos', async (req, res) => {
     try {
         const { cliente_id } = req.query;
-        let query = supabase.from('pedidos').select('*, clientes(razon_social, whatsapp), items_pedido(*)').order('creado_el', { ascending: false }).limit(2000);
+        let query = supabase.from('pedidos').select('*, clientes(id, razon_social, whatsapp, cuit, contacto_nombre, localidad, provincia), items_pedido(*)').order('creado_el', { ascending: false }).limit(2000);
         if (cliente_id) {
             query = query.eq('cliente_id', cliente_id);
         }

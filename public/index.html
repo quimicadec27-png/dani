@@ -1296,16 +1296,16 @@
                             <div>
                                 <label class="block text-gray-300 font-bold mb-1">Buscar y Seleccionar Cliente *</label>
                                 <input type="text" id="presupuesto-cliente-search" oninput="filtrarClientesModalPresupuesto()" placeholder="🔍 Buscar por nombre o teléfono..." class="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white placeholder-gray-500 mb-1.5 focus:border-brand-yellow focus:outline-none">
-                                <select id="presupuesto-cliente-id" required class="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:border-brand-yellow focus:outline-none" style="background-color: #0f172a; color: #ffffff;">
+                                <select id="presupuesto-cliente-id" onchange="onPresupuestoClienteCambiado()" required class="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:border-brand-yellow focus:outline-none" style="background-color: #0f172a; color: #ffffff;">
                                     <option value="" style="background-color: #0f172a; color: #ffffff;">Seleccionar Cliente...</option>
                                 </select>
                             </div>
                             <div>
                                 <label class="block text-gray-300 font-bold mb-1">Método de Envío / Retiro *</label>
-                                <select id="presupuesto-tipo-envio" onchange="calcularTotalPresupuestoModal()" class="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:border-brand-yellow focus:outline-none" style="background-color: #0f172a; color: #ffffff;">
+                                <select id="presupuesto-tipo-envio" onchange="onPresupuestoTipoEnvioCambiado()" class="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:border-brand-yellow focus:outline-none" style="background-color: #0f172a; color: #ffffff;">
                                     <option value="Retira en Local" style="background-color: #0f172a; color: #ffffff;">🏪 Retira en Local (C. del Uruguay)</option>
                                     <option value="Envío Local (C. del Uruguay)" style="background-color: #0f172a; color: #ffffff;">🚚 Envío Local (C. del Uruguay)</option>
-                                    <option value="Entre Ríos (Mostto +5%)" style="background-color: #0f172a; color: #ffffff;">🚛 Entre Ríos (Mostto +5% Recargo)</option>
+                                    <option value="Entre Ríos (Mostto +5%)" selected style="background-color: #0f172a; color: #ffffff;">🚛 Entre Ríos (Mostto +5% Recargo)</option>
                                     <option value="Resto del País (Andreani / Vía Cargo)" style="background-color: #0f172a; color: #ffffff;">✈️ Resto del País (Andreani / Vía Cargo)</option>
                                 </select>
                             </div>
@@ -1316,6 +1316,33 @@
                                     <option value="CRM Directo" selected style="background-color: #0f172a; color: #ffffff;">CRM Directo (Vendedor)</option>
                                     <option value="Web" style="background-color: #0f172a; color: #ffffff;">Web Chat</option>
                                 </select>
+                            </div>
+                        </div>
+
+                        <!-- CAMPOS DE DIRECCIÓN Y DESTINO DE ENVÍO -->
+                        <div id="presupuesto-direccion-container" class="p-3.5 rounded-xl bg-black/40 border border-white/10 space-y-2 select-none">
+                            <div class="flex items-center justify-between">
+                                <label class="block text-brand-yellow font-bold uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                                    <span class="material-symbols-outlined text-[16px]">local_shipping</span>
+                                    <span>Dirección de Envío y Destino</span>
+                                </label>
+                                <span id="presupuesto-envio-badge-modal" class="text-[10px] font-bold text-purple-300 bg-purple-500/20 px-2 py-0.5 rounded border border-purple-500/30">
+                                    🚛 Mostto +5%
+                                </span>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+                                <div>
+                                    <label class="text-[10px] uppercase font-bold text-gray-400 block mb-1">Calle y Número / Domicilio:</label>
+                                    <input type="text" id="presupuesto-direccion" placeholder="Ej: Rocamora 200 / San Martín 1234" class="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-yellow select-text">
+                                </div>
+                                <div>
+                                    <label class="text-[10px] uppercase font-bold text-gray-400 block mb-1">Ciudad / Localidad:</label>
+                                    <input type="text" id="presupuesto-localidad" placeholder="Ej: Rosario del Tala / Paraná" class="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-yellow select-text">
+                                </div>
+                                <div>
+                                    <label class="text-[10px] uppercase font-bold text-gray-400 block mb-1">Provincia:</label>
+                                    <input type="text" id="presupuesto-provincia" placeholder="Ej: Entre Ríos" value="Entre Ríos" class="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-yellow select-text">
+                                </div>
                             </div>
                         </div>
 
@@ -2706,8 +2733,18 @@
                                         tipoEnvioPedido = 'Envío A Domicilio';
                                     }
 
-                                    const dirCliente = p.clientes ? (p.clientes.localidad || '') : '';
-                                    const provCliente = p.clientes ? (p.clientes.provincia || '') : '';
+                                    const clienteObj = p.clientes || (clientesData || []).find(c => c.id === p.cliente_id) || {};
+                                    let dirCliente = (clienteObj.localidad || '').trim();
+                                    let provCliente = (clienteObj.provincia || '').trim();
+
+                                    // Si no está en p.clientes, buscar en memoria de clientesData
+                                    if (!dirCliente) {
+                                        const cMem = (clientesData || []).find(c => c.id === p.cliente_id);
+                                        if (cMem && cMem.localidad) {
+                                            dirCliente = cMem.localidad.trim();
+                                            if (!provCliente && cMem.provincia) provCliente = cMem.provincia.trim();
+                                        }
+                                    }
                                     const esRetiro = tipoEnvioPedido.toLowerCase().includes('retira');
 
                                     let iconEnvio = 'local_shipping';
