@@ -131,16 +131,20 @@ El ciclo de un pedido en el CRM debe respetar **estrictamente las 4 etapas secue
 ### 2️⃣ Etapa: Confirmado (`Confirmado`)
 * **Estado:** El pedido está confirmado y se le enviaron los datos bancarios (CBU / Alias) al cliente para depositar o transferir.
 * **Acciones:**
-  * `🟢 Confirmar Pago & Restar Stock`: El cliente depositó y el comercio verificó el dinero en su cuenta bancaria. Al hacer clic, **el pedido pasa a Pagado y se descuenta el stock en Supabase**.
+  * `🟢 Confirmar Pago & Restar Stock`: El cliente depositó y el comercio verificó el dinero en su cuenta bancaria. Al hacer clic, **el pedido pasa a Pagado, se descuenta el stock en Supabase y se ofrece imprimir el ticket de bulto**.
   * `🔴 Cancelar`: Si el cliente no transfiere tras el plazo acordado.
 
 ### 3️⃣ Etapa: Pagado (`Pagado`)
 * **Estado:** El dinero está acreditado y el depósito está armando y embalando el pedido.
 * **Acciones:**
-  * `🟣 Marcar como Despachado / Entregado`: Se entrega al transporte (Mostto / Andreani) o se entrega en mano al cliente. El pedido pasa a **Despachado**.
+  * `🖨️ Ticket 80mm`: Imprime el remito de despacho y rótulo de bulto optimizado para la impresora térmica Global POS80.
+  * `🟣 Marcar como Despachado`: Se entrega al transporte (Mostto / Andreani) o en mano. El pedido pasa a **Despachado**.
 
 ### 4️⃣ Etapa: Despachado / Entregado (`Despachado`)
-* **Estado:** Pedido finalizado con éxito. Muestra el distintivo `✅ Pedido Despachado / Entregado`.
+* **Estado:** Pedido finalizado con éxito.
+* **Acciones:**
+  * `🖨️ Re-Imprimir Ticket`: Por si se requiere una copia adicional para el transportista o archivo.
+  * `✅ Pedido Despachado / Entregado`.
 
 ---
 
@@ -153,12 +157,38 @@ El ciclo de un pedido en el CRM debe respetar **estrictamente las 4 etapas secue
 2. **Actualización Bidireccional en Base de Datos:**
    * Al guardar el presupuesto, se actualiza la ficha del cliente en Supabase (`clientes.localidad`, `clientes.provincia`) y se guarda el método de envío en el pedido (`pedidos.origen` y `items_pedido[0].variacion_tamano`).
 3. **Resolución Visual en el Embudo:**
+   * La consulta `/api/crm/pedidos` trae todos los campos del cliente (`id, razon_social, whatsapp, cuit, contacto_nombre, localidad, provincia`).
    * La tarjeta del embudo lee prioritariamente el método de envío registrado en el pedido (`Entre Ríos (Mostto +5%)`, `Resto del País`, `Retira en Local`) y muestra la dirección exacta (`📍 Paraná (Entre Ríos)`).
    * La advertencia `⚠️ Sin Dirección` solo aparece si el pedido requiere transporte y verdaderamente no tiene localidad/dirección cargada.
 
 ---
 
-## 💼 9. POLÍTICAS COMERCIALES Y DE LOGÍSTICA OFICIALES
+## 🖨️ 9. SISTEMA DE TICKETS TÉRMICOS DE 80MM (Global POS80 / POS-80 Series)
+
+### ⚠️ El Problema que existía:
+Los tickets impresos desde plataformas externas (Pedix / WooCommerce) contenían frases repetitivas de plantillas web (`SELECCIONA EL PRODUCTO PARA VER SU PRECIO...`), haciendo que un pedido simple midiera más de 1 metro de largo, desperdiciando papel térmico y dificultando la lectura para el armado del bulto.
+
+### 🛠️ Solución Implementada:
+1. **Especificaciones del Hardware:**
+   * Impresora: **Global POS80 / POS-80 Series Driver** (Térmica directa, conexión USB).
+   * Ancho de bobina: **80 mm**.
+   * Ancho de impresión útil: **72 mm (576 puntos / 48 columnas)**.
+2. **Sanitización Total de Nombres de Productos (`limpiarNombreItemParaTicket`):**
+   * Elimina automáticamente cualquier prefijo o texto residual de catálogo, dejando únicamente el nombre limpio del producto, aroma/presentación, cantidad y precio.
+3. **Diseño de Remito & Rótulo de Bulto Compacto:**
+   * Encabezado institucional de Química DEC.
+   * Rótulo destacado de envío (Destinatario, Teléfono, DNI, Método de transporte y Dirección completa).
+   * Tabla compacta de 3 columnas: `CANT` | `PRODUCTO / PRESENTACIÓN` | `TOTAL`.
+   * Desglose financiero claro: Subtotal productos, Recargo Mostto (+5%) y Total Final.
+   * Recuadro para logística: `BULTOS: [ ] de [ ]  |  PESO: [ ] KG`.
+   * Espacio para firma y aclaración del receptor.
+4. **Disparador Automático y Manual en CRM:**
+   * Disponible mediante el botón `🖨️ Ticket 80mm` en las etapas de **Pagados** y **Despachados**.
+   * Diálogo automático de confirmación al marcar un pedido como **Pagado** para acelerar el embalaje.
+
+---
+
+## 💼 10. POLÍTICAS COMERCIALES Y DE LOGÍSTICA OFICIALES
 * **Compra Mínima Inicial Mayorista:** **$80.000** (para clientes nuevos).
 * **Retiro en Local Mayorista:** A partir de **$2.500** (exclusivamente para clientes mayoristas ya registrados).
 * **Medios de Pago:** **Efectivo** o **Transferencia Bancaria**. (Prohibido mencionar tarjetas o cuotas).
