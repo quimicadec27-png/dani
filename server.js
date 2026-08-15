@@ -61,7 +61,7 @@ async function refreshProductCatalog() {
             .or('status.eq.publish,status.eq.publicado')
             .gt('price', 0);
         if (data && data.length > 0) {
-            PRODUCT_CATALOG_CACHE = data.filter(p => !p.sku?.includes('_ID') && !p.sku?.includes('QD-DTRG-1320'));
+            PRODUCT_CATALOG_CACHE = (data || []).filter(p => !p.sku?.includes('QD-DTRG-1320')).map(p => ({ ...p, sku: (p.sku || '').replace(/_ID\d+$/, '') }));
             console.log(`[CATALOG CACHE] ${PRODUCT_CATALOG_CACHE.length} productos cargados en memoria RAM.`);
         }
     } catch (e) {
@@ -2270,7 +2270,6 @@ app.get('/api/crm/catalogo-precios-lista', async (req, res) => {
             .limit(5000);
 
         if (error || !data || data.length === 0) {
-            console.log('[PRECIOS LISTA] Supabase vacío o error, usando PRODUCT_CATALOG_CACHE. Error:', error?.message);
             data = PRODUCT_CATALOG_CACHE.map((p, idx) => ({
                 id: p.id || `cache_${idx}`,
                 sku: p.sku || `QD-${idx}`,
@@ -2285,33 +2284,49 @@ app.get('/api/crm/catalogo-precios-lista', async (req, res) => {
 
         function inferirCategoriaPorNombre(name) {
             const n = (name || '').toUpperCase();
-            if (n.includes('SAHUMERIO') || n.includes('AMOGH') || n.includes('CONO') || n.includes('AROMANZA') || n.includes('ILUMINARTE') || n.includes('SAGRADA MADRE')) return 'Sahumerios & Aromas';
-            if (n.includes('CLORO') || n.includes('BOYA') || n.includes('ALGUICIDA') || n.includes('CLARIFICANTE') || n.includes('PASTILLA')) return 'Piletas & Cloro';
-            if (n.includes('DETERGENTE') || n.includes('DESENGRASANTE') || n.includes('LAVAVAJILLA')) return 'Cocina & Detergentes';
-            if (n.includes('DESODORANTE') || n.includes('PISO') || n.includes('LISOFORM') || n.includes('LYSOFORM') || n.includes('POETT')) return 'Pisos & Desodorantes';
-            if (n.includes('JABON') || n.includes('JABÓN') || n.includes('SUAVIZANTE') || n.includes('LAVANDINA') || n.includes('ALA') || n.includes('ARIEL') || n.includes('SKIP')) return 'Lavandería & Ropa';
-            if (n.includes('CONCENTRADO') || n.includes('PASTA')) return 'Concentrados & Pastas';
+            if (n.includes('SAHUMERIO') || n.includes('AMOGH') || n.includes('CONO') || n.includes('AROMANZA') || n.includes('ILUMINARTE') || n.includes('SAGRADA MADRE') || n.includes('TUK TUK')) return 'Sahumerios & Aromas';
+            if (n.includes('CLORO') || n.includes('BOYA') || n.includes('ALGUICIDA') || n.includes('CLARIFICANTE') || n.includes('PASTILLA')) return 'Cloro & Piletas';
+            if (n.includes('DETERGENTE') || n.includes('DESENGRASANTE') || n.includes('LAVAVAJILLA') || n.includes('COCINA')) return 'Detergentes & Lavavajillas';
+            if (n.includes('DESODORANTE') || n.includes('PISO') || n.includes('LISOFORM') || n.includes('LYSOFORM') || n.includes('POETT')) return 'Desodorantes de Piso & Multiuso';
+            if (n.includes('SUAVIZANTE')) return 'Suavizantes para Ropa';
+            if (n.includes('LAVANDINA')) return 'Lavandinas & Desinfectantes';
+            if (n.includes('JABON') || n.includes('JABÓN') || n.includes('ALA') || n.includes('ARIEL') || n.includes('SKIP')) return 'Jabones Líquidos (Ropa / Lavandería)';
+            if (n.includes('CONCENTRADO') || n.includes('PASTA')) return 'Pastas & Concentrados';
             if (n.includes('COMBO')) return 'Combos Emprendedores';
-            if (n.includes('AUTO') || n.includes('SILICONA') || n.includes('SHAMPOO')) return 'Automotor';
-            if (n.includes('ALCOHOL') || n.includes('SHAMPOO') || n.includes('JABON')) return 'Higiene & Cuidado Personal';
+            if (n.includes('AUTO') || n.includes('SILICONA') || n.includes('SHAMPOO') || n.includes('REVIVIDOR')) return 'Automotor';
+            if (n.includes('PAPEL') || n.includes('HIGIENICO') || n.includes('HIGIÉNICO') || n.includes('MORITA') || n.includes('HIGHPEL') || n.includes('MAXISEC')) return 'Papeles & Higiene';
+            if (n.includes('BOLSA') || n.includes('RESIDUO') || n.includes('CONSORCIO')) return 'Bolsas de Residuo & Consorcio';
+            if (n.includes('ESPONJA') || n.includes('FIBRA') || n.includes('VIRANA')) return 'Esponjas & Fibras';
+            if (n.includes('ESCOBA') || n.includes('ESCOBILLON') || n.includes('CEPILLO')) return 'Escobillones, Escobas & Cepillos';
+            if (n.includes('CABO') || n.includes('MANGO')) return 'Cabos & Mangos';
+            if (n.includes('SECADOR')) return 'Secadores de Piso';
+            if (n.includes('BALDE') || n.includes('PALANGANA') || n.includes('FUENTON')) return 'Baldes, Palanganas & Fuentones';
+            if (n.includes('PALA')) return 'Palas & Recolectores';
+            if (n.includes('ENVAS') || n.includes('BIDON') || n.includes('PULVERIZADOR') || n.includes('GATILLO')) return 'Envases, Bidones & Pulverizadores';
+            if (n.includes('INSECTICIDA') || n.includes('ESPIRAL') || n.includes('REPELENTE') || n.includes('OFF') || n.includes('FUYI') || n.includes('BAYGON')) return 'Insecticidas, Espirales & Repelentes';
+            if (n.includes('CERA') || n.includes('AUTOBRILLO')) return 'Ceras & Cuidado de Pisos';
+            if (n.includes('PERFUMINA') || n.includes('TEXTIL') || n.includes('DILUIR')) return 'Perfuminas & Textil';
+            if (n.includes('TRAPO') || n.includes('REJILLA') || n.includes('FRANELA') || n.includes('PANUELO')) return 'Trapos de Piso & Rejillas';
             return 'Química General';
         }
 
         const categoriasSet = new Set();
-        const productosFormateados = (data || []).filter(p => p.name && !p.sku?.includes('_ID')).map((p, idx) => {
+        const productosFormateados = (data || []).filter(p => p.name).map((p, idx) => {
             let cat = p.category;
-            if (!cat || cat.trim() === '' || cat === 'General') {
+            if (!cat || cat.trim() === '' || cat === 'General' || cat === 'Uncategorized' || cat.includes('SELECCIONA')) {
                 cat = inferirCategoriaPorNombre(p.name);
             }
             if (cat) {
                 cat.split(',').forEach(c => {
-                    const clean = c.trim();
-                    if (clean && clean.length > 2) categoriasSet.add(clean);
+                    const clean = c.trim().replace(/\(Padre\)/gi, '').trim();
+                    if (clean && clean.length > 2 && !clean.includes('SELECCIONA') && clean !== 'Uncategorized') {
+                        categoriasSet.add(clean);
+                    }
                 });
             }
             return {
                 id: p.id || `prod_${idx}`,
-                sku: p.sku || '',
+                sku: (p.sku || '').replace(/_ID\d+$/, ''),
                 name: p.name,
                 price: parseFloat(p.price || p.regular_price || 0),
                 regular_price: parseFloat(p.regular_price || p.price || 0),

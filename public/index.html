@@ -614,7 +614,7 @@
                                         <div>
                                             <label class="block text-[11px] font-extrabold uppercase text-gray-300 tracking-wider mb-2">1. Operación</label>
                                             <div class="grid grid-cols-3 gap-1.5 bg-black/40 p-1.5 rounded-xl border border-white/10">
-                                                <button type="button" id="btn-op-aumentar" onclick="setOperacionPrecios('Aumentar')" class="py-2 px-1 rounded-lg text-xs font-black uppercase transition-all bg-emerald-500 text-slate-950 shadow-md flex items-center justify-center gap-1">
+                                                <button type="button" id="btn-op-aumentar" onclick="setOperacionPrecios('Aumentar')" class="py-2 px-2.5 rounded-lg text-[11px] font-black uppercase transition-all bg-emerald-500 text-slate-950 shadow-md flex items-center justify-center gap-1 whitespace-nowrap">
                                                     <span class="material-symbols-outlined text-[14px]">arrow_upward</span> Aumentar
                                                 </button>
                                                 <button type="button" id="btn-op-restar" onclick="setOperacionPrecios('Restar')" class="py-2 px-1 rounded-lg text-xs font-bold uppercase transition-all text-gray-400 hover:text-white flex items-center justify-center gap-1">
@@ -2986,10 +2986,10 @@
                                         ${p.estado === 'Presupuesto' ? `
                                             <button onclick="cambiarEstadoPedido('${p.id}', 'Confirmado')" class="px-3.5 py-1.5 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 text-xs font-bold border border-blue-500/30 flex items-center gap-1.5 transition-all cursor-pointer shadow-sm">
                                                 <span class="material-symbols-outlined text-[16px]">check_circle</span>
-                                                <span>🔵 Confirmar Pedido</span>
+                                                <span><span class="material-symbols-outlined text-[16px]">check</span> Confirmar Pedido</span>
                                             </button>
                                             <button onclick="cambiarEstadoPedido('${p.id}', 'Cancelado')" class="px-3 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold border border-red-500/20 transition-all cursor-pointer">
-                                                🔴 Cancelar
+                                                <span class="material-symbols-outlined text-[16px]">close</span> Cancelar
                                             </button>
                                         ` : ''}
 
@@ -2999,28 +2999,28 @@
                                                 <span>🟢 Confirmar Pago & Restar Stock</span>
                                             </button>
                                             <button onclick="cambiarEstadoPedido('${p.id}', 'Cancelado')" class="px-3 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold border border-red-500/20 transition-all cursor-pointer">
-                                                🔴 Cancelar
+                                                <span class="material-symbols-outlined text-[16px]">close</span> Cancelar
                                             </button>
                                         ` : ''}
 
                                         ${p.estado === 'Pagado' ? `
                                             <button onclick="imprimirTicketTermico80mm('${p.id}')" class="px-3.5 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-xs font-bold border border-amber-500/30 flex items-center gap-1.5 transition-all cursor-pointer shadow-sm">
                                                 <span class="material-symbols-outlined text-[16px]">print</span>
-                                                <span>🖨️ Ticket 80mm</span>
+                                                <span><span class="material-symbols-outlined text-[16px]">print</span> Ticket 80mm</span>
                                             </button>
                                             <button onclick="confirmarDespachoPedido('${p.id}')" class="px-3.5 py-1.5 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 text-xs font-bold border border-purple-500/30 flex items-center gap-1.5 transition-all cursor-pointer shadow-sm">
                                                 <span class="material-symbols-outlined text-[16px]">local_shipping</span>
-                                                <span>🟣 Marcar como Despachado / Entregado</span>
+                                                <span><span class="material-symbols-outlined text-[16px]">local_shipping</span> Marcar como Despachado / Entregado</span>
                                             </button>
                                             <button onclick="cambiarEstadoPedido('${p.id}', 'Cancelado')" class="px-3 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold border border-red-500/20 transition-all cursor-pointer">
-                                                🔴 Cancelar
+                                                <span class="material-symbols-outlined text-[16px]">close</span> Cancelar
                                             </button>
                                         ` : ''}
 
                                         ${p.estado === 'Despachado' ? `
                                             <button onclick="imprimirTicketTermico80mm('${p.id}')" class="px-3.5 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-xs font-bold border border-amber-500/30 flex items-center gap-1.5 transition-all cursor-pointer shadow-sm">
                                                 <span class="material-symbols-outlined text-[16px]">print</span>
-                                                <span>🖨️ Re-Imprimir Ticket</span>
+                                                <span><span class="material-symbols-outlined text-[16px]">print</span> Re-Imprimir Ticket</span>
                                             </button>
                                             <span class="px-3.5 py-1.5 rounded-xl bg-purple-500/20 text-purple-300 text-xs font-bold border border-purple-500/30 flex items-center gap-1.5">
                                                 <span class="material-symbols-outlined text-[16px]">done_all</span>
@@ -3075,7 +3075,7 @@
                                 <div class="pt-1">
                                     ${p.estado === 'Presupuesto' ? `
                                         <button onclick="cambiarEstadoPedido('${p.id}', 'Confirmado')" class="w-full py-1 text-[10px] font-bold rounded bg-blue-500/20 text-blue-400 hover:bg-blue-500/30">
-                                            🔵 Confirmar Pedido
+                                            <span class="material-symbols-outlined text-[16px]">check</span> Confirmar Pedido
                                         </button>
                                     ` : ''}
                                     ${p.estado === 'Confirmado' ? `
@@ -6332,6 +6332,182 @@
                     btn.innerHTML = '<span class="material-symbols-outlined text-base">save</span> Aplicar y Guardar Cambios en Supabase';
                 }
             }
+        }
+
+
+
+        // =========================================================================
+        // IMPRESIÓN DE TICKETS TÉRMICOS 80MM (GLOBAL POS80)
+        // =========================================================================
+        function imprimirTicketTermico80mm(pedidoId) {
+            const pedido = (pedidosData || []).find(p => String(p.id) === String(pedidoId) || String(p.woocommerce_order_id) === String(pedidoId));
+            if (!pedido) {
+                alert('⚠️ No se encontró la información del pedido para imprimir.');
+                return;
+            }
+
+            const cliente = pedido.clientes || {};
+            const items = pedido.items_pedido || [];
+            const nombre = cliente.razon_social || cliente.contacto_nombre || 'Cliente Final';
+            const tel = cliente.whatsapp || '-';
+            const dni = cliente.cuit || cliente.dni || '-';
+            const direccion = cliente.direccion || '';
+            const localidad = cliente.localidad || '';
+            const provincia = cliente.provincia || '';
+            const dirCompleta = (direccion + ' ' + localidad + ' ' + provincia).trim() || 'Retira en Local';
+
+            const fecha = new Date(pedido.created_at || Date.now()).toLocaleDateString('es-AR', {
+                day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+            });
+
+            const isMostto = (pedido.origen && pedido.origen.includes('Mostto')) ||
+                             (items[0]?.variacion_tamano && items[0]?.variacion_tamano.includes('Mostto')) ||
+                             (provincia.toLowerCase().includes('entre') && !dirCompleta.toLowerCase().includes('retira'));
+
+            const subtotal = pedido.monto_total ? (isMostto ? pedido.monto_total / 1.05 : pedido.monto_total) : 0;
+            const recargoMostto = isMostto ? subtotal * 0.05 : 0;
+            const totalFinal = pedido.monto_total || (subtotal + recargoMostto);
+
+            function limpiarNombreParaTicket(raw) {
+                if (!raw) return 'Producto';
+                let s = raw;
+                s = s.replace(/SELECCIONA[^\n:]*VER SU PRECIO[^\n:]*\)?\s*/gi, '');
+                s = s.replace(/SELECCIONAR PARA VER PRECIOS\s*/gi, '');
+                s = s.replace(/^[-•\s\d+xX]+/, '');
+                s = s.replace(/\s*\(\s*\)/g, '').trim();
+                return s.toUpperCase() || raw.toUpperCase();
+            }
+
+            const itemsHtml = items.map(it => {
+                const cant = it.cantidad || 1;
+                const nombreLimpio = limpiarNombreParaTicket(it.producto_nombre);
+                const sub = (it.precio_unitario || 0) * cant;
+                return `
+                    <tr>
+                        <td style="padding: 3px 0; font-weight: bold; width: 12%; font-size: 11px;">${cant}x</td>
+                        <td style="padding: 3px 4px; width: 63%; font-size: 11px; line-height: 1.2;">${nombreLimpio}</td>
+                        <td style="padding: 3px 0; text-align: right; width: 25%; font-weight: bold; font-size: 11px;">$${Math.round(sub).toLocaleString('es-AR')}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            const ticketHtml = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <title>Ticket 80mm - Pedido #${pedido.id.substring(0, 8)}</title>
+                    <style>
+                        @page { size: 80mm auto; margin: 0; }
+                        body {
+                            margin: 0;
+                            padding: 8px 6px;
+                            width: 76mm;
+                            font-family: 'Courier New', Courier, monospace;
+                            color: #000;
+                            font-size: 12px;
+                            background: #fff;
+                        }
+                        .text-center { text-align: center; }
+                        .text-right { text-align: right; }
+                        .font-bold { font-weight: bold; }
+                        .border-top { border-top: 1px dashed #000; margin: 5px 0; }
+                        .border-bottom { border-bottom: 1px dashed #000; margin: 5px 0; }
+                        .box { border: 1px solid #000; padding: 4px; margin: 4px 0; }
+                        table { width: 100%; border-collapse: collapse; }
+                        @media print {
+                            body { width: 76mm; }
+                            .no-print { display: none; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="text-center">
+                        <div style="font-size: 16px; font-weight: 900; letter-spacing: 1px;">QUÍMICA DEC</div>
+                        <div style="font-size: 10px; font-weight: bold;">MAYORISTA DE LIMPIEZA & AROMAS</div>
+                        <div style="font-size: 9px;">Av. Frondizi y 9 de Julio - C. del Uruguay</div>
+                        <div style="font-size: 9px;">WhatsApp: +54 9 3442 586974</div>
+                    </div>
+
+                    <div class="border-top"></div>
+                    <div style="display: flex; justify-content: space-between; font-size: 10px; font-weight: bold;">
+                        <span>REMITO DE DESPACHO</span>
+                        <span>#${pedido.id.substring(0, 8).toUpperCase()}</span>
+                    </div>
+                    <div style="font-size: 10px;">Fecha: ${fecha}</div>
+
+                    <div class="box" style="background: #f5f5f5;">
+                        <div style="font-size: 10px; font-weight: bold;">DESTINATARIO / TRANSPORTE:</div>
+                        <div style="font-size: 11px; font-weight: 900;">${nombre.toUpperCase()}</div>
+                        <div>TEL/WSP: <strong>${tel}</strong></div>
+                        ${dni && dni !== '-' ? `<div>DNI/CUIT: ${dni}</div>` : ''}
+                        <div style="margin-top: 3px; font-weight: bold; font-size: 10px;">
+                            ${isMostto ? '🚛 ENVÍO ENTRE RÍOS (MOSTTO +5%)' : (dirCompleta.toLowerCase().includes('retira') ? '🏪 RETIRO EN LOCAL' : '✈️ TRANSPORTE NACIONAL')}
+                        </div>
+                        <div style="font-size: 10px;">DIR: ${dirCompleta}</div>
+                    </div>
+
+                    <div class="border-top"></div>
+                    <table>
+                        <thead>
+                            <tr style="border-bottom: 1px solid #000; font-size: 10px;">
+                                <th style="text-align: left;">CANT</th>
+                                <th style="text-align: left; padding-left: 4px;">PRODUCTO / DETALLE</th>
+                                <th style="text-align: right;">TOTAL</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${itemsHtml || '<tr><td colspan="3" class="text-center">1x Pedido General</td></tr>'}
+                        </tbody>
+                    </table>
+
+                    <div class="border-top"></div>
+                    <table>
+                        <tr>
+                            <td>Subtotal Productos:</td>
+                            <td class="text-right font-bold">$${Math.round(subtotal).toLocaleString('es-AR')}</td>
+                        </tr>
+                        ${isMostto ? `
+                        <tr>
+                            <td>Recargo Mostto (5%):</td>
+                            <td class="text-right font-bold">$${Math.round(recargoMostto).toLocaleString('es-AR')}</td>
+                        </tr>` : ''}
+                        <tr style="font-size: 14px; font-weight: 900; border-top: 1px solid #000;">
+                            <td style="padding-top: 3px;">TOTAL FINAL:</td>
+                            <td style="padding-top: 3px;" class="text-right">$${Math.round(totalFinal).toLocaleString('es-AR')}</td>
+                        </tr>
+                    </table>
+
+                    <div class="box" style="margin-top: 6px; font-size: 10px;">
+                        <div class="font-bold text-center" style="margin-bottom: 2px;">RÓTULO DE BULTO Y EMBALAJE</div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span>BULTOS: [ &nbsp; ] de [ &nbsp; ]</span>
+                            <span>PESO: [ &nbsp;&nbsp;&nbsp; ] KG</span>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 25px; border-top: 1px dashed #000; padding-top: 3px; font-size: 9px; text-align: center;">
+                        Firma Receptor: ________________________
+                    </div>
+                    <div style="font-size: 8px; text-align: center; margin-top: 6px; color: #444;">
+                        ¡Gracias por confiar en Química DEC!
+                    </div>
+                </body>
+                </html>
+            `;
+
+            const printWin = window.open('', '_blank', 'width=450,height=650');
+            if (!printWin) {
+                alert('⚠️ El navegador bloqueó la ventana emergente de impresión. Habilitá las ventanas emergentes (popups) para este sitio.');
+                return;
+            }
+            printWin.document.open();
+            printWin.document.write(ticketHtml);
+            printWin.document.close();
+            printWin.focus();
+            setTimeout(() => {
+                printWin.print();
+            }, 500);
         }
 
 
