@@ -2641,27 +2641,65 @@
                                     </div>
                                 ` : ''}
 
-                                <!-- DATOS DE ENVÍO Y DIRECCIÓN DEL CLIENTE -->
-                                ${p.clientes ? `
-                                    <div class="p-2.5 rounded-xl bg-black/40 border border-white/10 text-xs flex items-center justify-between gap-2">
-                                        <div class="flex items-center gap-2">
-                                            <span class="material-symbols-outlined text-[18px] text-brand-yellow">local_shipping</span>
-                                            <div>
-                                                <strong class="uppercase text-[9px] block text-brand-yellow font-bold">Datos de Envío / Entrega:</strong>
-                                                <span class="text-white text-[11px]">
-                                                    ${p.clientes.contacto_nombre && p.clientes.contacto_nombre.includes('Envío: ') ? p.clientes.contacto_nombre.split('Envío: ')[1].split('|')[0].trim() : (p.clientes.localidad ? 'Envío A Domicilio' : '🏪 Retira en Local')}
-                                                    ${p.clientes.localidad ? ` — 📍 ${p.clientes.localidad}` : ''}
-                                                    ${p.clientes.provincia ? ` (${p.clientes.provincia})` : ''}
-                                                </span>
+                                <!-- DETERMINAR DATOS DE ENVÍO PRECISOS -->
+                                ${(() => {
+                                    let tipoEnvioPedido = 'Retira en Local';
+                                    if (p.origen && p.origen.includes('Envío:')) {
+                                        tipoEnvioPedido = p.origen.split('Envío:')[1].split('|')[0].trim();
+                                    } else if (itemsPedido.length > 0 && itemsPedido[0].variacion_tamano && itemsPedido[0].variacion_tamano.includes('Envío:')) {
+                                        tipoEnvioPedido = itemsPedido[0].variacion_tamano.split('Envío:')[1].split('|')[0].trim();
+                                    } else if (p.clientes && p.clientes.contacto_nombre && p.clientes.contacto_nombre.includes('Envío:')) {
+                                        tipoEnvioPedido = p.clientes.contacto_nombre.split('Envío:')[1].split('|')[0].trim();
+                                    } else if (p.clientes && p.clientes.localidad && !p.clientes.localidad.toLowerCase().includes('retira')) {
+                                        tipoEnvioPedido = 'Envío A Domicilio';
+                                    }
+
+                                    const dirCliente = p.clientes ? (p.clientes.localidad || '') : '';
+                                    const provCliente = p.clientes ? (p.clientes.provincia || '') : '';
+                                    const esRetiro = tipoEnvioPedido.toLowerCase().includes('retira');
+
+                                    let iconEnvio = 'local_shipping';
+                                    let badgeColor = 'text-brand-yellow';
+                                    let labelEnvio = tipoEnvioPedido;
+                                    if (esRetiro) {
+                                        iconEnvio = 'storefront';
+                                        badgeColor = 'text-amber-400';
+                                        labelEnvio = '🏪 Retira en Local (C. del Uruguay)';
+                                    } else if (tipoEnvioPedido.includes('Mostto') || tipoEnvioPedido.includes('Entre Ríos')) {
+                                        iconEnvio = 'local_shipping';
+                                        badgeColor = 'text-purple-300';
+                                        labelEnvio = '🚛 Entre Ríos (Mostto +5%)';
+                                    } else if (tipoEnvioPedido.includes('Resto') || tipoEnvioPedido.includes('Andreani')) {
+                                        iconEnvio = 'flight_takeoff';
+                                        badgeColor = 'text-blue-300';
+                                        labelEnvio = '✈️ Resto del País (Andreani / Vía Cargo)';
+                                    } else {
+                                        iconEnvio = 'local_shipping';
+                                        badgeColor = 'text-emerald-400';
+                                        labelEnvio = '🚚 ' + tipoEnvioPedido;
+                                    }
+
+                                    return `
+                                        <div class="p-2.5 rounded-xl bg-black/40 border border-white/10 text-xs flex items-center justify-between gap-2">
+                                            <div class="flex items-center gap-2">
+                                                <span class="material-symbols-outlined text-[18px] ${badgeColor}">${iconEnvio}</span>
+                                                <div>
+                                                    <strong class="uppercase text-[9px] block ${badgeColor} font-bold">Datos de Envío / Entrega:</strong>
+                                                    <span class="text-white text-[11px]">
+                                                        ${labelEnvio}
+                                                        ${dirCliente ? ` — 📍 ${dirCliente}` : ''}
+                                                        ${provCliente && !dirCliente.includes(provCliente) ? ` (${provCliente})` : ''}
+                                                    </span>
+                                                </div>
                                             </div>
+                                            ${!dirCliente && !esRetiro ? `
+                                                <span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 text-[10px] font-bold border border-amber-500/30">
+                                                    ⚠️ Sin Dirección
+                                                </span>
+                                            ` : ''}
                                         </div>
-                                        ${!p.clientes.localidad && !(p.clientes.contacto_nombre && p.clientes.contacto_nombre.includes('Retira')) ? `
-                                            <span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 text-[10px] font-bold border border-amber-500/30">
-                                                ⚠️ Sin Dirección
-                                            </span>
-                                        ` : ''}
-                                    </div>
-                                ` : ''}
+                                    `;
+                                })()}
 
                                 <!-- DETALLE DE PRODUCTOS DEL PEDIDO -->
                                 <div class="space-y-2">
@@ -2693,25 +2731,51 @@
                                         ${p.supera_minimo_80k ? `<span class="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 text-[10px] font-bold">✨ Cumple Min. $80k</span>` : ''}
                                     </div>
 
-                                    <div class="flex items-center gap-2">
-                                        ${!esPagado && p.estado !== 'Despachado' && !esCancelado ? `
-                                            <button onclick="confirmarPagoDescontarStock('${p.id}')" class="px-3 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-xs font-bold border border-emerald-500/30 flex items-center gap-1 transition-all cursor-pointer">
-                                                🟢 Confirmar Pago & Restar Stock
+                                    <!-- BOTONES DE FLUJO OFICIAL DEL EMBUDO SEGÚN ETAPA -->
+                                    <div class="flex items-center gap-2 flex-wrap justify-end">
+                                        ${p.estado === 'Presupuesto' ? `
+                                            <button onclick="cambiarEstadoPedido('${p.id}', 'Confirmado')" class="px-3.5 py-1.5 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 text-xs font-bold border border-blue-500/30 flex items-center gap-1.5 transition-all cursor-pointer shadow-sm">
+                                                <span class="material-symbols-outlined text-[16px]">check_circle</span>
+                                                <span>🔵 Confirmar Pedido</span>
+                                            </button>
+                                            <button onclick="cambiarEstadoPedido('${p.id}', 'Cancelado')" class="px-3 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold border border-red-500/20 transition-all cursor-pointer">
+                                                🔴 Cancelar
                                             </button>
                                         ` : ''}
-                                        ${(esPagado || p.estado === 'Confirmado') && p.estado !== 'Despachado' ? `
-                                            <button onclick="confirmarDespachoPedido('${p.id}')" class="px-3 py-1.5 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 text-xs font-bold border border-purple-500/30 flex items-center gap-1 transition-all cursor-pointer">
-                                                🟣 Confirmar Despacho / Entrega
+
+                                        ${p.estado === 'Confirmado' ? `
+                                            <button onclick="confirmarPagoDescontarStock('${p.id}')" class="px-3.5 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-xs font-bold border border-emerald-500/30 flex items-center gap-1.5 transition-all cursor-pointer shadow-sm">
+                                                <span class="material-symbols-outlined text-[16px]">payments</span>
+                                                <span>🟢 Confirmar Pago & Restar Stock</span>
+                                            </button>
+                                            <button onclick="cambiarEstadoPedido('${p.id}', 'Cancelado')" class="px-3 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold border border-red-500/20 transition-all cursor-pointer">
+                                                🔴 Cancelar
                                             </button>
                                         ` : ''}
+
+                                        ${p.estado === 'Pagado' ? `
+                                            <button onclick="confirmarDespachoPedido('${p.id}')" class="px-3.5 py-1.5 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 text-xs font-bold border border-purple-500/30 flex items-center gap-1.5 transition-all cursor-pointer shadow-sm">
+                                                <span class="material-symbols-outlined text-[16px]">local_shipping</span>
+                                                <span>🟣 Marcar como Despachado / Entregado</span>
+                                            </button>
+                                            <button onclick="cambiarEstadoPedido('${p.id}', 'Cancelado')" class="px-3 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold border border-red-500/20 transition-all cursor-pointer">
+                                                🔴 Cancelar
+                                            </button>
+                                        ` : ''}
+
                                         ${p.estado === 'Despachado' ? `
-                                            <span class="px-3 py-1.5 rounded-xl bg-purple-500/20 text-purple-300 text-xs font-bold border border-purple-500/30 flex items-center gap-1">
-                                                ✅ Pedido Despachado / Entregado
+                                            <span class="px-3.5 py-1.5 rounded-xl bg-purple-500/20 text-purple-300 text-xs font-bold border border-purple-500/30 flex items-center gap-1.5">
+                                                <span class="material-symbols-outlined text-[16px]">done_all</span>
+                                                <span>✅ Pedido Despachado / Entregado</span>
                                             </span>
                                         ` : ''}
-                                        ${!esCancelado ? `
-                                            <button onclick="cambiarEstadoPedido('${p.id}', 'Cancelado')" class="px-3 py-1.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs font-bold border border-red-500/30 transition-all cursor-pointer">
-                                                🔴 Cancelar
+
+                                        ${p.estado === 'Cancelado' ? `
+                                            <span class="px-2.5 py-1 rounded-xl bg-red-500/20 text-red-400 text-xs font-bold border border-red-500/30">
+                                                ❌ Cancelado
+                                            </span>
+                                            <button onclick="cambiarEstadoPedido('${p.id}', 'Presupuesto')" class="px-2.5 py-1 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 text-xs font-bold border border-white/10 transition-all cursor-pointer">
+                                                ↩️ Reactivar
                                             </button>
                                         ` : ''}
                                     </div>
@@ -2750,9 +2814,33 @@
                                     <h5 class="font-bold text-white truncate">${p.clientes ? p.clientes.razon_social : 'Cliente Web'}</h5>
                                     <span class="text-[10px] text-brand-yellow font-bold">$${parseFloat(p.monto_total || 0).toLocaleString('es-AR')}</span>
                                 </div>
-                                <button onclick="cambiarEstadoPedido('${p.id}', 'Pagado')" class="w-full py-1 text-[10px] font-bold rounded bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30">
-                                    🟢 Pagar
-                                </button>
+                                <div class="pt-1">
+                                    ${p.estado === 'Presupuesto' ? `
+                                        <button onclick="cambiarEstadoPedido('${p.id}', 'Confirmado')" class="w-full py-1 text-[10px] font-bold rounded bg-blue-500/20 text-blue-400 hover:bg-blue-500/30">
+                                            🔵 Confirmar Pedido
+                                        </button>
+                                    ` : ''}
+                                    ${p.estado === 'Confirmado' ? `
+                                        <button onclick="confirmarPagoDescontarStock('${p.id}')" class="w-full py-1 text-[10px] font-bold rounded bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30">
+                                            🟢 Confirmar Pago
+                                        </button>
+                                    ` : ''}
+                                    ${p.estado === 'Pagado' ? `
+                                        <button onclick="confirmarDespachoPedido('${p.id}')" class="w-full py-1 text-[10px] font-bold rounded bg-purple-500/20 text-purple-300 hover:bg-purple-500/30">
+                                            🟣 Despachar
+                                        </button>
+                                    ` : ''}
+                                    ${p.estado === 'Despachado' ? `
+                                        <span class="block text-center py-1 text-[9px] font-bold text-purple-300 bg-purple-500/10 rounded">
+                                            ✅ Despachado
+                                        </span>
+                                    ` : ''}
+                                    ${p.estado === 'Cancelado' ? `
+                                        <span class="block text-center py-1 text-[9px] font-bold text-red-400 bg-red-500/10 rounded">
+                                            ❌ Cancelado
+                                        </span>
+                                    ` : ''}
+                                </div>
                             </div>
                         `).join('');
                     }
@@ -2974,6 +3062,73 @@
             }
         }
 
+        function onPresupuestoClienteCambiado(clienteId) {
+            if (!clienteId) return;
+            const c = (clientesData || []).find(x => x.id === clienteId);
+            if (!c) return;
+
+            const inputDir = document.getElementById('presupuesto-direccion');
+            const inputLoc = document.getElementById('presupuesto-localidad');
+            const inputProv = document.getElementById('presupuesto-provincia');
+            const selEnvio = document.getElementById('presupuesto-tipo-envio');
+
+            let locVal = (c.localidad || '').trim();
+            let dirVal = '';
+            let ciudadVal = '';
+
+            if (locVal.includes(',')) {
+                const parts = locVal.split(',');
+                dirVal = parts[0].trim();
+                ciudadVal = parts[1].trim();
+            } else {
+                ciudadVal = locVal;
+            }
+
+            if (inputDir) inputDir.value = dirVal;
+            if (inputLoc) inputLoc.value = ciudadVal || (locVal || '');
+            if (inputProv) inputProv.value = c.provincia || 'Entre Ríos';
+
+            // Determinar método de envío sugerido según datos del cliente
+            if (selEnvio) {
+                if (c.contacto_nombre && c.contacto_nombre.includes('Envío:')) {
+                    const tipoPrev = c.contacto_nombre.split('Envío:')[1].split('|')[0].trim();
+                    selEnvio.value = tipoPrev;
+                } else if (c.provincia && c.provincia.toLowerCase().includes('entre') && ciudadVal && !ciudadVal.toLowerCase().includes('concepción')) {
+                    selEnvio.value = 'Entre Ríos (Mostto +5%)';
+                } else if (ciudadVal && !ciudadVal.toLowerCase().includes('concepción')) {
+                    selEnvio.value = 'Resto del País (Andreani / Vía Cargo)';
+                }
+            }
+
+            actualizarBadgeEnvioModal();
+            calcularTotalPresupuestoModal();
+        }
+
+        function onPresupuestoTipoEnvioCambiado() {
+            actualizarBadgeEnvioModal();
+            calcularTotalPresupuestoModal();
+        }
+
+        function actualizarBadgeEnvioModal() {
+            const selEnvio = document.getElementById('presupuesto-tipo-envio')?.value || '';
+            const badge = document.getElementById('presupuesto-envio-badge');
+            if (!badge) return;
+
+            if (selEnvio.includes('Retira')) {
+                badge.className = "text-[10px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 font-bold border border-amber-500/30";
+                badge.innerText = "🏪 Retiro en Local";
+            } else if (selEnvio.includes('Entre Ríos') || selEnvio.includes('Mostto')) {
+                badge.className = "text-[10px] px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 font-bold border border-purple-500/30";
+                badge.innerText = "🚛 Transporte Mostto (+5%)";
+            } else if (selEnvio.includes('Resto')) {
+                badge.className = "text-[10px] px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 font-bold border border-blue-500/30";
+                badge.innerText = "✈️ Encomienda Nacional";
+            } else {
+                badge.className = "text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30";
+                badge.innerText = "🚚 Reparto Local";
+            }
+        }
+
         async function abrirModalNuevoPedido(clienteIdPreseleccionado = null) {
             const modal = document.getElementById('modal-nuevo-pedido');
             if (!modal) return;
@@ -2998,7 +3153,15 @@
             document.getElementById('presupuesto-items-container').innerHTML = '';
             document.getElementById('presupuesto-observaciones').value = '';
             agregarFilaItemPresupuesto();
-            calcularTotalPresupuestoModal();
+
+            // Sincronizar datos de dirección del cliente seleccionado
+            const targetId = clienteIdPreseleccionado || document.getElementById('presupuesto-cliente-id')?.value;
+            if (targetId) {
+                onPresupuestoClienteCambiado(targetId);
+            } else {
+                actualizarBadgeEnvioModal();
+                calcularTotalPresupuestoModal();
+            }
 
             // Copiar notas del lead de la ficha (si existen) a la caja de observaciones e IA
             const leadNotasText = (document.getElementById('edit-lead-notas')?.value || '').trim();
@@ -3008,7 +3171,6 @@
             if (leadNotasText) {
                 if (inputIa) inputIa.value = leadNotasText;
                 if (inputObs) inputObs.value = leadNotasText;
-                // Auto-procesar con IA los productos si hay notas copiadas del chat
                 procesarTextoPresupuestoIA(leadNotasText);
             } else {
                 if (inputIa) inputIa.value = '';
@@ -3213,7 +3375,7 @@
             event.preventDefault();
 
             const clienteId = document.getElementById('presupuesto-cliente-id')?.value;
-            const origen = document.getElementById('presupuesto-origen')?.value || 'CRM';
+            const origen = document.getElementById('presupuesto-origen')?.value || 'CRM Directo';
             let tipoEnvio = document.getElementById('presupuesto-tipo-envio')?.value || 'Retira en Local';
             const observaciones = document.getElementById('presupuesto-observaciones')?.value || '';
 
@@ -3222,26 +3384,10 @@
                 return;
             }
 
-            // Obtener datos de dirección ingresados en la Ficha Lead
-            const dirLead = (document.getElementById('edit-lead-direccion')?.value || '').trim();
-            const locLead = (document.getElementById('edit-lead-localidad')?.value || '').trim();
-            const provLead = (document.getElementById('edit-lead-provincia')?.value || '').trim();
-
-            const requiereEnvio = !tipoEnvio.includes('Retira');
-            const faltaDireccion = !dirLead || !locLead;
-
-            if (requiereEnvio && faltaDireccion) {
-                const confirmRetiro = confirm(`⚠️ ATENCIÓN: El cliente no tiene cargada la Dirección/Localidad para el envío seleccionado (${tipoEnvio}).\n\n¿El cliente va a RETIRAR EN EL LOCAL?\n- Hacé clic en ACEPTAR para cambiar a "Retira en Local".\n- Hacé clic en CANCELAR para ingresar la Dirección en la Ficha del Lead primero.`);
-                if (confirmRetiro) {
-                    tipoEnvio = 'Retira en Local';
-                    const selEnv = document.getElementById('presupuesto-tipo-envio');
-                    if (selEnv) selEnv.value = 'Retira en Local';
-                } else {
-                    const dirInput = document.getElementById('edit-lead-direccion');
-                    if (dirInput) dirInput.focus();
-                    return;
-                }
-            }
+            // Obtener datos de dirección ingresados directamente en el modal
+            const dirModal = (document.getElementById('presupuesto-direccion')?.value || '').trim();
+            const locModal = (document.getElementById('presupuesto-localidad')?.value || '').trim();
+            const provModal = (document.getElementById('presupuesto-provincia')?.value || '').trim();
 
             const container = document.getElementById('presupuesto-items-container');
             const filas = container ? container.querySelectorAll('[id^="item-fila-"]') : [];
@@ -3288,20 +3434,24 @@
                     body: JSON.stringify({
                         cliente_id: clienteId,
                         tipo_envio: tipoEnvio,
-                        direccion: dirLead,
-                        localidad: locLead,
-                        provincia: provLead
+                        direccion: dirModal,
+                        localidad: locModal,
+                        provincia: provModal
                     })
                 });
-            } catch(e) {}
+            } catch(e) {
+                console.error('Error actualizando cliente:', e);
+            }
 
             let origenFinal = `${origen} | Envío: ${tipoEnvio}`;
             if (observaciones) origenFinal += ` | Nota: ${observaciones}`;
 
             const btn = document.getElementById('btn-guardar-presupuesto');
-            const origText = btn.innerHTML;
-            btn.innerHTML = `<span class="material-symbols-outlined text-sm animate-spin">refresh</span> Guardando...`;
-            btn.disabled = true;
+            const origText = btn ? btn.innerHTML : '';
+            if (btn) {
+                btn.innerHTML = `<span class="material-symbols-outlined text-sm animate-spin">refresh</span> Guardando...`;
+                btn.disabled = true;
+            }
 
             try {
                 const res = await fetch(`${API_URL}/crm/pedidos/crear-presupuesto`, {
@@ -3321,15 +3471,17 @@
                 if (data.success) {
                     alert(data.mensaje);
                     cerrarModalNuevoPedido();
-                    refreshData();
+                    await refreshData();
                 } else {
                     alert('Error al crear presupuesto: ' + (data.error || 'No se completó la operación'));
                 }
             } catch (err) {
                 alert('Error de red al guardar presupuesto: ' + err.message);
             } finally {
-                btn.innerHTML = origText;
-                btn.disabled = false;
+                if (btn) {
+                    btn.innerHTML = origText;
+                    btn.disabled = false;
+                }
             }
         }
 

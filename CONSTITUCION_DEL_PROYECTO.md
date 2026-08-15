@@ -108,7 +108,57 @@ La IA alucinaba productos o medidas inexistentes (ej: ofrecía "cloro líquido d
 
 ---
 
-## 💼 7. POLÍTICAS COMERCIALES Y DE LOGÍSTICA OFICIALES
+## 📊 7. FLUJO OFICIAL DEL EMBUDO DE VENTAS Y CICLO DE VIDA DEL PEDIDO
+
+El ciclo de un pedido en el CRM debe respetar **estrictamente las 4 etapas secuenciales del negocio**:
+
+```
+[ Presupuesto ] ──▶ [ Confirmado ] ──▶ [ Pagado ] ──▶ [ Despachado / Entregado ]
+      │                   │                 │
+      ▼                   ▼                 ▼
+ [ Cancelado ]       [ Cancelado ]     [ Cancelado ]
+```
+
+### 1️⃣ Etapa: Presupuesto (`Presupuesto`)
+* **Estado:** El cliente solicitó una cotización o el vendedor armó el presupuesto.
+* **Acciones:**
+  * `🔵 Confirmar Pedido`: El cliente aceptó el presupuesto. El pedido pasa a **Confirmado** para enviarle los datos de pago/CBU.
+  * `🔴 Cancelar`: Si el cliente desiste.
+
+### 2️⃣ Etapa: Confirmado (`Confirmado`)
+* **Estado:** El pedido está confirmado y se le enviaron los datos bancarios (CBU / Alias) al cliente para depositar o transferir.
+* **Acciones:**
+  * `🟢 Confirmar Pago & Restar Stock`: El cliente depositó y el comercio verificó el dinero en su cuenta bancaria. Al hacer clic, **el pedido pasa a Pagado y se descuenta el stock en Supabase**.
+  * `🔴 Cancelar`: Si el cliente no transfiere tras el plazo acordado.
+
+### 3️⃣ Etapa: Pagado (`Pagado`)
+* **Estado:** El dinero está acreditado y el depósito está armando y embalando el pedido.
+* **Acciones:**
+  * `🟣 Marcar como Despachado / Entregado`: Se entrega al transporte (Mostto / Andreani) o se entrega en mano al cliente. El pedido pasa a **Despachado**.
+
+### 4️⃣ Etapa: Despachado / Entregado (`Despachado`)
+* **Estado:** Pedido finalizado con éxito. Muestra el distintivo `✅ Pedido Despachado / Entregado`.
+
+---
+
+## 🚚 8. CAPTURA Y RESOLUCIÓN DE DATOS DE ENVÍO Y DIRECCIÓN
+
+### ⚠️ El Problema que existía:
+Los presupuestos armados desde el Embudo mostraban erróneamente *"Retira en Local / Sin Dirección"* porque el modal de nuevo pedido no tenía campos directos de Dirección/Ciudad y forzaba el retiro en local por falta de datos.
+
+### 🛠️ Solución Implementada:
+1. **Campos Directos en el Modal de Presupuestos:**
+   * El modal incluye selectores para: `Método de Envío`, `Dirección (Calle y Nro)`, `Ciudad / Localidad` y `Provincia`.
+   * Al seleccionar un cliente, los campos se auto-completan automáticamente con sus datos guardados.
+2. **Actualización Bidireccional en Base de Datos:**
+   * Al guardar el presupuesto, se actualiza la ficha del cliente en Supabase (`clientes.localidad`, `clientes.provincia`) y se guarda el método de envío en el pedido (`pedidos.origen` y `items_pedido[0].variacion_tamano`).
+3. **Resolución Visual en el Embudo:**
+   * La tarjeta del embudo lee prioritariamente el método de envío registrado en el pedido (`Entre Ríos (Mostto +5%)`, `Resto del País`, `Retira en Local`) y muestra la dirección exacta (`📍 Paraná (Entre Ríos)`).
+   * La advertencia `⚠️ Sin Dirección` solo aparece si el pedido requiere transporte y verdaderamente no tiene localidad/dirección cargada.
+
+---
+
+## 💼 9. POLÍTICAS COMERCIALES Y DE LOGÍSTICA OFICIALES
 * **Compra Mínima Inicial Mayorista:** **$80.000** (para clientes nuevos).
 * **Retiro en Local Mayorista:** A partir de **$2.500** (exclusivamente para clientes mayoristas ya registrados).
 * **Medios de Pago:** **Efectivo** o **Transferencia Bancaria**. (Prohibido mencionar tarjetas o cuotas).
