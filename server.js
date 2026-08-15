@@ -57,7 +57,7 @@ async function refreshProductCatalog() {
     try {
         const { data } = await supabase
             .from('dec_products')
-            .select('name, price, stock_status, sku')
+            .select('id, name, price, regular_price, category, stock_status, sku, status')
             .or('status.eq.publish,status.eq.publicado')
             .gt('price', 0);
         if (data && data.length > 0) {
@@ -2264,41 +2264,71 @@ app.get('/api/crm/catalogo-precios-lista', async (req, res) => {
         let { data, error } = await supabase
             .from('dec_products')
             .select('id, sku, name, price, regular_price, category, stock_status, status')
-            .not('sku', 'ilike', '%_ID%')
+            .or('status.eq.publish,status.eq.publicado,status.is.null')
             .gt('price', 0)
             .order('name', { ascending: true })
-            .limit(4000);
+            .limit(5000);
 
         if (error || !data || data.length === 0) {
+            console.log('[PRECIOS LISTA] Supabase vacío o error, usando PRODUCT_CATALOG_CACHE. Error:', error?.message);
             data = PRODUCT_CATALOG_CACHE.map((p, idx) => ({
                 id: p.id || `cache_${idx}`,
-                sku: p.sku || `QD-AUTO-${idx}`,
+                sku: p.sku || `QD-${idx}`,
                 name: p.name,
                 price: parseFloat(p.price || 0),
-                regular_price: parseFloat(p.price || 0),
-                category: p.category || 'General',
+                regular_price: parseFloat(p.regular_price || p.price || 0),
+                category: p.category || inferirCategoriaPorNombre(p.name),
                 stock_status: p.stock_status || 'instock',
                 status: 'publish'
             }));
         }
 
+        function inferirCategoriaPorNombre(name) {
+            const n = (name || '').toUpperCase();
+            if (n.includes('SAHUMERIO') || n.includes('AMOGH') || n.includes('CONO') || n.includes('AROMANZA') || n.includes('ILUMINARTE') || n.includes('SAGRADA MADRE')) return 'Sahumerios & Aromas';
+            if (n.includes('CLORO') || n.includes('BOYA') || n.includes('ALGUICIDA') || n.includes('CLARIFICANTE') || n.includes('PASTILLA')) return 'Piletas & Cloro';
+            if (n.includes('DETERGENTE') || n.includes('DESENGRASANTE') || n.includes('LAVAVAJILLA')) return 'Cocina & Detergentes';
+            if (n.includes('DESODORANTE') || n.includes('PISO') || n.includes('LISOFORM') || n.includes('LYSOFORM') || n.includes('POETT')) return 'Pisos & Desodorantes';
+            if (n.includes('JABON') || n.includes('JABÓN') || n.includes('SUAVIZANTE') || n.includes('LAVANDINA') || n.includes('ALA') || n.includes('ARIEL') || n.includes('SKIP')) return 'Lavandería & Ropa';
+            if (n.includes('CONCENTRADO') || n.includes('PASTA')) return 'Concentrados & Pastas';
+            if (n.includes('COMBO')) return 'Combos Emprendedores';
+            if (n.includes('AUTO') || n.includes('SILICONA') || n.includes('SHAMPOO')) return 'Automotor';
+            if (n.includes('ALCOHOL') || n.includes('SHAMPOO') || n.includes('JABON')) return 'Higiene & Cuidado Personal';
+            return 'Química General';
+        }
+
         const categoriasSet = new Set();
-        (data || []).forEach(p => {
-            if (p.category) {
-                p.category.split(',').forEach(c => {
+        const productosFormateados = (data || []).filter(p => p.name && !p.sku?.includes('_ID')).map((p, idx) => {
+            let cat = p.category;
+            if (!cat || cat.trim() === '' || cat === 'General') {
+                cat = inferirCategoriaPorNombre(p.name);
+            }
+            if (cat) {
+                cat.split(',').forEach(c => {
                     const clean = c.trim();
-                    if (clean) categoriasSet.add(clean);
+                    if (clean && clean.length > 2) categoriasSet.add(clean);
                 });
             }
+            return {
+                id: p.id || `prod_${idx}`,
+                sku: p.sku || '',
+                name: p.name,
+                price: parseFloat(p.price || p.regular_price || 0),
+                regular_price: parseFloat(p.regular_price || p.price || 0),
+                category: cat,
+                stock_status: p.stock_status || 'instock',
+                status: p.status || 'publish'
+            };
         });
 
         res.json({
             success: true,
-            total: (data || []).length,
+            total: productosFormateados.length,
             categorias: Array.from(categoriasSet).sort(),
-            productos: data || []
+            productos: productosFormateados
         });
     } catch (err) {
+        console.error('[CATALOGO PRECIOS ERROR]', err);
         res.status(500).json({ success: false, error: err.message });
     }
 });

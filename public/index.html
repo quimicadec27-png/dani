@@ -6043,6 +6043,298 @@
             } catch(e) {}
         }
 
+
+        // =========================================================================
+        // GESTOR DE ACTUALIZACIÓN MASIVA DE PRECIOS (% Y MONTO FIJO)
+        // =========================================================================
+        let catalogoPreciosData = [];
+        let catalogoPreciosFiltrado = [];
+        let operacionPreciosActual = 'Aumentar'; // 'Aumentar' | 'Restar' | 'Igualar'
+        let metodoPreciosActual = 'porcentaje'; // 'porcentaje' | 'fijo'
+
+        function normalizarTextoBusqueda(str) {
+            if (!str) return '';
+            return str.toLowerCase()
+                .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                .replace(/\bsahumerios?\b/g, 'sahumerio')
+                .replace(/\bcloros?\b/g, 'cloro')
+                .replace(/\bdetergentes?\b/g, 'detergente')
+                .replace(/\bdesodorantes?\b/g, 'desodorante')
+                .replace(/\blavandinas?\b/g, 'lavandina')
+                .replace(/\bsuavizantes?\b/g, 'suavizante')
+                .replace(/\bjabones?\b/g, 'jabon')
+                .replace(/\bcombos?\b/g, 'combo')
+                .trim();
+        }
+
+        async function cargarCatalogoPreciosMasivo() {
+            const tbody = document.getElementById('tbody-precios-masivo');
+            if (tbody) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-12 text-gray-400 font-bold">⏳ Cargando catálogo de productos en tiempo real...</td></tr>';
+            }
+
+            try {
+                const resp = await fetch('/api/crm/catalogo-precios-lista');
+                const data = await resp.json();
+                
+                if (data.success && Array.isArray(data.productos) && data.productos.length > 0) {
+                    catalogoPreciosData = data.productos.map(p => ({
+                        id: p.id,
+                        sku: p.sku || '',
+                        name: p.name || 'Sin Nombre',
+                        category: p.category || 'General',
+                        precio_original: parseFloat(p.price || 0),
+                        precio_nuevo: parseFloat(p.price || 0),
+                        seleccionado: true
+                    }));
+
+                    // Cargar selector de categorías
+                    const selectCat = document.getElementById('precios-filter-cat');
+                    if (selectCat && Array.isArray(data.categorias)) {
+                        selectCat.innerHTML = '<option value="TODAS">📂 Todas las Categorías (' + catalogoPreciosData.length + ')</option>' +
+                            data.categorias.map(c => `<option value="${c}">${c}</option>`).join('');
+                    }
+
+                    filtrarProductosPrecios();
+                } else {
+                    if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-amber-400 font-bold">⚠️ No se encontraron productos cargados en la base de datos.</td></tr>';
+                }
+            } catch(e) {
+                console.error('[CARGAR PRECIOS ERROR]', e);
+                if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-red-400 font-bold">❌ Error al conectar con el servidor: ${e.message}</td></tr>`;
+            }
+        }
+
+        function setOperacionPrecios(op) {
+            operacionPreciosActual = op;
+            const btnAumentar = document.getElementById('btn-op-aumentar');
+            const btnRestar = document.getElementById('btn-op-restar');
+            const btnIgualar = document.getElementById('btn-op-igualar');
+            const signo = document.getElementById('label-signo-precios');
+
+            if (btnAumentar) btnAumentar.className = op === 'Aumentar' ? 'py-2 px-1 rounded-lg text-xs font-black uppercase transition-all bg-emerald-500 text-slate-950 shadow-md flex items-center justify-center gap-1' : 'py-2 px-1 rounded-lg text-xs font-bold uppercase transition-all text-gray-400 hover:text-white flex items-center justify-center gap-1';
+            if (btnRestar) btnRestar.className = op === 'Restar' ? 'py-2 px-1 rounded-lg text-xs font-black uppercase transition-all bg-red-500 text-white shadow-md flex items-center justify-center gap-1' : 'py-2 px-1 rounded-lg text-xs font-bold uppercase transition-all text-gray-400 hover:text-white flex items-center justify-center gap-1';
+            if (btnIgualar) btnIgualar.className = op === 'Igualar' ? 'py-2 px-1 rounded-lg text-xs font-black uppercase transition-all bg-blue-500 text-white shadow-md flex items-center justify-center gap-1' : 'py-2 px-1 rounded-lg text-xs font-bold uppercase transition-all text-gray-400 hover:text-white flex items-center justify-center gap-1';
+
+            if (signo) {
+                signo.innerText = op === 'Aumentar' ? '+' : (op === 'Restar' ? '-' : '=');
+                signo.className = op === 'Aumentar' ? 'absolute left-3 top-2 font-black text-sm text-emerald-400' : (op === 'Restar' ? 'absolute left-3 top-2 font-black text-sm text-red-400' : 'absolute left-3 top-2 font-black text-sm text-blue-400');
+            }
+
+            recalcularPreciosEnVivo();
+        }
+
+        function setMetodoPrecios(metodo) {
+            metodoPreciosActual = metodo;
+            const btnPorc = document.getElementById('btn-metodo-porcentaje');
+            const btnFijo = document.getElementById('btn-metodo-fijo');
+            const unidad = document.getElementById('label-unidad-precios');
+
+            if (btnPorc) btnPorc.className = metodo === 'porcentaje' ? 'py-2 px-2 rounded-lg text-xs font-black uppercase transition-all bg-brand-yellow text-slate-950 shadow-md flex items-center justify-center gap-1' : 'py-2 px-2 rounded-lg text-xs font-bold uppercase transition-all text-gray-400 hover:text-white flex items-center justify-center gap-1';
+            if (btnFijo) btnFijo.className = metodo === 'fijo' ? 'py-2 px-2 rounded-lg text-xs font-black uppercase transition-all bg-brand-yellow text-slate-950 shadow-md flex items-center justify-center gap-1' : 'py-2 px-2 rounded-lg text-xs font-bold uppercase transition-all text-gray-400 hover:text-white flex items-center justify-center gap-1';
+
+            if (unidad) {
+                unidad.innerText = metodo === 'porcentaje' ? '%' : '$';
+            }
+
+            recalcularPreciosEnVivo();
+        }
+
+        function filtrarProductosPrecios() {
+            const catSelect = document.getElementById('precios-filter-cat');
+            const searchInput = document.getElementById('precios-filter-search');
+
+            const cat = catSelect ? catSelect.value : 'TODAS';
+            const rawSearch = searchInput ? searchInput.value.trim() : '';
+            const searchNorm = normalizarTextoBusqueda(rawSearch);
+            const tokens = searchNorm.split(/\s+/).filter(t => t.length > 0);
+
+            catalogoPreciosFiltrado = catalogoPreciosData.filter(p => {
+                const matchCat = cat === 'TODAS' || (p.category && p.category.includes(cat));
+                if (!matchCat) return false;
+
+                if (tokens.length === 0) return true;
+
+                const nameNorm = normalizarTextoBusqueda(p.name);
+                const skuNorm = normalizarTextoBusqueda(p.sku);
+                const catNorm = normalizarTextoBusqueda(p.category);
+
+                return tokens.every(tok => nameNorm.includes(tok) || skuNorm.includes(tok) || catNorm.includes(tok));
+            });
+
+            recalcularPreciosEnVivo();
+        }
+
+        function recalcularPreciosEnVivo() {
+            const valorInput = document.getElementById('input-valor-precios');
+            const checkDecimales = document.getElementById('check-descartar-decimales');
+            
+            const valor = parseFloat(valorInput ? valorInput.value : 0) || 0;
+            const descartarDecimales = checkDecimales ? checkDecimales.checked : true;
+
+            catalogoPreciosFiltrado.forEach(p => {
+                if (!p.seleccionado) {
+                    p.precio_nuevo = p.precio_original;
+                    return;
+                }
+
+                let nuevo = p.precio_original;
+
+                if (operacionPreciosActual === 'Aumentar') {
+                    if (metodoPreciosActual === 'porcentaje') {
+                        nuevo = p.precio_original * (1 + valor / 100);
+                    } else {
+                        nuevo = p.precio_original + valor;
+                    }
+                } else if (operacionPreciosActual === 'Restar') {
+                    if (metodoPreciosActual === 'porcentaje') {
+                        nuevo = p.precio_original * (1 - valor / 100);
+                    } else {
+                        nuevo = Math.max(0, p.precio_original - valor);
+                    }
+                } else if (operacionPreciosActual === 'Igualar') {
+                    nuevo = valor;
+                }
+
+                if (descartarDecimales) {
+                    nuevo = Math.round(nuevo);
+                } else {
+                    nuevo = Math.round(nuevo * 100) / 100;
+                }
+
+                p.precio_nuevo = nuevo;
+            });
+
+            renderTablaPreciosUI();
+        }
+
+        function renderTablaPreciosUI() {
+            const tbody = document.getElementById('tbody-precios-masivo');
+            const countSel = document.getElementById('count-precios-seleccionados');
+            const countTotal = document.getElementById('count-precios-total');
+
+            const seleccionados = catalogoPreciosFiltrado.filter(p => p.seleccionado).length;
+            if (countSel) countSel.innerText = seleccionados;
+            if (countTotal) countTotal.innerText = catalogoPreciosFiltrado.length;
+
+            if (!tbody) return;
+
+            if (catalogoPreciosFiltrado.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-12 text-gray-400 font-bold">No se encontraron productos con los filtros seleccionados.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = catalogoPreciosFiltrado.map((p, idx) => {
+                const diff = p.precio_nuevo - p.precio_original;
+                const diffPorc = p.precio_original > 0 ? ((diff / p.precio_original) * 100).toFixed(1) : '0';
+                const diffBadge = diff > 0 
+                    ? `<span class="text-emerald-400 font-bold text-[11px]">+${diffPorc}% (+$${diff.toLocaleString('es-AR')})</span>`
+                    : (diff < 0 
+                        ? `<span class="text-red-400 font-bold text-[11px]">${diffPorc}% (-$${Math.abs(diff).toLocaleString('es-AR')})</span>`
+                        : `<span class="text-gray-400 text-[11px]">Sin cambio</span>`);
+
+                return `
+                    <tr class="hover:bg-white/5 transition-colors ${p.seleccionado ? 'bg-white/[0.02]' : 'opacity-40'}">
+                        <td class="py-2.5 px-3 text-center">
+                            <input type="checkbox" onchange="toggleSelectItemPrecio(${idx}, this.checked)" ${p.seleccionado ? 'checked' : ''} class="rounded bg-black/40 border-white/30 text-brand-yellow focus:ring-0">
+                        </td>
+                        <td class="py-2.5 px-3 font-bold text-white max-w-[280px] truncate" title="${p.name}">
+                            ${p.name}
+                        </td>
+                        <td class="py-2.5 px-3 font-mono text-[11px] text-amber-300/80">
+                            ${p.sku || '-'}
+                        </td>
+                        <td class="py-2.5 px-3 text-[11px] text-gray-400 max-w-[150px] truncate" title="${p.category}">
+                            ${p.category}
+                        </td>
+                        <td class="py-2.5 px-3 text-right font-mono text-gray-300 font-bold">
+                            $${p.precio_original.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                        </td>
+                        <td class="py-2.5 px-3 text-center">
+                            ${diffBadge}
+                        </td>
+                        <td class="py-2.5 px-3 text-right">
+                            <span class="inline-block px-2.5 py-1 rounded-xl bg-emerald-500/20 text-emerald-300 font-black font-mono text-xs border border-emerald-500/30">
+                                $${p.precio_nuevo.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                            </span>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function toggleSelectAllPrecios(checked) {
+            catalogoPreciosFiltrado.forEach(p => { p.seleccionado = checked; });
+            recalcularPreciosEnVivo();
+        }
+
+        function toggleSelectItemPrecio(idx, checked) {
+            if (catalogoPreciosFiltrado[idx]) {
+                catalogoPreciosFiltrado[idx].seleccionado = checked;
+                recalcularPreciosEnVivo();
+            }
+        }
+
+        async function aplicarAumentoPreciosMasivo() {
+            const seleccionados = catalogoPreciosFiltrado.filter(p => p.seleccionado && p.precio_nuevo !== p.precio_original);
+            
+            if (seleccionados.length === 0) {
+                alert('⚠️ No hay productos seleccionados con cambios de precio para aplicar.');
+                return;
+            }
+
+            const valorInput = document.getElementById('input-valor-precios');
+            const valor = valorInput ? valorInput.value : '';
+
+            const confirmacion = confirm(`¿Estás seguro de que deseás actualizar los precios de ${seleccionados.length} productos seleccionados?\n\nOperación: ${operacionPreciosActual} ${valor}${metodoPreciosActual === 'porcentaje' ? '%' : '$'}\n\nLos cambios se guardarán en Supabase y la IA Dani usará estos precios al instante.`);
+            if (!confirmacion) return;
+
+            const btn = document.getElementById('btn-guardar-precios-masivo');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="material-symbols-outlined text-base animate-spin">refresh</span> Guardando en Supabase...';
+            }
+
+            try {
+                const payload = {
+                    actualizaciones: seleccionados.map(p => ({
+                        id: p.id,
+                        sku: p.sku,
+                        name: p.name,
+                        precio_anterior: p.precio_original,
+                        precio_nuevo: p.precio_nuevo
+                    })),
+                    operacion: operacionPreciosActual,
+                    metodo: metodoPreciosActual,
+                    valor: valor,
+                    motivo: `Aumento masivo ${operacionPreciosActual} ${valor}${metodoPreciosActual === 'porcentaje' ? '%' : '$'}`,
+                    usuario: localStorage.getItem('crm_vendor_name') || 'Administrador'
+                };
+
+                const resp = await fetch('/api/crm/productos/actualizar-precios-masivo', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await resp.json();
+                if (data.success) {
+                    alert(`🎉 ¡ÉXITO!\n\nSe actualizaron correctamente ${data.actualizados} productos en Supabase y en la memoria de la IA Dani.`);
+                    await cargarCatalogoPreciosMasivo();
+                } else {
+                    alert(`❌ Error al actualizar: ${data.error || 'No se pudo guardar en Supabase.'}`);
+                }
+            } catch (err) {
+                alert(`❌ Error de conexión: ${err.message}`);
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<span class="material-symbols-outlined text-base">save</span> Aplicar y Guardar Cambios en Supabase';
+                }
+            }
+        }
+
+
         window.onload = checkAuth;
 
     </script>
