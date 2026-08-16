@@ -55,14 +55,45 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 let PRODUCT_CATALOG_CACHE = [];
 async function refreshProductCatalog() {
     try {
-        const { data } = await supabase
-            .from('dec_products')
-            .select('id, name, price, regular_price, category, stock_status, sku, status')
-            .or('status.eq.publish,status.eq.publicado')
-            .gt('price', 0);
-        if (data && data.length > 0) {
-            PRODUCT_CATALOG_CACHE = (data || []).filter(p => !p.sku?.includes('QD-DTRG-1320')).map(p => ({ ...p, sku: (p.sku || '').replace(/_ID\d+$/, '') }));
-            console.log(`[CATALOG CACHE] ${PRODUCT_CATALOG_CACHE.length} productos cargados en memoria RAM.`);
+        let allProducts = [];
+        let page = 0;
+        const pageSize = 1000;
+
+        while (true) {
+            const offset = page * pageSize;
+            const { data, error } = await supabase
+                .from('dec_products')
+                .select('id, name, price, category, stock_status, sku, status')
+                .gt('price', 0)
+                .order('name', { ascending: true })
+                .range(offset, offset + pageSize - 1);
+
+            if (error || !data || data.length === 0) break;
+            allProducts.push(...data);
+            if (data.length < pageSize) break;
+            page++;
+        }
+
+        if (allProducts.length > 0) {
+            PRODUCT_CATALOG_CACHE = allProducts.filter(p => !p.sku?.includes('QD-DTRG-1320')).map(p => ({
+                ...p,
+                price: parseFloat(p.price || 0),
+                regular_price: parseFloat(p.price || 0),
+                sku: (p.sku || '').replace(/_ID\d+$/, '')
+            }));
+            console.log(`[CATALOG CACHE] ✅ ${PRODUCT_CATALOG_CACHE.length} productos y variaciones cargados en memoria RAM.`);
+        } else {
+            // Fallback a archivo local JSON con los 3800 productos si Supabase no responde
+            try {
+                const localJsonPath = path.join(__dirname, 'catalogo_completo_3800.json');
+                if (fs.existsSync(localJsonPath)) {
+                    const localData = JSON.parse(fs.readFileSync(localJsonPath, 'utf-8'));
+                    PRODUCT_CATALOG_CACHE = localData.map(p => ({ ...p, regular_price: p.price }));
+                    console.log(`[CATALOG CACHE] ✅ ${PRODUCT_CATALOG_CACHE.length} productos cargados desde archivo local JSON.`);
+                }
+            } catch (errLocal) {
+                console.error('[CATALOG CACHE LOCAL FALLBACK ERROR]', errLocal.message);
+            }
         }
     } catch (e) {
         console.error('[CATALOG CACHE ERROR]', e.message);
@@ -2258,15 +2289,30 @@ app.post('/api/products/bulk-upload-images', async (req, res) => {
 // GESTOR DE ACTUALIZACIÓN MASIVA DE PRECIOS (% Y MONTO FIJO)
 // =========================================================================
 
-// 1. Obtener lista completa de productos para la grilla de precios
+// 1. Obtener lista completa de productos para la grilla de precios (3.500+ productos y 32 categorías)
 app.get('/api/crm/catalogo-precios-lista', async (req, res) => {
     try {
-        let { data, error } = await supabase
-            .from('dec_products')
-            .select('id, sku, name, price, category, stock_status, status')
-            .gt('price', 0)
-            .order('name', { ascending: true })
-            .limit(5000);
+        let data = [];
+        if (PRODUCT_CATALOG_CACHE && PRODUCT_CATALOG_CACHE.length > 500) {
+            data = PRODUCT_CATALOG_CACHE;
+        } else {
+            let page = 0;
+            const pageSize = 1000;
+            while (true) {
+                const offset = page * pageSize;
+                const { data: pageData, error: pageErr } = await supabase
+                    .from('dec_products')
+                    .select('id, sku, name, price, category, stock_status, status')
+                    .gt('price', 0)
+                    .order('name', { ascending: true })
+                    .range(offset, offset + pageSize - 1);
+
+                if (pageErr || !pageData || pageData.length === 0) break;
+                data.push(...pageData);
+                if (pageData.length < pageSize) break;
+                page++;
+            }
+        }
 
         if (error || !data || data.length === 0) {
             console.warn('[PRECIOS] Fallback a caché local:', error ? error.message : 'sin datos');
@@ -2311,23 +2357,49 @@ app.get('/api/crm/catalogo-precios-lista', async (req, res) => {
 
         const catMap = {
             'SAHUMERIOS': 'Sahumerios & Aromas',
+            'SAHUMERIOS - MINORISTA': 'Sahumerios & Aromas',
             'APLICADORES': 'Aplicadores & Gatillos',
             'AUTOMOVIL': 'Automotor',
+            'BAÑO': 'Baño & Sanitarios',
             'BOLSAS': 'Bolsas de Residuo & Consorcio',
+            'BURLETE': 'Burletes & Aislantes',
             'BURLETES': 'Burletes & Aislantes',
-            'CEPILLOS': 'Escobillones & Cepillos',
+            'CABOS': 'Cabos & Mangos',
+            'CABOS METALICOS': 'Cabos & Mangos',
+            'CEPILLOS': 'Cepillos & Escobas',
             'COCINA': 'Cocina & Desengrasantes',
-            'ESCOBILLONES': 'Escobillones & Cepillos',
+            'CONCENTRADOS': 'Pastas & Concentrados',
+            'PASTAS Y CONCENTRADOS': 'Pastas & Concentrados',
+            'DIFUSORES': 'Difusores & Aromatizadores',
+            'ENVASES': 'Envases & Bidones',
+            'ESCOBILLONES': 'Escobillones, Escobas & Cepillos',
+            'ESCOBAS': 'Escobillones, Escobas & Cepillos',
             'ESPONJAS': 'Esponjas & Fibras',
+            'FOCOS': 'Focos & Electricidad',
             'HIGIENE PERSONAL': 'Higiene Personal',
             'INSECTICIDAS': 'Insecticidas & Repelentes',
             'JABON EN PAN': 'Jabón en Pan',
             'JABON EN POLVO': 'Jabón en Polvo',
-            'KIOSCO': 'Kiosco & Bazar',
-            'KIOSCO Y VARIOS': 'Kiosco & Bazar',
-            'LIQUIDOS MINORISTA': 'Líquidos Minorista',
+            'JABON TOCADOR': 'Higiene Personal',
+            'JARDIN': 'Jardín & Espacios Verdes',
+            'JARDÍN': 'Jardín & Espacios Verdes',
+            'KIOSCO': 'Kiosco & Varios',
+            'KIOSCO Y VARIOS': 'Kiosco & Varios',
+            'LIQUIDOS': 'Productos Líquidos (Limpieza & Ropa)',
+            'LIQUIDOS MINORISTA': 'Productos Líquidos (Limpieza & Ropa)',
+            'PRODUCTOS LIQUIDOS': 'Productos Líquidos (Limpieza & Ropa)',
+            'PAPELES': 'Papeles & Higiene',
+            'PERFUMERIA': 'Perfumería & Fragancias',
+            'PERFUMINAS': 'Perfuminas & Textiles',
+            'TEXTILES': 'Perfuminas & Textiles',
+            'PILETA': 'Cloro & Piletas',
+            'PLASTICO': 'Plásticos & Bazar',
+            'REPELENTES': 'Insecticidas & Repelentes',
             'SECADORES': 'Secadores de Piso',
-            'TEXTILES': 'Perfuminas & Textil'
+            'TOALLITAS': 'Toallitas Húmedas & Paños',
+            'TRAPO DE PISO': 'Trapos de Piso & Rejillas',
+            'CLORO': 'Cloro & Piletas',
+            'CERA': 'Ceras & Pisos'
         };
 
         const categoriasSet = new Set();
