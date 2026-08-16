@@ -224,8 +224,6 @@ Los tickets impresos desde plataformas externas (Pedix / WooCommerce) contenían
    * Al guardar, se actualiza `dec_products` en Supabase y se refresca `PRODUCT_CATALOG_CACHE` en RAM de inmediato.
    * Dani cotiza automáticamente con los nuevos precios vigentes en el chat.
 
----
-
 ## 💼 12. POLÍTICAS COMERCIALES Y DE LOGÍSTICA OFICIALES
 * **Compra Mínima Inicial Mayorista:** **$80.000** (para clientes nuevos).
 * **Retiro en Local Mayorista:** A partir de **$2.500** (exclusivamente para clientes mayoristas ya registrados).
@@ -235,4 +233,22 @@ Los tickets impresos desde plataformas externas (Pedix / WooCommerce) contenían
 
 ---
 
+## 📊 13. TABLERO KANBAN RESPONSIVO, ARCHIVO HISTÓRICO Y ESTADÍSTICAS B2B
+
+### 🛠️ Especificaciones Técnicas:
+1. **Tablero Kanban con Scroll Interno Independiente:**
+   * Las 5 columnas (*Presupuestos, Confirmados, Pagados, Despachados, Cancelados*) cuentan con altura fija (`max-h-[76vh]`) y scrollbar interno suave (`max-h-[66vh] overflow-y-auto`).
+   * En dispositivos móviles (pantallas pequeñas y tablets), el contenedor se transforma en un carrusel horizontal táctil con ajuste por snap (`snap-x snap-mandatory flex overflow-x-auto gap-4`).
+2. **Filtros Temporales y Archivo Histórico:**
+   * Selector rápido por: `Hoy`, `Esta Semana`, `Este Mes` (por defecto), `Este Año (2026)`, `Todo el Histórico` y `📦 Archivados`.
+   * Botón de **Archivar / Desarchivar** en cada tarjeta para ocultar del flujo diario pedidos viejos o cancelados sin eliminarlos de la base de datos.
+3. **Módulo de Estadísticas & Analíticas B2B (`view-metricas`):**
+   * **KPIs en Tiempo Real:** Facturación Total Cobrada ($), Ticket Promedio Mayorista ($), Tasa de Conversión (%) y Unidades Totales Vendidas.
+   * **Top 10 Productos Más Vendidos:** Ranking ordenado por unidades con barra proporcional de volumen y total recaudado.
+   * **Top 10 Clientes Mayoristas:** Ranking por volumen acumulado de compras, frecuencia y localidad.
+   * **Desglose Logístico & Categorías:** Distribución de envíos (*Mostto Entre Ríos +5%, Retiro en Local, Transporte Nacional*) y demanda por rubro.
+
+---
+
 > 🔒 *Cualquier modificación al backend, frontend o base de datos debe respetar rigurosamente los principios establecidos en esta Constitución.*
+
