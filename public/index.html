@@ -73,6 +73,37 @@
             user-select: text !important;
             -webkit-user-select: text !important;
         }
+    
+        /* Eliminar totalmente la barra de desplazamiento horizontal nativa del sistema */
+        .scrollbar-none::-webkit-scrollbar,
+        .drag-scroll-container::-webkit-scrollbar {
+            display: none !important;
+            width: 0 !important;
+            height: 0 !important;
+        }
+        .scrollbar-none,
+        .drag-scroll-container {
+            -ms-overflow-style: none !important;
+            scrollbar-width: none !important;
+        }
+
+        /* Cursor moderno de manito deslizable (Grab / Grabbing) */
+        .drag-scroll-container {
+            cursor: grab;
+            cursor: -webkit-grab;
+            user-select: none;
+            -webkit-user-select: none;
+            scroll-behavior: smooth;
+        }
+        .drag-scroll-container.is-dragging {
+            cursor: grabbing !important;
+            cursor: -webkit-grabbing !important;
+            scroll-behavior: auto !important;
+        }
+        .drag-scroll-container * {
+            user-select: none;
+            -webkit-user-drag: none;
+        }
     </style>
 </head>
 <body class="flex flex-col min-h-screen">
@@ -192,37 +223,50 @@
 
         <main class="flex-grow max-w-7xl mx-auto w-full px-3 sm:px-6 py-4 sm:py-6 space-y-6">
 
-            <!-- Tabs de Navegación (Horizontal Swipeable en Móvil, Compacto en Desktop) -->
-            <div class="w-full overflow-x-auto pb-1 border-b border-white/10 scrollbar-none">
-                <div class="flex items-center gap-1.5 bg-white/5 p-1 rounded-2xl border border-white/10 w-max">
-                    <button id="tab-kanban-btn" onclick="switchTab('kanban')" class="tab-active px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl font-title text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0">
-                        <span class="material-symbols-outlined text-[16px]">view_kanban</span> Embudo de Pedidos
-                    </button>
-                    <button id="tab-chat-btn" onclick="switchTab('chat')" class="tab-inactive px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl font-title text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0">
-                        <span class="material-symbols-outlined text-[16px] text-blue-400">forum</span> Chat en Vivo
-                    </button>
-                    <button id="tab-catalogo-btn" onclick="switchTab('catalogo')" class="tab-inactive px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl font-title text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0">
-                        <span class="material-symbols-outlined text-[16px] text-blue-400">edit_calendar</span> Catálogo e IA
-                    </button>
-                    <button id="tab-metricas-btn" onclick="switchTab('metricas')" class="tab-inactive px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl font-title text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0">
-                        <span class="material-symbols-outlined text-[16px] text-emerald-400">analytics</span> Estadísticas
-                    </button>
-                    <button id="tab-stock-btn" onclick="switchTab('stock')" class="tab-inactive px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl font-title text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0">
-                        <span class="material-symbols-outlined text-[16px] text-red-400">inventory_2</span> Alertas Stock
-                    </button>
-                    <button id="tab-alertas-btn" onclick="switchTab('alertas')" class="tab-inactive px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl font-title text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0">
-                        <span class="material-symbols-outlined text-[16px] text-amber-400">notifications_active</span> Alertas $80k
-                    </button>
-                    <button id="tab-clientes-btn" onclick="switchTab('clientes')" class="tab-inactive px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl font-title text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0">
-                        <span class="material-symbols-outlined text-[16px] text-purple-400">group</span> Clientes
-                    </button>
-                    <button id="tab-users-btn" onclick="switchTab('users')" class="tab-inactive px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl font-title text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0">
-                        <span class="material-symbols-outlined text-[16px] text-amber-400">admin_panel_settings</span> Usuarios
-                    </button>
-                    <button id="tab-audit-btn" onclick="switchTab('audit')" class="tab-inactive px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl font-title text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0">
-                        <span class="material-symbols-outlined text-[16px] text-purple-400">history</span> Auditoría
-                    </button>
+            <!-- Tabs de Navegación (Sleek Drag-to-Scroll con Manito y Flechas Flotantes) -->
+            <div class="relative w-full border-b border-white/10 pb-1 group">
+                <!-- Flecha Flotante Izquierda -->
+                <button type="button" id="nav-tab-scroll-left" onclick="scrollNavTabs(-250)" class="opacity-0 pointer-events-none transition-all duration-300 absolute left-0 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-slate-900/90 border border-white/20 text-white shadow-xl flex items-center justify-center hover:bg-brand-yellow hover:text-slate-950 hover:border-brand-yellow cursor-pointer backdrop-blur-md">
+                    <span class="material-symbols-outlined text-[18px]">chevron_left</span>
+                </button>
+
+                <!-- Contenedor Deslizable con Manito -->
+                <div id="nav-tabs-scroll-container" class="w-full overflow-x-auto pb-1 scrollbar-none drag-scroll-container select-none">
+                    <div class="flex items-center gap-1.5 bg-white/5 p-1 rounded-2xl border border-white/10 w-max">
+                        <button id="tab-kanban-btn" onclick="switchTab('kanban')" class="tab-active px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl font-title text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer">
+                            <span class="material-symbols-outlined text-[16px]">view_kanban</span> Embudo de Pedidos
+                        </button>
+                        <button id="tab-chat-btn" onclick="switchTab('chat')" class="tab-inactive px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl font-title text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer">
+                            <span class="material-symbols-outlined text-[16px] text-blue-400">forum</span> Chat en Vivo
+                        </button>
+                        <button id="tab-catalogo-btn" onclick="switchTab('catalogo')" class="tab-inactive px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl font-title text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer">
+                            <span class="material-symbols-outlined text-[16px] text-blue-400">edit_calendar</span> Catálogo e IA
+                        </button>
+                        <button id="tab-metricas-btn" onclick="switchTab('metricas')" class="tab-inactive px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl font-title text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer">
+                            <span class="material-symbols-outlined text-[16px] text-emerald-400">analytics</span> Estadísticas
+                        </button>
+                        <button id="tab-stock-btn" onclick="switchTab('stock')" class="tab-inactive px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl font-title text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer">
+                            <span class="material-symbols-outlined text-[16px] text-red-400">inventory_2</span> Alertas Stock
+                        </button>
+                        <button id="tab-alertas-btn" onclick="switchTab('alertas')" class="tab-inactive px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl font-title text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer">
+                            <span class="material-symbols-outlined text-[16px] text-amber-400">notifications_active</span> Alertas $80k
+                        </button>
+                        <button id="tab-clientes-btn" onclick="switchTab('clientes')" class="tab-inactive px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl font-title text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer">
+                            <span class="material-symbols-outlined text-[16px] text-purple-400">group</span> Clientes
+                        </button>
+                        <button id="tab-users-btn" onclick="switchTab('users')" class="tab-inactive px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl font-title text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer">
+                            <span class="material-symbols-outlined text-[16px] text-amber-400">admin_panel_settings</span> Usuarios
+                        </button>
+                        <button id="tab-audit-btn" onclick="switchTab('audit')" class="tab-inactive px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl font-title text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer">
+                            <span class="material-symbols-outlined text-[16px] text-purple-400">history</span> Auditoría
+                        </button>
+                    </div>
                 </div>
+
+                <!-- Flecha Flotante Derecha -->
+                <button type="button" id="nav-tab-scroll-right" onclick="scrollNavTabs(250)" class="opacity-0 pointer-events-none transition-all duration-300 absolute right-0 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-slate-900/90 border border-white/20 text-white shadow-xl flex items-center justify-center hover:bg-brand-yellow hover:text-slate-950 hover:border-brand-yellow cursor-pointer backdrop-blur-md">
+                    <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+                </button>
             </div>
 
             <!-- TAB 1: EMBUDO DE PEDIDOS REDISEÑADO -->
@@ -1840,13 +1884,111 @@ ightarrow$ Ventas</p>
         let clientesData = [], pedidosData = [], alertasData = [], conversacionesData = [];
         let selectedClienteId = null, selectedClienteObj = null;
 
+        
+        // =========================================================================
+        // NAVEGACIÓN MODERNA: DRAG-TO-SCROLL CON MANITO Y RUEDA DE MOUSE
+        // =========================================================================
+        function scrollNavTabs(amount) {
+            const container = document.getElementById('nav-tabs-scroll-container');
+            if (container) {
+                container.scrollBy({ left: amount, behavior: 'smooth' });
+            }
+        }
+
+        function initDragToScrollNav() {
+            const slider = document.getElementById('nav-tabs-scroll-container');
+            const btnLeft = document.getElementById('nav-tab-scroll-left');
+            const btnRight = document.getElementById('nav-tab-scroll-right');
+            if (!slider) return;
+
+            let isDown = false;
+            let startX = 0;
+            let scrollLeftPos = 0;
+            let hasMoved = false;
+
+            function updateArrows() {
+                if (!slider) return;
+                const maxScroll = slider.scrollWidth - slider.clientWidth;
+                if (btnLeft) {
+                    if (slider.scrollLeft > 15) {
+                        btnLeft.classList.remove('opacity-0', 'pointer-events-none');
+                        btnLeft.classList.add('opacity-100');
+                    } else {
+                        btnLeft.classList.add('opacity-0', 'pointer-events-none');
+                        btnLeft.classList.remove('opacity-100');
+                    }
+                }
+                if (btnRight) {
+                    if (slider.scrollLeft < maxScroll - 15 && maxScroll > 10) {
+                        btnRight.classList.remove('opacity-0', 'pointer-events-none');
+                        btnRight.classList.add('opacity-100');
+                    } else {
+                        btnRight.classList.add('opacity-0', 'pointer-events-none');
+                        btnRight.classList.remove('opacity-100');
+                    }
+                }
+            }
+
+            slider.addEventListener('scroll', updateArrows, { passive: true });
+            window.addEventListener('resize', updateArrows);
+            setTimeout(updateArrows, 300);
+
+            // Arrastre con mouse (Drag-to-Scroll con Manito)
+            slider.addEventListener('mousedown', (e) => {
+                isDown = true;
+                hasMoved = false;
+                slider.classList.add('is-dragging');
+                startX = e.pageX - slider.offsetLeft;
+                scrollLeftPos = slider.scrollLeft;
+            });
+
+            slider.addEventListener('mouseleave', () => {
+                isDown = false;
+                slider.classList.remove('is-dragging');
+            });
+
+            slider.addEventListener('mouseup', () => {
+                isDown = false;
+                slider.classList.remove('is-dragging');
+                setTimeout(() => { hasMoved = false; }, 50);
+            });
+
+            slider.addEventListener('mousemove', (e) => {
+                if (!isDown) return;
+                e.preventDefault();
+                const x = e.pageX - slider.offsetLeft;
+                const walk = (x - startX) * 1.5;
+                if (Math.abs(walk) > 4) hasMoved = true;
+                slider.scrollLeft = scrollLeftPos - walk;
+            });
+
+            // Evitar clic accidental en pestaña si el usuario estaba arrastrando
+            slider.querySelectorAll('button').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    if (hasMoved) {
+                        e.preventDefault();
+                        e.stopImmediatePropagation();
+                    }
+                }, true);
+            });
+
+            // Desplazamiento horizontal con la rueda del mouse
+            slider.addEventListener('wheel', (e) => {
+                if (e.deltaY !== 0) {
+                    e.preventDefault();
+                    slider.scrollLeft += e.deltaY;
+                    updateArrows();
+                }
+            }, { passive: false });
+        }
+
         function checkAuth() {
             const token = localStorage.getItem('dec_crm_auth');
             if (token === 'granted') {
                 document.getElementById('login-modal').classList.add('hidden');
                 document.getElementById('crm-app-content').classList.remove('hidden');
                 document.getElementById('crm-app-content').classList.add('flex');
-                init();
+                init(); initDragToScrollNav();
             } else {
                 document.getElementById('login-modal').classList.remove('hidden');
                 document.getElementById('crm-app-content').classList.add('hidden');
