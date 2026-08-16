@@ -795,15 +795,18 @@ ightarrow$ Ventas</p>
                                         <!-- 1. Operación -->
                                         <div>
                                             <label class="block text-[11px] font-extrabold uppercase text-gray-300 tracking-wider mb-2">1. Operación</label>
-                                            <div class="grid grid-cols-3 gap-1.5 bg-black/40 p-1.5 rounded-xl border border-white/10">
-                                                <button type="button" id="btn-op-aumentar" onclick="setOperacionPrecios('Aumentar')" class="py-2 px-2.5 rounded-lg text-[11px] font-black uppercase transition-all bg-emerald-500 text-slate-950 shadow-md flex items-center justify-center gap-1 whitespace-nowrap">
-                                                    <span class="material-symbols-outlined text-[14px]">arrow_upward</span> Aumentar
+                                            <div class="grid grid-cols-3 gap-1 bg-black/40 p-1.5 rounded-xl border border-white/10">
+                                                <button type="button" id="btn-op-aumentar" onclick="setOperacionPrecios('Aumentar')" class="py-2 px-1 rounded-lg text-[10px] sm:text-xs font-bold uppercase transition-all bg-emerald-500 text-slate-950 shadow-md flex items-center justify-center gap-1 overflow-hidden cursor-pointer">
+                                                    <span class="material-symbols-outlined text-[13px] sm:text-[14px]">arrow_upward</span>
+                                                    <span class="truncate">Aumentar</span>
                                                 </button>
-                                                <button type="button" id="btn-op-restar" onclick="setOperacionPrecios('Restar')" class="py-2 px-1 rounded-lg text-xs font-bold uppercase transition-all text-gray-400 hover:text-white flex items-center justify-center gap-1">
-                                                    <span class="material-symbols-outlined text-[14px]">arrow_downward</span> Restar
+                                                <button type="button" id="btn-op-restar" onclick="setOperacionPrecios('Restar')" class="py-2 px-1 rounded-lg text-[10px] sm:text-xs font-bold uppercase transition-all text-gray-400 hover:text-white flex items-center justify-center gap-1 overflow-hidden cursor-pointer">
+                                                    <span class="material-symbols-outlined text-[13px] sm:text-[14px]">arrow_downward</span>
+                                                    <span class="truncate">Restar</span>
                                                 </button>
-                                                <button type="button" id="btn-op-igualar" onclick="setOperacionPrecios('Igualar')" class="py-2 px-1 rounded-lg text-xs font-bold uppercase transition-all text-gray-400 hover:text-white flex items-center justify-center gap-1">
-                                                    <span class="material-symbols-outlined text-[14px]">equal</span> Fijar
+                                                <button type="button" id="btn-op-igualar" onclick="setOperacionPrecios('Igualar')" class="py-2 px-1 rounded-lg text-[10px] sm:text-xs font-bold uppercase transition-all text-gray-400 hover:text-white flex items-center justify-center gap-1 overflow-hidden cursor-pointer">
+                                                    <span class="material-symbols-outlined text-[13px] sm:text-[14px]">equal</span>
+                                                    <span class="truncate">Fijar</span>
                                                 </button>
                                             </div>
                                         </div>
@@ -6326,9 +6329,9 @@ ightarrow$ Ventas</p>
             const btnIgualar = document.getElementById('btn-op-igualar');
             const signo = document.getElementById('label-signo-precios');
 
-            if (btnAumentar) btnAumentar.className = op === 'Aumentar' ? 'py-2 px-1 rounded-lg text-xs font-black uppercase transition-all bg-emerald-500 text-slate-950 shadow-md flex items-center justify-center gap-1' : 'py-2 px-1 rounded-lg text-xs font-bold uppercase transition-all text-gray-400 hover:text-white flex items-center justify-center gap-1';
-            if (btnRestar) btnRestar.className = op === 'Restar' ? 'py-2 px-1 rounded-lg text-xs font-black uppercase transition-all bg-red-500 text-white shadow-md flex items-center justify-center gap-1' : 'py-2 px-1 rounded-lg text-xs font-bold uppercase transition-all text-gray-400 hover:text-white flex items-center justify-center gap-1';
-            if (btnIgualar) btnIgualar.className = op === 'Igualar' ? 'py-2 px-1 rounded-lg text-xs font-black uppercase transition-all bg-blue-500 text-white shadow-md flex items-center justify-center gap-1' : 'py-2 px-1 rounded-lg text-xs font-bold uppercase transition-all text-gray-400 hover:text-white flex items-center justify-center gap-1';
+            if (btnAumentar) btnAumentar.className = op === 'Aumentar' ? 'py-2 px-1 rounded-lg text-[10px] sm:text-xs font-bold uppercase transition-all bg-emerald-500 text-slate-950 shadow-md flex items-center justify-center gap-1 overflow-hidden cursor-pointer' : 'py-2 px-1 rounded-lg text-[10px] sm:text-xs font-bold uppercase transition-all text-gray-400 hover:text-white flex items-center justify-center gap-1 overflow-hidden cursor-pointer';
+            if (btnRestar) btnRestar.className = op === 'Restar' ? 'py-2 px-1 rounded-lg text-[10px] sm:text-xs font-bold uppercase transition-all bg-red-500 text-white shadow-md flex items-center justify-center gap-1 overflow-hidden cursor-pointer' : 'py-2 px-1 rounded-lg text-[10px] sm:text-xs font-bold uppercase transition-all text-gray-400 hover:text-white flex items-center justify-center gap-1 overflow-hidden cursor-pointer';
+            if (btnIgualar) btnIgualar.className = op === 'Igualar' ? 'py-2 px-1 rounded-lg text-[10px] sm:text-xs font-bold uppercase transition-all bg-blue-500 text-white shadow-md flex items-center justify-center gap-1 overflow-hidden cursor-pointer' : 'py-2 px-1 rounded-lg text-[10px] sm:text-xs font-bold uppercase transition-all text-gray-400 hover:text-white flex items-center justify-center gap-1 overflow-hidden cursor-pointer';
 
             if (signo) {
                 signo.innerText = op === 'Aumentar' ? '+' : (op === 'Restar' ? '-' : '=');

@@ -2263,20 +2263,19 @@ app.get('/api/crm/catalogo-precios-lista', async (req, res) => {
     try {
         let { data, error } = await supabase
             .from('dec_products')
-            .select('id, sku, name, price, regular_price, category, stock_status, status')
-            .or('status.eq.publish,status.eq.publicado,status.is.null')
+            .select('id, sku, name, price, category, stock_status, status')
             .gt('price', 0)
             .order('name', { ascending: true })
             .limit(5000);
 
         if (error || !data || data.length === 0) {
+            console.warn('[PRECIOS] Fallback a caché local:', error ? error.message : 'sin datos');
             data = PRODUCT_CATALOG_CACHE.map((p, idx) => ({
                 id: p.id || `cache_${idx}`,
                 sku: p.sku || `QD-${idx}`,
                 name: p.name,
                 price: parseFloat(p.price || 0),
-                regular_price: parseFloat(p.regular_price || p.price || 0),
-                category: p.category || inferirCategoriaPorNombre(p.name),
+                category: p.category,
                 stock_status: p.stock_status || 'instock',
                 status: 'publish'
             }));
@@ -2284,13 +2283,13 @@ app.get('/api/crm/catalogo-precios-lista', async (req, res) => {
 
         function inferirCategoriaPorNombre(name) {
             const n = (name || '').toUpperCase();
-            if (n.includes('SAHUMERIO') || n.includes('AMOGH') || n.includes('CONO') || n.includes('AROMANZA') || n.includes('ILUMINARTE') || n.includes('SAGRADA MADRE') || n.includes('TUK TUK')) return 'Sahumerios & Aromas';
+            if (n.includes('SAHUMERIO') || n.includes('AMOGH') || n.includes('CONO') || n.includes('AROMANZA') || n.includes('ILUMINARTE') || n.includes('SAGRADA MADRE') || n.includes('TUK TUK') || n.includes('PORTA SAHUMERIO')) return 'Sahumerios & Aromas';
             if (n.includes('CLORO') || n.includes('BOYA') || n.includes('ALGUICIDA') || n.includes('CLARIFICANTE') || n.includes('PASTILLA')) return 'Cloro & Piletas';
             if (n.includes('DETERGENTE') || n.includes('DESENGRASANTE') || n.includes('LAVAVAJILLA') || n.includes('COCINA')) return 'Detergentes & Lavavajillas';
             if (n.includes('DESODORANTE') || n.includes('PISO') || n.includes('LISOFORM') || n.includes('LYSOFORM') || n.includes('POETT')) return 'Desodorantes de Piso & Multiuso';
             if (n.includes('SUAVIZANTE')) return 'Suavizantes para Ropa';
             if (n.includes('LAVANDINA')) return 'Lavandinas & Desinfectantes';
-            if (n.includes('JABON') || n.includes('JABÓN') || n.includes('ALA') || n.includes('ARIEL') || n.includes('SKIP')) return 'Jabones Líquidos (Ropa / Lavandería)';
+            if (n.includes('JABON') || n.includes('JABÓN') || n.includes('ALA') || n.includes('ARIEL') || n.includes('SKIP') || n.includes('LAVADO ROPA')) return 'Jabones Líquidos (Ropa / Lavandería)';
             if (n.includes('CONCENTRADO') || n.includes('PASTA')) return 'Pastas & Concentrados';
             if (n.includes('COMBO')) return 'Combos Emprendedores';
             if (n.includes('AUTO') || n.includes('SILICONA') || n.includes('SHAMPOO') || n.includes('REVIVIDOR')) return 'Automotor';
@@ -2310,12 +2309,36 @@ app.get('/api/crm/catalogo-precios-lista', async (req, res) => {
             return 'Química General';
         }
 
+        const catMap = {
+            'SAHUMERIOS': 'Sahumerios & Aromas',
+            'APLICADORES': 'Aplicadores & Gatillos',
+            'AUTOMOVIL': 'Automotor',
+            'BOLSAS': 'Bolsas de Residuo & Consorcio',
+            'BURLETES': 'Burletes & Aislantes',
+            'CEPILLOS': 'Escobillones & Cepillos',
+            'COCINA': 'Cocina & Desengrasantes',
+            'ESCOBILLONES': 'Escobillones & Cepillos',
+            'ESPONJAS': 'Esponjas & Fibras',
+            'HIGIENE PERSONAL': 'Higiene Personal',
+            'INSECTICIDAS': 'Insecticidas & Repelentes',
+            'JABON EN PAN': 'Jabón en Pan',
+            'JABON EN POLVO': 'Jabón en Polvo',
+            'KIOSCO': 'Kiosco & Bazar',
+            'KIOSCO Y VARIOS': 'Kiosco & Bazar',
+            'LIQUIDOS MINORISTA': 'Líquidos Minorista',
+            'SECADORES': 'Secadores de Piso',
+            'TEXTILES': 'Perfuminas & Textil'
+        };
+
         const categoriasSet = new Set();
         const productosFormateados = (data || []).filter(p => p.name).map((p, idx) => {
-            let cat = p.category;
-            if (!cat || cat.trim() === '' || cat === 'General' || cat === 'Uncategorized' || cat.includes('SELECCIONA')) {
+            let cat = (p.category || '').trim();
+            if (!cat || cat === 'General' || cat === 'Uncategorized' || cat.includes('SELECCIONA')) {
                 cat = inferirCategoriaPorNombre(p.name);
+            } else if (catMap[cat.toUpperCase()]) {
+                cat = catMap[cat.toUpperCase()];
             }
+
             if (cat) {
                 cat.split(',').forEach(c => {
                     const clean = c.trim().replace(/\(Padre\)/gi, '').trim();
@@ -2324,12 +2347,13 @@ app.get('/api/crm/catalogo-precios-lista', async (req, res) => {
                     }
                 });
             }
+
             return {
                 id: p.id || `prod_${idx}`,
                 sku: (p.sku || '').replace(/_ID\d+$/, ''),
                 name: p.name,
-                price: parseFloat(p.price || p.regular_price || 0),
-                regular_price: parseFloat(p.regular_price || p.price || 0),
+                price: parseFloat(p.price || 0),
+                regular_price: parseFloat(p.price || 0),
                 category: cat,
                 stock_status: p.stock_status || 'instock',
                 status: p.status || 'publish'
@@ -2367,7 +2391,7 @@ app.post('/api/crm/productos/actualizar-precios-masivo', async (req, res) => {
 
                 let updateQuery = supabase.from('dec_products').update({
                     price: nuevoPrecio,
-                    regular_price: nuevoPrecio
+                    updated_at: new Date().toISOString()
                 });
 
                 if (item.id && !String(item.id).startsWith('cache_')) {
