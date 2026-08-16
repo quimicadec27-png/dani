@@ -201,17 +201,17 @@
                     <button id="tab-chat-btn" onclick="switchTab('chat')" class="tab-inactive px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl font-title text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0">
                         <span class="material-symbols-outlined text-[16px] text-blue-400">forum</span> Chat en Vivo
                     </button>
+                    <button id="tab-catalogo-btn" onclick="switchTab('catalogo')" class="tab-inactive px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl font-title text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0">
+                        <span class="material-symbols-outlined text-[16px] text-blue-400">edit_calendar</span> Catálogo e IA
+                    </button>
+                    <button id="tab-metricas-btn" onclick="switchTab('metricas')" class="tab-inactive px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl font-title text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0">
+                        <span class="material-symbols-outlined text-[16px] text-emerald-400">analytics</span> Estadísticas
+                    </button>
                     <button id="tab-stock-btn" onclick="switchTab('stock')" class="tab-inactive px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl font-title text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0">
                         <span class="material-symbols-outlined text-[16px] text-red-400">inventory_2</span> Alertas Stock
                     </button>
                     <button id="tab-alertas-btn" onclick="switchTab('alertas')" class="tab-inactive px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl font-title text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0">
                         <span class="material-symbols-outlined text-[16px] text-amber-400">notifications_active</span> Alertas $80k
-                    </button>
-                    <button id="tab-metricas-btn" onclick="switchTab('metricas')" class="tab-inactive px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl font-title text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0">
-                        <span class="material-symbols-outlined text-[16px] text-emerald-400">analytics</span> Estadísticas
-                    </button>
-                    <button id="tab-catalogo-btn" onclick="switchTab('catalogo')" class="tab-inactive px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl font-title text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0">
-                        <span class="material-symbols-outlined text-[16px] text-blue-400">edit_calendar</span> Catálogo e IA
                     </button>
                     <button id="tab-clientes-btn" onclick="switchTab('clientes')" class="tab-inactive px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl font-title text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0">
                         <span class="material-symbols-outlined text-[16px] text-purple-400">group</span> Clientes
@@ -4356,7 +4356,7 @@ ightarrow$ Ventas</p>
         }
 
                 function switchTab(tab) {
-            const tabs = ['kanban', 'chat', 'stock', 'alertas', 'metricas', 'catalogo', 'clientes', 'users', 'audit'];
+            const tabs = ['kanban', 'chat', 'catalogo', 'metricas', 'stock', 'alertas', 'clientes', 'users', 'audit'];
             tabs.forEach(t => {
                 const view = document.getElementById(`view-${t}`);
                 const btn = document.getElementById(`tab-${t}-btn`);
