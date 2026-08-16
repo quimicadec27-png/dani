@@ -2314,8 +2314,8 @@ app.get('/api/crm/catalogo-precios-lista', async (req, res) => {
             }
         }
 
-        if (error || !data || data.length === 0) {
-            console.warn('[PRECIOS] Fallback a caché local:', error ? error.message : 'sin datos');
+        if (!data || data.length === 0) {
+            console.warn('[PRECIOS] Fallback a caché local: sin datos');
             data = PRODUCT_CATALOG_CACHE.map((p, idx) => ({
                 id: p.id || `cache_${idx}`,
                 sku: p.sku || `QD-${idx}`,
