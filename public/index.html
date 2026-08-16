@@ -677,24 +677,38 @@ ightarrow$ Ventas</p>
 
 
             <!-- TAB 4: GESTIÓN CATÁLOGO E IA -->
-            <!-- TAB 4: CATÁLOGO E IA CON MENÚ LATERAL DE SUB-PESTAÑAS -->
+            <!-- TAB 4: CATÁLOGO E IA CON MENÚ LATERAL EN DESKTOP Y MODAL EMERGENTE EN MÓVIL -->
             <section id="view-catalogo" class="hidden space-y-6">
-                <div class="glass-panel p-6 rounded-2xl space-y-6 max-w-6xl mx-auto">
-                    <div class="flex items-center justify-between border-b border-white/10 pb-4">
+                <div class="glass-panel p-4 sm:p-6 rounded-2xl space-y-6 max-w-6xl mx-auto">
+                    <!-- ENCABEZADO CON SELECTOR DE HERRAMIENTA PARA MÓVILES -->
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-white/10 pb-4">
                         <div class="flex items-center gap-3">
-                            <span class="material-symbols-outlined text-3xl text-purple-400">edit_calendar</span>
-                            <div>
-                                <h2 class="font-title text-lg font-bold uppercase text-white tracking-wider">Gestor de Catálogo, Combos, Precios e IA</h2>
-                                <p class="text-xs text-gray-400">Elegí una herramienta del menú lateral para administrar la tienda sin scrolls infinitos.</p>
+                            <div class="w-10 h-10 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-400 font-bold shrink-0">
+                                <span class="material-symbols-outlined text-2xl">edit_calendar</span>
                             </div>
+                            <div>
+                                <h2 class="font-title text-base sm:text-lg font-bold uppercase text-white tracking-wider">Gestor de Catálogo, Combos, Precios e IA</h2>
+                                <p class="text-xs text-gray-400">Elegí una herramienta para administrar la tienda.</p>
+                            </div>
+                        </div>
+
+                        <!-- BOTÓN MODAL PARA MÓVILES (VENTANA EMERGENTE QUE NO HACE SCROLL NI SE SOLAPA) -->
+                        <div class="lg:hidden w-full sm:w-auto">
+                            <button onclick="abrirModalHerramientasCatalogo()" class="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/40 text-purple-200 font-title text-xs font-bold uppercase tracking-wider flex items-center justify-between gap-2 shadow-lg transition-all cursor-pointer">
+                                <div class="flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-base text-purple-400">grid_view</span>
+                                    <span>Herramienta: <strong id="label-herramienta-activa-movil" class="text-white">Combos Emprendedores</strong></span>
+                                </div>
+                                <span class="material-symbols-outlined text-sm">unfold_more</span>
+                            </button>
                         </div>
                     </div>
 
-                    <!-- LAYOUT 2 COLUMNAS: MENÚ LATERAL IZQUIERDO + CONTENIDO -->
+                    <!-- LAYOUT: MENÚ LATERAL EN DESKTOP (hidden lg:block) Y CONTENIDO -->
                     <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
                         
-                        <!-- MENÚ LATERAL IZQUIERDO (DIBUJADO POR EL USUARIO) -->
-                        <div class="lg:col-span-1 space-y-2 bg-slate-900/80 p-3 rounded-2xl border border-white/10 h-fit sticky top-20">
+                        <!-- MENÚ LATERAL IZQUIERDO (SOLO EN PANTALLAS GRANDES PARA EVITAR SOLAPAMIENTO EN CELULAR) -->
+                        <div class="hidden lg:block lg:col-span-1 space-y-2 bg-slate-900/80 p-3 rounded-2xl border border-white/10 h-fit lg:sticky lg:top-24">
                             <span class="text-[10px] font-black uppercase text-gray-400 tracking-wider block px-2 py-1 border-b border-white/5 mb-2">Herramientas</span>
                             
                             <button id="btn-subtab-combos" onclick="switchCatSubTab('combos')" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all bg-white/15 border border-white/30 text-white shadow-md">
@@ -5149,7 +5163,37 @@ ightarrow$ Ventas</p>
             }
         }
 
+        function abrirModalHerramientasCatalogo() {
+            const m = document.getElementById('modal-herramientas-catalogo');
+            if (m) m.classList.remove('hidden');
+        }
+
+        function cerrarModalHerramientasCatalogo() {
+            const m = document.getElementById('modal-herramientas-catalogo');
+            if (m) m.classList.add('hidden');
+        }
+
+        function seleccionarHerramientaCatalogo(subtab, label) {
+            switchCatSubTab(subtab);
+            cerrarModalHerramientasCatalogo();
+        }
+
         function switchCatSubTab(subtab) {
+            const labelsMap = {
+                'combos': 'Combos Emprendedores',
+                'precios': 'Actualizador de Precios',
+                'atributos': 'Gestor de Atributos',
+                'ofertas': 'Ofertas Semanales',
+                'banners': 'Banners de Secciones',
+                'single': 'Buscar Producto / Imagen',
+                'excel': 'Carga Masiva Excel',
+                'ia': 'Instrucción IA / Voz',
+                'sync': 'Sincronizar Web'
+            };
+
+            const labelEl = document.getElementById('label-herramienta-activa-movil');
+            if (labelEl) labelEl.innerText = labelsMap[subtab] || subtab;
+
             const subtabs = ['precios', 'combos', 'atributos', 'ofertas', 'banners', 'single', 'excel', 'ia', 'sync'];
             subtabs.forEach(s => {
                 const content = document.getElementById(`subtab-content-${s}`);
@@ -7083,6 +7127,124 @@ ightarrow$ Ventas</p>
         window.onload = checkAuth;
 
     </script>
+
+
+    <!-- MODAL SELECTOR DE HERRAMIENTAS DE CATÁLOGO (PARA MÓVILES) -->
+    <div id="modal-herramientas-catalogo" class="fixed inset-0 z-[100] bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="bg-slate-950 border border-purple-500/30 rounded-3xl p-5 max-w-md w-full shadow-2xl space-y-4 font-sans text-white relative animate-fade-in max-h-[85vh] flex flex-col">
+            <div class="flex items-center justify-between border-b border-white/10 pb-3">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-purple-400 text-xl">grid_view</span>
+                    <h3 class="font-title text-sm font-bold uppercase tracking-wider text-white">Elegir Herramienta</h3>
+                </div>
+                <button onclick="cerrarModalHerramientasCatalogo()" class="text-gray-400 hover:text-white p-1">
+                    <span class="material-symbols-outlined text-xl">close</span>
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 gap-2 overflow-y-auto pr-1 flex-1 scrollbar-thin">
+                <!-- 1. Combos -->
+                <button onclick="seleccionarHerramientaCatalogo('combos', 'Combos Emprendedores')" class="p-3 rounded-xl bg-white/[0.04] border border-white/10 hover:border-purple-500/50 hover:bg-purple-500/10 flex items-center gap-3 transition-all text-left group">
+                    <div class="w-9 h-9 rounded-lg bg-purple-500/20 text-purple-300 flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-lg">view_carousel</span>
+                    </div>
+                    <div>
+                        <h5 class="text-xs font-bold text-white group-hover:text-purple-300">Combos Emprendedores</h5>
+                        <p class="text-[10px] text-gray-400">Ver combos, fotos y galerías vinculadas.</p>
+                    </div>
+                </button>
+
+                <!-- 2. Precios -->
+                <button onclick="seleccionarHerramientaCatalogo('precios', 'Actualizador de Precios')" class="p-3 rounded-xl bg-white/[0.04] border border-white/10 hover:border-emerald-500/50 hover:bg-emerald-500/10 flex items-center gap-3 transition-all text-left group">
+                    <div class="w-9 h-9 rounded-lg bg-emerald-500/20 text-emerald-300 flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-lg">price_change</span>
+                    </div>
+                    <div>
+                        <h5 class="text-xs font-bold text-white group-hover:text-emerald-300">Actualizador de Precios</h5>
+                        <p class="text-[10px] text-gray-400">Aumentos/descuentos masivos en % o $.</p>
+                    </div>
+                </button>
+
+                <!-- 3. Atributos -->
+                <button onclick="seleccionarHerramientaCatalogo('atributos', 'Gestor de Atributos')" class="p-3 rounded-xl bg-white/[0.04] border border-white/10 hover:border-amber-500/50 hover:bg-amber-500/10 flex items-center gap-3 transition-all text-left group">
+                    <div class="w-9 h-9 rounded-lg bg-amber-500/20 text-amber-300 flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-lg">tune</span>
+                    </div>
+                    <div>
+                        <h5 class="text-xs font-bold text-white group-hover:text-amber-300">Gestor de Atributos</h5>
+                        <p class="text-[10px] text-gray-400">Fragancias, medidas, tamaños y colores.</p>
+                    </div>
+                </button>
+
+                <!-- 4. Ofertas -->
+                <button onclick="seleccionarHerramientaCatalogo('ofertas', 'Ofertas Semanales')" class="p-3 rounded-xl bg-white/[0.04] border border-white/10 hover:border-amber-500/50 hover:bg-amber-500/10 flex items-center gap-3 transition-all text-left group">
+                    <div class="w-9 h-9 rounded-lg bg-amber-500/20 text-amber-300 flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-lg">local_offer</span>
+                    </div>
+                    <div>
+                        <h5 class="text-xs font-bold text-white group-hover:text-amber-300">Ofertas Semanales</h5>
+                        <p class="text-[10px] text-gray-400">Precios promocionales y descuentos activos.</p>
+                    </div>
+                </button>
+
+                <!-- 5. Banners -->
+                <button onclick="seleccionarHerramientaCatalogo('banners', 'Banners de Secciones')" class="p-3 rounded-xl bg-white/[0.04] border border-white/10 hover:border-cyan-500/50 hover:bg-cyan-500/10 flex items-center gap-3 transition-all text-left group">
+                    <div class="w-9 h-9 rounded-lg bg-cyan-500/20 text-cyan-300 flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-lg">collections_bookmark</span>
+                    </div>
+                    <div>
+                        <h5 class="text-xs font-bold text-white group-hover:text-cyan-300">Banners de Secciones</h5>
+                        <p class="text-[10px] text-gray-400">Subir y actualizar banners por rubro.</p>
+                    </div>
+                </button>
+
+                <!-- 6. Buscar Producto / Imagen -->
+                <button onclick="seleccionarHerramientaCatalogo('single', 'Buscar Producto / Imagen')" class="p-3 rounded-xl bg-white/[0.04] border border-white/10 hover:border-blue-500/50 hover:bg-blue-500/10 flex items-center gap-3 transition-all text-left group">
+                    <div class="w-9 h-9 rounded-lg bg-blue-500/20 text-blue-300 flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-lg">add_photo_alternate</span>
+                    </div>
+                    <div>
+                        <h5 class="text-xs font-bold text-white group-hover:text-blue-300">Buscar Producto / Imagen</h5>
+                        <p class="text-[10px] text-gray-400">Edición individual y fotos por producto.</p>
+                    </div>
+                </button>
+
+                <!-- 7. Carga Masiva Excel -->
+                <button onclick="seleccionarHerramientaCatalogo('excel', 'Carga Masiva Excel')" class="p-3 rounded-xl bg-white/[0.04] border border-white/10 hover:border-emerald-500/50 hover:bg-emerald-500/10 flex items-center gap-3 transition-all text-left group">
+                    <div class="w-9 h-9 rounded-lg bg-emerald-500/20 text-emerald-300 flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-lg">description</span>
+                    </div>
+                    <div>
+                        <h5 class="text-xs font-bold text-white group-hover:text-emerald-300">Carga Masiva Excel</h5>
+                        <p class="text-[10px] text-gray-400">Importación masiva por planilla .xlsx.</p>
+                    </div>
+                </button>
+
+                <!-- 8. Instrucción IA / Voz -->
+                <button onclick="seleccionarHerramientaCatalogo('ia', 'Instrucción IA / Voz')" class="p-3 rounded-xl bg-white/[0.04] border border-white/10 hover:border-yellow-500/50 hover:bg-yellow-500/10 flex items-center gap-3 transition-all text-left group">
+                    <div class="w-9 h-9 rounded-lg bg-yellow-500/20 text-yellow-300 flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-lg">psychology</span>
+                    </div>
+                    <div>
+                        <h5 class="text-xs font-bold text-white group-hover:text-yellow-300">Instrucción IA / Voz</h5>
+                        <p class="text-[10px] text-gray-400">Comandos en lenguaje natural para la IA.</p>
+                    </div>
+                </button>
+
+                <!-- 9. Sincronizar Web -->
+                <button onclick="seleccionarHerramientaCatalogo('sync', 'Sincronizar Web')" class="p-3 rounded-xl bg-white/[0.04] border border-white/10 hover:border-teal-500/50 hover:bg-teal-500/10 flex items-center gap-3 transition-all text-left group">
+                    <div class="w-9 h-9 rounded-lg bg-teal-500/20 text-teal-300 flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-lg">sync</span>
+                    </div>
+                    <div>
+                        <h5 class="text-xs font-bold text-white group-hover:text-teal-300">Sincronizar Web</h5>
+                        <p class="text-[10px] text-gray-400">Publicar catálogo y recargar caché RAM.</p>
+                    </div>
+                </button>
+            </div>
+        </div>
+    </div>
+
 
     <!-- MODAL POPUP EMERGENTE DE PROCESAMIENTO Y DEPURACIÓN DE BANNERS -->
     <div id="banner-progress-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">

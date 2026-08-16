@@ -1808,7 +1808,7 @@ app.post('/api/products/update-details', async (req, res) => {
         let verificado = false;
         if (name) {
             try {
-                const vRes = await fetch(`https://quimicadec.com/?qdec_api=search_product&q=${encodeURIComponent(sku)}`);
+                const vRes = await fetch(`https://quimicadec.com/?qdec_api=search_product&secret_key=qdec_crm_sec_2026&q=${encodeURIComponent(sku)}`);
                 const vData = await vRes.json();
                 if (vData.success && vData.products && vData.products.length > 0) {
                     const prod = vData.products[0];
@@ -1955,7 +1955,7 @@ app.post('/api/crm/update-homepage-html', async (req, res) => {
 
 app.get('/api/combos', async (req, res) => {
     try {
-        const resp = await fetch('https://quimicadec.com/?qdec_api=get_combos');
+        const resp = await fetch('https://quimicadec.com/?qdec_api=get_combos&secret_key=qdec_crm_sec_2026');
         const data = await resp.json();
         res.json(data);
     } catch (e) {
@@ -2104,7 +2104,7 @@ app.post('/api/categories/upload-banner', async (req, res) => {
 
 app.get('/api/ofertas', async (req, res) => {
     try {
-        const resp = await fetch('https://quimicadec.com/?qdec_api=get_ofertas');
+        const resp = await fetch('https://quimicadec.com/?qdec_api=get_ofertas&secret_key=qdec_crm_sec_2026');
         const data = await resp.json();
         res.json(data);
     } catch (e) {
