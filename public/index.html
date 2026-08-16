@@ -199,6 +199,9 @@
                     <button id="tab-alertas-btn" onclick="switchTab('alertas')" class="tab-inactive px-4 py-2.5 rounded-xl font-title text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1">
                         <span class="material-symbols-outlined text-[16px] text-amber-400">notifications_active</span> Alertas $80k
                     </button>
+                    <button id="tab-metricas-btn" onclick="switchTab('metricas')" class="tab-inactive px-4 py-2.5 rounded-xl font-title text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[16px] text-emerald-400">analytics</span> Estadísticas
+                    </button>
                     <button id="tab-catalogo-btn" onclick="switchTab('catalogo')" class="tab-inactive px-4 py-2.5 rounded-xl font-title text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1">
                         <span class="material-symbols-outlined text-[16px] text-blue-400">edit_calendar</span> Catálogo e IA
                     </button>
@@ -232,11 +235,13 @@
                             <span class="material-symbols-outlined absolute left-3 top-2.5 text-gray-400 text-[18px]">search</span>
                             <input type="text" id="embudo-search-input" oninput="filtrarPedidosEmbudo()" placeholder="Buscar por cliente, WhatsApp o pedido..." class="w-full bg-black/40 border border-white/10 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-yellow">
                         </div>
-                        <select id="embudo-filter-periodo" onchange="filtrarPedidosEmbudo()" class="bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-yellow">
+                        <select id="embudo-filter-periodo" onchange="filtrarPedidosEmbudo()" class="bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-yellow font-bold">
                             <option value="mes" selected>Este Mes</option>
                             <option value="semana">Esta Semana</option>
                             <option value="hoy">Hoy</option>
+                            <option value="ano">Este Año (2026)</option>
                             <option value="todo">Todo el Histórico</option>
+                            <option value="archivados">📦 Archivados</option>
                         </select>
                     </div>
 
@@ -329,46 +334,66 @@
                             <div id="embudo-lista-pedidos" class="space-y-4 min-h-[400px]"></div>
                         </div>
 
-                        <!-- VISTA KANBAN GLOBAL DE 5 COLUMNAS (OCULTA POR DEFECTO, ACTIVABLE EN EL MENÚ) -->
-                        <div id="embudo-vista-kanban-global" class="hidden grid grid-cols-1 md:grid-cols-5 gap-4">
-                            <div class="glass-panel p-3 rounded-2xl space-y-3">
-                                <div class="flex justify-between items-center border-b border-white/10 pb-2">
-                                    <span class="font-title text-xs font-bold text-yellow-400 uppercase">Presupuestos</span>
+                        <!-- VISTA KANBAN GLOBAL DE 5 COLUMNAS CON SCROLL INTERNO Y SWIPE MÓVIL -->
+                        <div id="embudo-vista-kanban-global" class="hidden flex md:grid md:grid-cols-5 overflow-x-auto snap-x snap-mandatory gap-3 md:gap-4 pb-4 md:pb-0 scrollbar-thin">
+                            <!-- COLUMNA 1: PRESUPUESTOS -->
+                            <div class="w-[82vw] sm:w-[300px] md:w-auto shrink-0 snap-center glass-panel p-3 rounded-2xl flex flex-col max-h-[76vh] border border-amber-500/20 shadow-lg">
+                                <div class="flex justify-between items-center border-b border-white/10 pb-2 mb-2">
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="material-symbols-outlined text-amber-400 text-sm">request_quote</span>
+                                        <span class="font-title text-xs font-bold text-yellow-400 uppercase">Presupuestos</span>
+                                    </div>
                                     <span id="col-count-presupuestos" class="text-[10px] font-bold text-yellow-400 bg-yellow-400/20 px-2 py-0.5 rounded-full">0</span>
                                 </div>
-                                <div id="col-presupuestos" class="space-y-3 min-h-[250px]"></div>
+                                <div id="col-presupuestos" class="space-y-2.5 overflow-y-auto pr-1 flex-1 max-h-[66vh] scrollbar-thin scrollbar-thumb-white/10"></div>
                             </div>
 
-                            <div class="glass-panel p-3 rounded-2xl space-y-3">
-                                <div class="flex justify-between items-center border-b border-white/10 pb-2">
-                                    <span class="font-title text-xs font-bold text-blue-400 uppercase">Confirmados</span>
+                            <!-- COLUMNA 2: CONFIRMADOS -->
+                            <div class="w-[82vw] sm:w-[300px] md:w-auto shrink-0 snap-center glass-panel p-3 rounded-2xl flex flex-col max-h-[76vh] border border-blue-500/20 shadow-lg">
+                                <div class="flex justify-between items-center border-b border-white/10 pb-2 mb-2">
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="material-symbols-outlined text-blue-400 text-sm">check_circle</span>
+                                        <span class="font-title text-xs font-bold text-blue-400 uppercase">Confirmados</span>
+                                    </div>
                                     <span id="col-count-confirmados" class="text-[10px] font-bold text-blue-400 bg-blue-400/20 px-2 py-0.5 rounded-full">0</span>
                                 </div>
-                                <div id="col-confirmados" class="space-y-3 min-h-[250px]"></div>
+                                <div id="col-confirmados" class="space-y-2.5 overflow-y-auto pr-1 flex-1 max-h-[66vh] scrollbar-thin scrollbar-thumb-white/10"></div>
                             </div>
 
-                            <div class="glass-panel p-3 rounded-2xl space-y-3">
-                                <div class="flex justify-between items-center border-b border-white/10 pb-2">
-                                    <span class="font-title text-xs font-bold text-emerald-400 uppercase">Pagados</span>
+                            <!-- COLUMNA 3: PAGADOS -->
+                            <div class="w-[82vw] sm:w-[300px] md:w-auto shrink-0 snap-center glass-panel p-3 rounded-2xl flex flex-col max-h-[76vh] border border-emerald-500/20 shadow-lg">
+                                <div class="flex justify-between items-center border-b border-white/10 pb-2 mb-2">
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="material-symbols-outlined text-emerald-400 text-sm">payments</span>
+                                        <span class="font-title text-xs font-bold text-emerald-400 uppercase">Pagados</span>
+                                    </div>
                                     <span id="col-count-pagados" class="text-[10px] font-bold text-emerald-400 bg-emerald-400/20 px-2 py-0.5 rounded-full">0</span>
                                 </div>
-                                <div id="col-pagados" class="space-y-3 min-h-[250px]"></div>
+                                <div id="col-pagados" class="space-y-2.5 overflow-y-auto pr-1 flex-1 max-h-[66vh] scrollbar-thin scrollbar-thumb-white/10"></div>
                             </div>
 
-                            <div class="glass-panel p-3 rounded-2xl space-y-3">
-                                <div class="flex justify-between items-center border-b border-white/10 pb-2">
-                                    <span class="font-title text-xs font-bold text-purple-400 uppercase">Despachados</span>
+                            <!-- COLUMNA 4: DESPACHADOS -->
+                            <div class="w-[82vw] sm:w-[300px] md:w-auto shrink-0 snap-center glass-panel p-3 rounded-2xl flex flex-col max-h-[76vh] border border-purple-500/20 shadow-lg">
+                                <div class="flex justify-between items-center border-b border-white/10 pb-2 mb-2">
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="material-symbols-outlined text-purple-400 text-sm">local_shipping</span>
+                                        <span class="font-title text-xs font-bold text-purple-400 uppercase">Despachados</span>
+                                    </div>
                                     <span id="col-count-despachados" class="text-[10px] font-bold text-purple-400 bg-purple-400/20 px-2 py-0.5 rounded-full">0</span>
                                 </div>
-                                <div id="col-despachados" class="space-y-3 min-h-[250px]"></div>
+                                <div id="col-despachados" class="space-y-2.5 overflow-y-auto pr-1 flex-1 max-h-[66vh] scrollbar-thin scrollbar-thumb-white/10"></div>
                             </div>
 
-                            <div class="glass-panel p-3 rounded-2xl space-y-3">
-                                <div class="flex justify-between items-center border-b border-white/10 pb-2">
-                                    <span class="font-title text-xs font-bold text-red-400 uppercase">Cancelados</span>
+                            <!-- COLUMNA 5: CANCELADOS -->
+                            <div class="w-[82vw] sm:w-[300px] md:w-auto shrink-0 snap-center glass-panel p-3 rounded-2xl flex flex-col max-h-[76vh] border border-red-500/20 shadow-lg">
+                                <div class="flex justify-between items-center border-b border-white/10 pb-2 mb-2">
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="material-symbols-outlined text-red-400 text-sm">cancel</span>
+                                        <span class="font-title text-xs font-bold text-red-400 uppercase">Cancelados</span>
+                                    </div>
                                     <span id="col-count-cancelados" class="text-[10px] font-bold text-red-400 bg-red-400/20 px-2 py-0.5 rounded-full">0</span>
                                 </div>
-                                <div id="col-cancelados" class="space-y-3 min-h-[250px]"></div>
+                                <div id="col-cancelados" class="space-y-2.5 overflow-y-auto pr-1 flex-1 max-h-[66vh] scrollbar-thin scrollbar-thumb-white/10"></div>
                             </div>
                         </div>
                     </div>
@@ -503,6 +528,138 @@
                     <div id="grid-alertas" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
                 </div>
             </section>
+
+            <!-- TAB 3.5: ESTADÍSTICAS & ANALÍTICAS B2B -->
+            <section id="view-metricas" class="hidden space-y-6">
+                <!-- HEADER & SELECTOR DE PERÍODO -->
+                <div class="glass-panel p-5 rounded-2xl flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 border border-white/10 shadow-xl">
+                    <div class="flex items-center gap-3">
+                        <span class="material-symbols-outlined text-3xl text-emerald-400">analytics</span>
+                        <div>
+                            <h2 class="font-title text-lg font-bold uppercase text-white tracking-wider">Estadísticas & Analíticas B2B</h2>
+                            <p class="text-xs text-gray-400">Rendimiento de facturación, productos más vendidos, mejores clientes y conversión en tiempo real.</p>
+                        </div>
+                    </div>
+
+                    <!-- BOTONES DE FILTRO TEMPORAL RÁPIDO -->
+                    <div class="flex flex-wrap items-center gap-1.5 bg-black/40 p-1.5 rounded-xl border border-white/10 w-full lg:w-auto">
+                        <button id="btn-stat-hoy" onclick="cambiarFiltroEstadisticas('hoy')" class="px-3 py-1.5 rounded-lg text-xs font-bold text-gray-400 hover:text-white transition-all">Hoy</button>
+                        <button id="btn-stat-semana" onclick="cambiarFiltroEstadisticas('semana')" class="px-3 py-1.5 rounded-lg text-xs font-bold text-gray-400 hover:text-white transition-all">Esta Semana</button>
+                        <button id="btn-stat-mes" onclick="cambiarFiltroEstadisticas('mes')" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-500 text-slate-950 shadow-md transition-all">Este Mes</button>
+                        <button id="btn-stat-ano" onclick="cambiarFiltroEstadisticas('ano')" class="px-3 py-1.5 rounded-lg text-xs font-bold text-gray-400 hover:text-white transition-all">Este Año</button>
+                        <button id="btn-stat-todo" onclick="cambiarFiltroEstadisticas('todo')" class="px-3 py-1.5 rounded-lg text-xs font-bold text-gray-400 hover:text-white transition-all">Histórico</button>
+                    </div>
+                </div>
+
+                <!-- 4 TARJETAS KPI PRINCIPALES -->
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+                    <!-- KPI 1: FACTURACIÓN COBRADA -->
+                    <div class="glass-panel p-4 md:p-5 rounded-2xl border border-emerald-500/30 space-y-2 relative overflow-hidden">
+                        <div class="flex justify-between items-center">
+                            <span class="text-[11px] font-bold text-gray-300 uppercase tracking-wider">Facturación Cobrada</span>
+                            <span class="material-symbols-outlined text-emerald-400 text-xl">payments</span>
+                        </div>
+                        <h3 id="stat-kpi-facturacion" class="font-title text-xl md:text-2xl font-black text-emerald-300">$ 0,00</h3>
+                        <p id="stat-kpi-facturacion-sub" class="text-[10px] text-gray-400">0 pedidos pagados/despachados</p>
+                    </div>
+
+                    <!-- KPI 2: TICKET PROMEDIO -->
+                    <div class="glass-panel p-4 md:p-5 rounded-2xl border border-blue-500/30 space-y-2 relative overflow-hidden">
+                        <div class="flex justify-between items-center">
+                            <span class="text-[11px] font-bold text-gray-300 uppercase tracking-wider">Ticket Promedio</span>
+                            <span class="material-symbols-outlined text-blue-400 text-xl">receipt_long</span>
+                        </div>
+                        <h3 id="stat-kpi-ticket" class="font-title text-xl md:text-2xl font-black text-blue-300">$ 0,00</h3>
+                        <p id="stat-kpi-ticket-sub" class="text-[10px] text-gray-400">Promedio por pedido concretado</p>
+                    </div>
+
+                    <!-- KPI 3: TASA DE CONVERSIÓN -->
+                    <div class="glass-panel p-4 md:p-5 rounded-2xl border border-amber-500/30 space-y-2 relative overflow-hidden">
+                        <div class="flex justify-between items-center">
+                            <span class="text-[11px] font-bold text-gray-300 uppercase tracking-wider">Tasa Conversión</span>
+                            <span class="material-symbols-outlined text-amber-400 text-xl">trending_up</span>
+                        </div>
+                        <h3 id="stat-kpi-conversion" class="font-title text-xl md:text-2xl font-black text-amber-300">0%</h3>
+                        <p id="stat-kpi-conversion-sub" class="text-[10px] text-gray-400">Presupuestos $
+ightarrow$ Ventas</p>
+                    </div>
+
+                    <!-- KPI 4: UNIDADES VENDIDAS -->
+                    <div class="glass-panel p-4 md:p-5 rounded-2xl border border-purple-500/30 space-y-2 relative overflow-hidden">
+                        <div class="flex justify-between items-center">
+                            <span class="text-[11px] font-bold text-gray-300 uppercase tracking-wider">Unidades Vendidas</span>
+                            <span class="material-symbols-outlined text-purple-400 text-xl">inventory_2</span>
+                        </div>
+                        <h3 id="stat-kpi-unidades" class="font-title text-xl md:text-2xl font-black text-purple-300">0 un.</h3>
+                        <p id="stat-kpi-unidades-sub" class="text-[10px] text-gray-400">Artículos y bultos despachados</p>
+                    </div>
+                </div>
+
+                <!-- DOS COLUMNAS: TOP 10 PRODUCTOS Y TOP 10 CLIENTES -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- CARD: TOP 10 PRODUCTOS MÁS VENDIDOS -->
+                    <div class="glass-panel p-5 rounded-2xl border border-white/10 space-y-4">
+                        <div class="flex justify-between items-center border-b border-white/10 pb-3">
+                            <div class="flex items-center gap-2">
+                                <span class="material-symbols-outlined text-amber-400">military_tech</span>
+                                <h3 class="font-title text-sm font-bold uppercase text-white tracking-wider">Top 10 Productos Más Vendidos</h3>
+                            </div>
+                            <span id="stat-prods-count" class="text-[10px] font-bold text-brand-yellow bg-brand-yellow/10 px-2.5 py-0.5 rounded-full border border-brand-yellow/20">0 productos</span>
+                        </div>
+
+                        <div id="stat-top-productos-list" class="space-y-3 max-h-[420px] overflow-y-auto pr-1 scrollbar-thin">
+                            <!-- Se renderiza dinámicamente con barras visuales -->
+                        </div>
+                    </div>
+
+                    <!-- CARD: TOP 10 CLIENTES MAYORISTAS -->
+                    <div class="glass-panel p-5 rounded-2xl border border-white/10 space-y-4">
+                        <div class="flex justify-between items-center border-b border-white/10 pb-3">
+                            <div class="flex items-center gap-2">
+                                <span class="material-symbols-outlined text-blue-400">group</span>
+                                <h3 class="font-title text-sm font-bold uppercase text-white tracking-wider">Top 10 Clientes Mayoristas</h3>
+                            </div>
+                            <span id="stat-clients-count" class="text-[10px] font-bold text-blue-400 bg-blue-400/10 px-2.5 py-0.5 rounded-full border border-blue-400/20">0 clientes</span>
+                        </div>
+
+                        <div id="stat-top-clientes-list" class="space-y-3 max-h-[420px] overflow-y-auto pr-1 scrollbar-thin">
+                            <!-- Se renderiza dinámicamente -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DESGLOSE LOGÍSTICO Y ESTADOS DE PEDIDOS -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- DISTRIBUCIÓN DE MÉTODOS DE ENVÍO -->
+                    <div class="glass-panel p-5 rounded-2xl border border-white/10 space-y-4">
+                        <div class="flex items-center gap-2 border-b border-white/10 pb-3">
+                            <span class="material-symbols-outlined text-purple-400">local_shipping</span>
+                            <h4 class="font-title text-xs font-bold uppercase text-white tracking-wider">Métodos de Envío</h4>
+                        </div>
+                        <div id="stat-distribucion-envios" class="space-y-3"></div>
+                    </div>
+
+                    <!-- ESTADO DEL EMBUDO -->
+                    <div class="glass-panel p-5 rounded-2xl border border-white/10 space-y-4">
+                        <div class="flex items-center gap-2 border-b border-white/10 pb-3">
+                            <span class="material-symbols-outlined text-emerald-400">donut_large</span>
+                            <h4 class="font-title text-xs font-bold uppercase text-white tracking-wider">Estado del Embudo</h4>
+                        </div>
+                        <div id="stat-distribucion-estados" class="space-y-3"></div>
+                    </div>
+
+                    <!-- RUBROS Y CATEGORÍAS MÁS DEMANDADAS -->
+                    <div class="glass-panel p-5 rounded-2xl border border-white/10 space-y-4">
+                        <div class="flex items-center gap-2 border-b border-white/10 pb-3">
+                            <span class="material-symbols-outlined text-amber-400">category</span>
+                            <h4 class="font-title text-xs font-bold uppercase text-white tracking-wider">Categorías Líderes</h4>
+                        </div>
+                        <div id="stat-distribucion-categorias" class="space-y-3"></div>
+                    </div>
+                </div>
+            </section>
+
+
 
             <!-- TAB 4: GESTIÓN CATÁLOGO E IA -->
             <!-- TAB 4: CATÁLOGO E IA CON MENÚ LATERAL DE SUB-PESTAÑAS -->
@@ -2728,19 +2885,74 @@
             renderKanban();
         }
 
-        function filtrarPedidosEmbudo() {
-            if (!pedidosData) return;
 
-            const searchText = (document.getElementById('embudo-search-input')?.value || '').toLowerCase().trim();
-            const periodo = document.getElementById('embudo-filter-periodo')?.value || 'todo';
-            const desde = document.getElementById('embudo-filter-desde')?.value || '';
-            const hasta = document.getElementById('embudo-filter-hasta')?.value || '';
+        // =========================================================================
+        // GESTIÓN DE ARCHIVO HISTÓRICO DE PEDIDOS
+        // =========================================================================
+        function getArchivadosSet() {
+            try {
+                const raw = localStorage.getItem('qdec_pedidos_archivados');
+                return new Set(raw ? JSON.parse(raw) : []);
+            } catch(e) {
+                return new Set();
+            }
+        }
+
+        function isPedidoArchivado(pedidoId) {
+            const set = getArchivadosSet();
+            return set.has(String(pedidoId));
+        }
+
+        function toggleArchivarPedido(pedidoId, e) {
+            if (e) e.stopPropagation();
+            const set = getArchivadosSet();
+            const idStr = String(pedidoId);
+            const archivar = !set.has(idStr);
+
+            if (archivar) {
+                set.add(idStr);
+            } else {
+                set.delete(idStr);
+            }
+
+            localStorage.setItem('qdec_pedidos_archivados', JSON.stringify(Array.from(set)));
+            filtrarPedidosEmbudo();
+            if (typeof calcularMetricasEstadisticas === 'function') {
+                calcularMetricasEstadisticas(periodoEstadisticasActual || 'mes');
+            }
+        }
+
+        // =========================================================================
+        // FILTRADO DEL EMBUDO DE PEDIDOS (DÍA, SEMANA, MES, AÑO, ARCHIVO)
+        // =========================================================================
+        function filtrarPedidosEmbudo() {
+            const searchInput = document.getElementById('embudo-search-input');
+            const periodoSelect = document.getElementById('embudo-filter-periodo');
+            const desdeInput = document.getElementById('embudo-filter-desde');
+            const hastaInput = document.getElementById('embudo-filter-hasta');
+
+            const searchText = (searchInput ? searchInput.value : '').toLowerCase().trim();
+            const periodo = periodoSelect ? periodoSelect.value : 'mes';
+            const desde = desdeInput ? desdeInput.value : '';
+            const hasta = hastaInput ? hastaInput.value : '';
 
             const now = new Date();
             const todayStr = now.toISOString().split('T')[0];
+            const currentYearStr = String(now.getFullYear());
+            const currentMonthStr = todayStr.substring(0, 7);
 
-            // 1. Filtrar en memoria por fecha y búsqueda
-            const filtered = pedidosData.filter(p => {
+            const archivadosSet = getArchivadosSet();
+
+            // 1. Filtrar en memoria por fecha, período y archivo
+            const filtered = (pedidosData || []).filter(p => {
+                const isArch = archivadosSet.has(String(p.id)) || archivadosSet.has(String(p.woocommerce_order_id));
+
+                if (periodo === 'archivados') {
+                    if (!isArch) return false;
+                } else {
+                    if (isArch) return false;
+                }
+
                 // Filtro por texto
                 if (searchText) {
                     const cNombre = (p.clientes?.razon_social || '').toLowerCase();
@@ -2750,20 +2962,21 @@
                     if (!match) return false;
                 }
 
-                // Filtro por fecha
-                if (p.creado_el) {
-                    const pDateStr = p.creado_el.split('T')[0];
-                    if (periodo === 'hoy' && pDateStr !== todayStr) return false;
-                    
-                    if (periodo === 'semana') {
-                        const pDate = new Date(p.creado_el);
-                        const diffDays = (now - pDate) / (1000 * 60 * 60 * 24);
-                        if (diffDays > 7) return false;
-                    }
+                // Filtro por fecha / período
+                const pFecha = p.creado_el || p.created_at;
+                if (pFecha && periodo !== 'archivados') {
+                    const pDateStr = pFecha.split('T')[0];
 
-                    if (periodo === 'mes') {
-                        const currentMonthStr = todayStr.substring(0, 7);
+                    if (periodo === 'hoy') {
+                        if (pDateStr !== todayStr) return false;
+                    } else if (periodo === 'semana') {
+                        const pDate = new Date(pFecha);
+                        const diffDays = (now - pDate) / (1000 * 60 * 60 * 24);
+                        if (diffDays > 7 || diffDays < 0) return false;
+                    } else if (periodo === 'mes') {
                         if (!pDateStr.startsWith(currentMonthStr)) return false;
+                    } else if (periodo === 'ano') {
+                        if (!pDateStr.startsWith(currentYearStr)) return false;
                     }
 
                     if (desde && pDateStr < desde) return false;
@@ -2788,21 +3001,21 @@
                 itemsByStage[est].push(p);
             });
 
-            // Actualizar Badges
-            document.getElementById('badge-count-presupuesto').innerText = counts.Presupuesto;
-            document.getElementById('badge-count-confirmado').innerText = counts.Confirmado;
-            document.getElementById('badge-count-pagado').innerText = counts.Pagado;
-            document.getElementById('badge-count-despachado').innerText = counts.Despachado;
-            document.getElementById('badge-count-cancelado').innerText = counts.Cancelado;
+            // Actualizar Badges en Lateral
+            if (document.getElementById('badge-count-presupuesto')) document.getElementById('badge-count-presupuesto').innerText = counts.Presupuesto;
+            if (document.getElementById('badge-count-confirmado')) document.getElementById('badge-count-confirmado').innerText = counts.Confirmado;
+            if (document.getElementById('badge-count-pagado')) document.getElementById('badge-count-pagado').innerText = counts.Pagado;
+            if (document.getElementById('badge-count-despachado')) document.getElementById('badge-count-despachado').innerText = counts.Despachado;
+            if (document.getElementById('badge-count-cancelado')) document.getElementById('badge-count-cancelado').innerText = counts.Cancelado;
 
-            // En la vista Kanban Global
+            // Actualizar Badges en Columnas Kanban Global
             if (document.getElementById('col-count-presupuestos')) document.getElementById('col-count-presupuestos').innerText = counts.Presupuesto;
             if (document.getElementById('col-count-confirmados')) document.getElementById('col-count-confirmados').innerText = counts.Confirmado;
             if (document.getElementById('col-count-pagados')) document.getElementById('col-count-pagados').innerText = counts.Pagado;
             if (document.getElementById('col-count-despachados')) document.getElementById('col-count-despachados').innerText = counts.Despachado;
             if (document.getElementById('col-count-cancelados')) document.getElementById('col-count-cancelados').innerText = counts.Cancelado;
 
-            // Actualizar Monto Total de Etapa Seleccionada
+            // Monto Total de Etapa Seleccionada
             const activeEst = currentEmbudoEtapa === 'kanban-global' ? 'Presupuesto' : currentEmbudoEtapa;
             const activeSum = sums[activeEst] || 0;
             const montoFormatted = activeSum.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' });
@@ -2815,17 +3028,16 @@
                 const listItems = itemsByStage[currentEmbudoEtapa] || [];
 
                 if (listItems.length === 0) {
-                    containerLista.innerHTML = `<div class="glass-panel p-12 text-center text-gray-500 text-xs font-light rounded-2xl">No hay pedidos en la etapa ${currentEmbudoEtapa}.</div>`;
+                    containerLista.innerHTML = `<div class="glass-panel p-12 text-center text-gray-500 text-xs font-light rounded-2xl">No hay pedidos en la etapa ${currentEmbudoEtapa} para el período seleccionado.</div>`;
                 } else {
                     containerLista.innerHTML = listItems.map(p => {
                         const clienteNombre = p.clientes ? p.clientes.razon_social : 'Cliente Web';
                         const clientePhone = p.clientes ? (p.clientes.whatsapp || '') : '';
                         const waLimpio = clientePhone.replace(/[^0-9]/g, '');
                         const montoStr = parseFloat(p.monto_total || 0).toLocaleString('es-AR', { style: 'currency', currency: 'ARS' });
-                        const fechaStr = formatFechaAR(p.creado_el);
+                        const fechaStr = formatFechaAR(p.creado_el || p.created_at);
                         const itemsPedido = p.items_pedido || [];
-                        const esPagado = (p.estado === 'Pagado');
-                        const esCancelado = (p.estado === 'Cancelado');
+                        const isArch = archivadosSet.has(String(p.id));
 
                         let notaPedido = '';
                         if (p.origen && p.origen.includes('| Nota:')) {
@@ -2839,7 +3051,7 @@
                         }
 
                         return `
-                            <div class="glass-panel p-5 rounded-2xl space-y-4 border border-white/10 hover:border-white/20 transition-all shadow-md">
+                            <div class="glass-panel p-4 md:p-5 rounded-2xl space-y-4 border border-white/10 hover:border-white/20 transition-all shadow-md">
                                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-white/10 pb-3">
                                     <div class="flex items-center gap-3">
                                         <span class="px-2.5 py-1 rounded-lg text-xs font-bold bg-white/10 text-brand-yellow font-mono">
@@ -2849,16 +3061,19 @@
                                             <h4 class="font-bold text-sm text-white">${clienteNombre}</h4>
                                             ${clientePhone ? `
                                                 <a href="https://wa.me/${waLimpio}" target="_blank" class="text-[11px] text-emerald-400 font-mono hover:underline flex items-center gap-1">
-                                                    <span class="material-symbols-outlined text-[13px] text-emerald-400 inline-block align-middle">chat</span> ${clientePhone}
+                                                    <span class="material-symbols-outlined text-[13px] text-emerald-400">chat</span> ${clientePhone}
                                                 </a>
                                             ` : ''}
                                         </div>
                                     </div>
 
-                                    <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
-                                        <span class="text-xs text-gray-400">${fechaStr}</span>
+                                    <div class="flex items-center gap-2.5 w-full sm:w-auto justify-between sm:justify-end flex-wrap">
+                                        <span class="text-xs text-gray-400 font-mono">${fechaStr}</span>
+                                        <button onclick="toggleArchivarPedido('${p.id}', event)" title="${isArch ? 'Desarchivar Pedido' : 'Archivar Pedido'}" class="px-2.5 py-1 rounded-lg ${isArch ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' : 'bg-white/5 text-gray-400 hover:text-white'} border border-white/10 text-[11px] font-bold flex items-center gap-1 transition-all">
+                                            <span class="material-symbols-outlined text-[14px]">${isArch ? 'unarchive' : 'archive'}</span>
+                                            <span class="hidden sm:inline">${isArch ? 'Desarchivar' : 'Archivar'}</span>
+                                        </button>
                                         <div class="flex items-center gap-1.5">
-                                            <span class="text-[10px] uppercase font-bold text-gray-400">Mover a:</span>
                                             <select onchange="cambiarEstadoPedido('${p.id}', this.value)" class="bg-black/50 border border-white/10 rounded-lg px-2 py-1 text-[11px] text-white focus:outline-none focus:border-brand-yellow">
                                                 <option value="Presupuesto" ${p.estado === 'Presupuesto' ? 'selected' : ''}>Presupuesto</option>
                                                 <option value="Confirmado" ${p.estado === 'Confirmado' ? 'selected' : ''}>Confirmado</option>
@@ -2870,99 +3085,29 @@
                                     </div>
                                 </div>
 
-                                <!-- NOTAS U OBSERVACIONES DEL PEDIDO SI EXISTEN -->
+                                <!-- NOTAS U OBSERVACIONES -->
                                 ${notaPedido ? `
                                     <div class="p-2.5 rounded-xl bg-amber-400/10 border border-amber-400/30 text-amber-300 text-xs flex items-center gap-2">
                                         <span class="material-symbols-outlined text-[18px] text-amber-400">edit_note</span>
                                         <div>
-                                            <strong class="uppercase text-[10px] block opacity-80 text-amber-400 font-bold">Observaciones / Notas del Pedido:</strong>
+                                            <strong class="uppercase text-[10px] block opacity-80 text-amber-400 font-bold">Observaciones / Notas:</strong>
                                             <span>${notaPedido}</span>
                                         </div>
                                     </div>
                                 ` : ''}
 
-                                <!-- DETERMINAR DATOS DE ENVÍO PRECISOS -->
-                                ${(() => {
-                                    let tipoEnvioPedido = 'Retira en Local';
-                                    if (p.origen && p.origen.includes('Envío:')) {
-                                        tipoEnvioPedido = p.origen.split('Envío:')[1].split('|')[0].trim();
-                                    } else if (itemsPedido.length > 0 && itemsPedido[0].variacion_tamano && itemsPedido[0].variacion_tamano.includes('Envío:')) {
-                                        tipoEnvioPedido = itemsPedido[0].variacion_tamano.split('Envío:')[1].split('|')[0].trim();
-                                    } else if (p.clientes && p.clientes.contacto_nombre && p.clientes.contacto_nombre.includes('Envío:')) {
-                                        tipoEnvioPedido = p.clientes.contacto_nombre.split('Envío:')[1].split('|')[0].trim();
-                                    } else if (p.clientes && p.clientes.localidad && !p.clientes.localidad.toLowerCase().includes('retira')) {
-                                        tipoEnvioPedido = 'Envío A Domicilio';
-                                    }
-
-                                    const clienteObj = p.clientes || (clientesData || []).find(c => c.id === p.cliente_id) || {};
-                                    let dirCliente = (clienteObj.localidad || '').trim();
-                                    let provCliente = (clienteObj.provincia || '').trim();
-
-                                    // Si no está en p.clientes, buscar en memoria de clientesData
-                                    if (!dirCliente) {
-                                        const cMem = (clientesData || []).find(c => c.id === p.cliente_id);
-                                        if (cMem && cMem.localidad) {
-                                            dirCliente = cMem.localidad.trim();
-                                            if (!provCliente && cMem.provincia) provCliente = cMem.provincia.trim();
-                                        }
-                                    }
-                                    const esRetiro = tipoEnvioPedido.toLowerCase().includes('retira');
-
-                                    let iconEnvio = 'local_shipping';
-                                    let badgeColor = 'text-brand-yellow';
-                                    let labelEnvio = tipoEnvioPedido;
-                                    if (esRetiro) {
-                                        iconEnvio = 'storefront';
-                                        badgeColor = 'text-amber-400';
-                                        labelEnvio = 'Retira en Local (C. del Uruguay)';
-                                    } else if (tipoEnvioPedido.includes('Mostto') || tipoEnvioPedido.includes('Entre Ríos')) {
-                                        iconEnvio = 'local_shipping';
-                                        badgeColor = 'text-purple-300';
-                                        labelEnvio = 'Entre Ríos (Mostto +5%)';
-                                    } else if (tipoEnvioPedido.includes('Resto') || tipoEnvioPedido.includes('Andreani')) {
-                                        iconEnvio = 'flight_takeoff';
-                                        badgeColor = 'text-blue-300';
-                                        labelEnvio = 'Resto del País (Andreani / Vía Cargo)';
-                                    } else {
-                                        iconEnvio = 'local_shipping';
-                                        badgeColor = 'text-emerald-400';
-                                        labelEnvio = tipoEnvioPedido;
-                                    }
-
-                                    return `
-                                        <div class="p-2.5 rounded-xl bg-black/40 border border-white/10 text-xs flex items-center justify-between gap-2">
-                                            <div class="flex items-center gap-2">
-                                                <span class="material-symbols-outlined text-[18px] ${badgeColor}">${iconEnvio}</span>
-                                                <div>
-                                                    <strong class="uppercase text-[9px] block ${badgeColor} font-bold">Datos de Envío / Entrega:</strong>
-                                                    <span class="text-white text-[11px]">
-                                                        ${labelEnvio}
-                                                        ${dirCliente ? ` — ${dirCliente}` : ''}
-                                                        ${provCliente && !dirCliente.includes(provCliente) ? ` (${provCliente})` : ''}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            ${!dirCliente && !esRetiro ? `
-                                                <span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 text-[10px] font-bold border border-amber-500/30">
-                                                    <span class="material-symbols-outlined text-[12px] inline-block align-middle">location_off</span> Sin Dirección
-                                                </span>
-                                            ` : ''}
-                                        </div>
-                                    `;
-                                })()}
-
-                                <!-- DETALLE DE PRODUCTOS DEL PEDIDO -->
+                                <!-- DETALLE DE PRODUCTOS -->
                                 <div class="space-y-2">
                                     <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Items Solicitados (${itemsPedido.length}):</span>
                                     ${itemsPedido.length > 0 ? `
                                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                             ${itemsPedido.map(it => `
                                                 <div class="p-2.5 rounded-xl bg-white/5 border border-white/5 flex justify-between items-center text-xs">
-                                                    <div>
-                                                        <span class="font-bold text-white block">${it.producto_nombre || 'Producto'}</span>
-                                                        ${it.variacion_tamano ? `<span class="text-[10px] text-gray-400 block">${it.variacion_tamano}</span>` : ''}
+                                                    <div class="max-w-[70%]">
+                                                        <span class="font-bold text-white block truncate" title="${it.producto_nombre || 'Producto'}">${it.producto_nombre || 'Producto'}</span>
+                                                        ${it.variacion_tamano ? `<span class="text-[10px] text-gray-400 block truncate">${it.variacion_tamano}</span>` : ''}
                                                     </div>
-                                                    <div class="text-right">
+                                                    <div class="text-right shrink-0">
                                                         <span class="text-brand-yellow font-bold">${it.cantidad}x $${parseFloat(it.precio_unitario || 0).toLocaleString('es-AR')}</span>
                                                         <span class="text-[10px] text-gray-400 block font-mono">$${parseFloat(it.subtotal || 0).toLocaleString('es-AR')}</span>
                                                     </div>
@@ -2981,7 +3126,7 @@
                                         ${p.supera_minimo_80k ? `<span class="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 text-[10px] font-bold">Cumple Min. $80k</span>` : ''}
                                     </div>
 
-                                    <!-- BOTONES DE FLUJO OFICIAL DEL EMBUDO SEGÚN ETAPA -->
+                                    <!-- BOTONES DE FLUJO OFICIAL -->
                                     <div class="flex items-center gap-2 flex-wrap justify-end">
                                         ${p.estado === 'Presupuesto' ? `
                                             <button onclick="cambiarEstadoPedido('${p.id}', 'Confirmado')" class="px-3.5 py-1.5 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 text-xs font-bold border border-blue-500/30 flex items-center gap-1.5 transition-all cursor-pointer shadow-sm">
@@ -3010,7 +3155,7 @@
                                             </button>
                                             <button onclick="confirmarDespachoPedido('${p.id}')" class="px-3.5 py-1.5 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 text-xs font-bold border border-purple-500/30 flex items-center gap-1.5 transition-all cursor-pointer shadow-sm">
                                                 <span class="material-symbols-outlined text-[16px]">local_shipping</span>
-                                                <span>Marcar como Despachado / Entregado</span>
+                                                <span>Marcar como Despachado</span>
                                             </button>
                                             <button onclick="cambiarEstadoPedido('${p.id}', 'Cancelado')" class="px-3 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold border border-red-500/20 transition-all cursor-pointer">
                                                 <span class="material-symbols-outlined text-[16px]">close</span> Cancelar
@@ -3022,9 +3167,9 @@
                                                 <span class="material-symbols-outlined text-[16px]">print</span>
                                                 <span>Re-Imprimir Ticket</span>
                                             </button>
-                                            <span class="px-3.5 py-1.5 rounded-xl bg-purple-500/20 text-purple-300 text-xs font-bold border border-purple-500/30 flex items-center gap-1.5">
+                                            <span class="px-3 py-1.5 rounded-xl bg-purple-500/20 text-purple-300 text-xs font-bold border border-purple-500/30 flex items-center gap-1.5">
                                                 <span class="material-symbols-outlined text-[16px]">done_all</span>
-                                                <span>Pedido Despachado / Entregado</span>
+                                                <span>Despachado</span>
                                             </span>
                                         ` : ''}
 
@@ -3032,7 +3177,7 @@
                                             <span class="px-2.5 py-1 rounded-xl bg-red-500/20 text-red-400 text-xs font-bold border border-red-500/30">
                                                 Cancelado
                                             </span>
-                                            <button onclick="cambiarEstadoPedido('${p.id}', 'Presupuesto')" class="px-2.5 py-1 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 text-xs font-bold border border-white/10 transition-all cursor-pointer">
+                                            <button onclick="cambiarEstadoPedido('${p.id}', 'Presupuesto')" class="px-2.5 py-1 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 text-xs font-bold border border-white/10 transition-all cursor-pointer flex items-center gap-1">
                                                 <span class="material-symbols-outlined text-[14px]">replay</span> Reactivar
                                             </button>
                                         ` : ''}
@@ -3060,61 +3205,74 @@
                     const items = itemsByStage[k] || [];
 
                     if (items.length === 0) {
-                        el.innerHTML = `<div class="text-center py-6 text-[10px] text-gray-500">Sin pedidos</div>`;
+                        el.innerHTML = `<div class="text-center py-8 text-[10px] text-gray-500 italic">Sin pedidos en esta etapa</div>`;
                     } else {
-                        el.innerHTML = items.map(p => `
-                            <div class="glass-card p-3 rounded-xl space-y-2 text-xs">
-                                <div class="flex justify-between items-start">
-                                    <span class="text-[9px] font-bold text-brand-yellow uppercase">#${p.woocommerce_order_id || p.id.substring(0, 6)}</span>
-                                    <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-white/10 text-white">${p.estado}</span>
-                                </div>
-                                <div>
-                                    <h5 class="font-bold text-white truncate">${p.clientes ? p.clientes.razon_social : 'Cliente Web'}</h5>
-                                    <span class="text-[10px] text-brand-yellow font-bold">$${parseFloat(p.monto_total || 0).toLocaleString('es-AR')}</span>
-                                </div>
-                                <div class="pt-1">
-                                    ${p.estado === 'Presupuesto' ? `
-                                        <button onclick="cambiarEstadoPedido('${p.id}', 'Confirmado')" class="w-full py-1 text-[10px] font-bold rounded bg-blue-500/20 text-blue-400 hover:bg-blue-500/30">
-                                            <span class="material-symbols-outlined text-[16px]">check</span> Confirmar Pedido
-                                        </button>
-                                    ` : ''}
-                                    ${p.estado === 'Confirmado' ? `
-                                        <button onclick="confirmarPagoDescontarStock('${p.id}')" class="w-full py-1 text-[10px] font-bold rounded bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30">
-                                            <span class="material-symbols-outlined text-[14px]">payments</span> Confirmar Pago
-                                        </button>
-                                    ` : ''}
-                                    ${p.estado === 'Pagado' ? `
-                                        <div class="flex gap-1">
-                                            <button onclick="imprimirTicketTermico80mm('${p.id}')" title="Imprimir Ticket 80mm" class="w-1/3 py-1 text-[10px] font-bold rounded bg-amber-500/20 text-amber-300 hover:bg-amber-500/30">
-                                                <span class="material-symbols-outlined text-[14px]">print</span>
+                        el.innerHTML = items.map(p => {
+                            const isArch = archivadosSet.has(String(p.id));
+                            return `
+                                <div class="glass-card p-3 rounded-xl space-y-2 text-xs border border-white/10 hover:border-white/20 transition-all shadow-sm">
+                                    <div class="flex justify-between items-start">
+                                        <span class="text-[9px] font-bold text-brand-yellow font-mono uppercase">#${p.woocommerce_order_id || p.id.substring(0, 6)}</span>
+                                        <div class="flex items-center gap-1">
+                                            <button onclick="toggleArchivarPedido('${p.id}', event)" title="${isArch ? 'Desarchivar' : 'Archivar'}" class="text-gray-400 hover:text-white p-0.5">
+                                                <span class="material-symbols-outlined text-[14px]">${isArch ? 'unarchive' : 'archive'}</span>
                                             </button>
-                                            <button onclick="confirmarDespachoPedido('${p.id}')" class="w-2/3 py-1 text-[10px] font-bold rounded bg-purple-500/20 text-purple-300 hover:bg-purple-500/30">
-                                                <span class="material-symbols-outlined text-[14px]">local_shipping</span> Despachar
-                                            </button>
+                                            <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-white/10 text-white">${p.estado}</span>
                                         </div>
-                                    ` : ''}
-                                    ${p.estado === 'Despachado' ? `
-                                        <div class="flex gap-1 items-center">
-                                            <button onclick="imprimirTicketTermico80mm('${p.id}')" title="Re-Imprimir Ticket" class="w-1/3 py-1 text-[10px] font-bold rounded bg-amber-500/20 text-amber-300 hover:bg-amber-500/30">
-                                                <span class="material-symbols-outlined text-[14px]">print</span>
-                                            </button>
-                                            <span class="w-2/3 text-center py-1 text-[9px] font-bold text-purple-300 bg-purple-500/10 rounded">
-                                                <span class="material-symbols-outlined text-[14px]">done_all</span> Despachado
-                                            </span>
+                                    </div>
+                                    <div>
+                                        <h5 class="font-bold text-white truncate" title="${p.clientes ? p.clientes.razon_social : 'Cliente Web'}">${p.clientes ? p.clientes.razon_social : 'Cliente Web'}</h5>
+                                        <div class="flex justify-between items-center mt-1">
+                                            <span class="text-[11px] text-brand-yellow font-bold font-mono">$${parseFloat(p.monto_total || 0).toLocaleString('es-AR')}</span>
+                                            <span class="text-[9px] text-gray-400 font-mono">${formatFechaAR(p.creado_el || p.created_at).split(' ')[0]}</span>
                                         </div>
-                                    ` : ''}
-                                    ${p.estado === 'Cancelado' ? `
-                                        <span class="block text-center py-1 text-[9px] font-bold text-red-400 bg-red-500/10 rounded">
-                                            Cancelado
-                                        </span>
-                                    ` : ''}
+                                    </div>
+                                    <div class="pt-1 border-t border-white/5">
+                                        ${p.estado === 'Presupuesto' ? `
+                                            <button onclick="cambiarEstadoPedido('${p.id}', 'Confirmado')" class="w-full py-1 text-[10px] font-bold rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 flex items-center justify-center gap-1">
+                                                <span class="material-symbols-outlined text-[13px]">check_circle</span> Confirmar
+                                            </button>
+                                        ` : ''}
+                                        ${p.estado === 'Confirmado' ? `
+                                            <button onclick="confirmarPagoDescontarStock('${p.id}')" class="w-full py-1 text-[10px] font-bold rounded-lg bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 flex items-center justify-center gap-1">
+                                                <span class="material-symbols-outlined text-[13px]">payments</span> Cobrar
+                                            </button>
+                                        ` : ''}
+                                        ${p.estado === 'Pagado' ? `
+                                            <div class="flex gap-1.5">
+                                                <button onclick="imprimirTicketTermico80mm('${p.id}')" title="Imprimir Ticket 80mm" class="w-1/3 py-1 text-[10px] font-bold rounded-lg bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 flex items-center justify-center">
+                                                    <span class="material-symbols-outlined text-[14px]">print</span>
+                                                </button>
+                                                <button onclick="confirmarDespachoPedido('${p.id}')" class="w-2/3 py-1 text-[10px] font-bold rounded-lg bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 flex items-center justify-center gap-1">
+                                                    <span class="material-symbols-outlined text-[13px]">local_shipping</span> Despachar
+                                                </button>
+                                            </div>
+                                        ` : ''}
+                                        ${p.estado === 'Despachado' ? `
+                                            <div class="flex gap-1.5 items-center">
+                                                <button onclick="imprimirTicketTermico80mm('${p.id}')" title="Re-Imprimir Ticket" class="w-1/3 py-1 text-[10px] font-bold rounded-lg bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 flex items-center justify-center">
+                                                    <span class="material-symbols-outlined text-[14px]">print</span>
+                                                </button>
+                                                <span class="w-2/3 text-center py-1 text-[9px] font-bold text-purple-300 bg-purple-500/10 rounded-lg flex items-center justify-center gap-1">
+                                                    <span class="material-symbols-outlined text-[13px]">done_all</span> Despachado
+                                                </span>
+                                            </div>
+                                        ` : ''}
+                                        ${p.estado === 'Cancelado' ? `
+                                            <div class="flex items-center justify-between">
+                                                <span class="text-[9px] font-bold text-red-400 bg-red-500/10 px-2 py-0.5 rounded-lg">Cancelado</span>
+                                                <button onclick="cambiarEstadoPedido('${p.id}', 'Presupuesto')" title="Reactivar" class="text-[9px] text-gray-300 hover:text-white px-2 py-0.5 rounded bg-white/5">Reactivar</button>
+                                            </div>
+                                        ` : ''}
+                                    </div>
                                 </div>
-                            </div>
-                        `).join('');
+                            `;
+                        }).join('');
                     }
                 });
             }
         }
+
 
         function renderKanban() {
             filtrarPedidosEmbudo();
@@ -4170,7 +4328,7 @@
         }
 
                 function switchTab(tab) {
-            const tabs = ['kanban', 'chat', 'stock', 'alertas', 'catalogo', 'clientes', 'users', 'audit'];
+            const tabs = ['kanban', 'chat', 'stock', 'alertas', 'metricas', 'catalogo', 'clientes', 'users', 'audit'];
             tabs.forEach(t => {
                 const view = document.getElementById(`view-${t}`);
                 const btn = document.getElementById(`tab-${t}-btn`);
@@ -4193,6 +4351,7 @@
             if (tab === 'catalogo') { cargarVisorCombos(); cargarCatalogoCompletoUI(); }
             if (tab === 'users') cargarListaUsuariosCRM();
             if (tab === 'audit') cargarRegistroAuditoriaCRM();
+            if (tab === 'metricas') calcularMetricasEstadisticas(periodoEstadisticasActual || 'mes');
         }
 
         
@@ -6508,6 +6667,305 @@
             setTimeout(() => {
                 printWin.print();
             }, 500);
+        }
+
+
+
+        // =========================================================================
+        // MOTOR DE ANALÍTICAS & ESTADÍSTICAS B2B (TOP PRODUCTOS, CLIENTES, KPI)
+        // =========================================================================
+        let periodoEstadisticasActual = 'mes';
+
+        function cambiarFiltroEstadisticas(periodo) {
+            periodoEstadisticasActual = periodo;
+            const btnIds = ['hoy', 'semana', 'mes', 'ano', 'todo'];
+            btnIds.forEach(id => {
+                const btn = document.getElementById(`btn-stat-${id}`);
+                if (btn) {
+                    if (id === periodo) {
+                        btn.className = 'px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-500 text-slate-950 shadow-md transition-all';
+                    } else {
+                        btn.className = 'px-3 py-1.5 rounded-lg text-xs font-bold text-gray-400 hover:text-white transition-all';
+                    }
+                }
+            });
+
+            calcularMetricasEstadisticas(periodo);
+        }
+
+        function calcularMetricasEstadisticas(periodo = 'mes') {
+            const now = new Date();
+            const todayStr = now.toISOString().split('T')[0];
+            const currentYearStr = String(now.getFullYear());
+            const currentMonthStr = todayStr.substring(0, 7);
+
+            // 1. Filtrar pedidos según el período
+            const pedidosFiltrados = (pedidosData || []).filter(p => {
+                const pFecha = p.creado_el || p.created_at;
+                if (!pFecha) return periodo === 'todo';
+                const pDateStr = pFecha.split('T')[0];
+
+                if (periodo === 'hoy') return pDateStr === todayStr;
+                if (periodo === 'semana') {
+                    const diffDays = (now - new Date(pFecha)) / (1000 * 60 * 60 * 24);
+                    return diffDays <= 7 && diffDays >= 0;
+                }
+                if (periodo === 'mes') return pDateStr.startsWith(currentMonthStr);
+                if (periodo === 'ano') return pDateStr.startsWith(currentYearStr);
+                return true; // 'todo'
+            });
+
+            // 2. Acumuladores KPI
+            let facturacionCobrada = 0;
+            let pedidosCobradosCount = 0;
+            let totalPresupuestos = 0;
+            let totalVentasCerradas = 0;
+            let unidadesTotales = 0;
+
+            const prodMap = {};
+            const clientMap = {};
+            const shippingMap = { 'Entre Ríos (Mostto +5%)': 0, 'Retira en Local': 0, 'Resto del País': 0, 'Otro': 0 };
+            const statusMap = { 'Presupuesto': 0, 'Confirmado': 0, 'Pagado': 0, 'Despachado': 0, 'Cancelado': 0 };
+            const catMap = {};
+
+            pedidosFiltrados.forEach(p => {
+                const est = p.estado || 'Presupuesto';
+                const monto = parseFloat(p.monto_total || 0);
+                const items = p.items_pedido || [];
+                const esCobrado = (est === 'Pagado' || est === 'Despachado');
+
+                totalPresupuestos++;
+                if (statusMap.hasOwnProperty(est)) {
+                    statusMap[est]++;
+                } else if (est.includes('Despachado')) {
+                    statusMap['Despachado']++;
+                }
+
+                if (esCobrado) {
+                    facturacionCobrada += monto;
+                    pedidosCobradosCount++;
+                    totalVentasCerradas++;
+                }
+
+                // Clientes
+                const cId = p.cliente_id || p.clientes?.id || (p.clientes ? p.clientes.razon_social : 'Cliente Web');
+                const cNombre = p.clientes?.razon_social || p.clientes?.contacto_nombre || 'Cliente Web';
+                const cLoc = (p.clientes?.localidad || p.clientes?.provincia || 'C. del Uruguay').trim();
+
+                if (!clientMap[cId]) {
+                    clientMap[cId] = { nombre: cNombre, localidad: cLoc, pedidosCount: 0, totalComprado: 0 };
+                }
+                clientMap[cId].pedidosCount++;
+                clientMap[cId].totalComprado += monto;
+
+                // Envíos
+                const origen = p.origen || '';
+                if (origen.includes('Mostto') || origen.includes('Entre Ríos')) {
+                    shippingMap['Entre Ríos (Mostto +5%)'] += monto;
+                } else if (origen.includes('Retira') || origen.includes('Local')) {
+                    shippingMap['Retira en Local'] += monto;
+                } else if (origen.includes('Andreani') || origen.includes('Resto') || origen.includes('Cargo')) {
+                    shippingMap['Resto del País'] += monto;
+                } else {
+                    shippingMap['Otro'] += monto;
+                }
+
+                // Productos e Items
+                items.forEach(it => {
+                    const cant = parseInt(it.cantidad || 1);
+                    const pNombre = (it.producto_nombre || 'Producto General').trim();
+                    const sub = parseFloat(it.subtotal || (it.precio_unitario * cant) || 0);
+
+                    unidadesTotales += cant;
+
+                    if (!prodMap[pNombre]) {
+                        prodMap[pNombre] = { nombre: pNombre, unidades: 0, facturacion: 0 };
+                    }
+                    prodMap[pNombre].unidades += cant;
+                    prodMap[pNombre].facturacion += sub;
+
+                    // Inferencia de categoría para el desglose
+                    const nUp = pNombre.toUpperCase();
+                    let cat = 'Química General';
+                    if (nUp.includes('SAHUMERIO') || nUp.includes('AMOGH') || nUp.includes('AROMANZA')) cat = 'Sahumerios & Aromas';
+                    else if (nUp.includes('CLORO') || nUp.includes('BOYA') || nUp.includes('ALGUICIDA')) cat = 'Cloro & Piletas';
+                    else if (nUp.includes('DETERGENTE') || nUp.includes('DESENGRASANTE')) cat = 'Detergentes & Cocina';
+                    else if (nUp.includes('JABON') || nUp.includes('JABÓN') || nUp.includes('LAVANDINA')) cat = 'Lavandería & Ropa';
+                    else if (nUp.includes('CONCENTRADO') || nUp.includes('PASTA')) cat = 'Pastas & Concentrados';
+                    else if (nUp.includes('DESODORANTE') || nUp.includes('PISO')) cat = 'Desodorantes & Pisos';
+                    else if (nUp.includes('COMBO')) cat = 'Combos Emprendedores';
+                    else if (nUp.includes('AUTO') || nUp.includes('SILICONA')) cat = 'Automotor';
+
+                    if (!catMap[cat]) catMap[cat] = { unidades: 0, facturacion: 0 };
+                    catMap[cat].unidades += cant;
+                    catMap[cat].facturacion += sub;
+                });
+            });
+
+            // 3. Renderizar KPIs Superiores
+            const ticketPromedio = pedidosCobradosCount > 0 ? (facturacionCobrada / pedidosCobradosCount) : 0;
+            const tasaConversion = totalPresupuestos > 0 ? ((totalVentasCerradas / totalPresupuestos) * 100).toFixed(1) : 0;
+
+            const elFact = document.getElementById('stat-kpi-facturacion');
+            const elFactSub = document.getElementById('stat-kpi-facturacion-sub');
+            const elTicket = document.getElementById('stat-kpi-ticket');
+            const elTicketSub = document.getElementById('stat-kpi-ticket-sub');
+            const elConv = document.getElementById('stat-kpi-conversion');
+            const elConvSub = document.getElementById('stat-kpi-conversion-sub');
+            const elUnid = document.getElementById('stat-kpi-unidades');
+            const elUnidSub = document.getElementById('stat-kpi-unidades-sub');
+
+            if (elFact) elFact.innerText = `$ ${Math.round(facturacionCobrada).toLocaleString('es-AR')}`;
+            if (elFactSub) elFactSub.innerText = `${pedidosCobradosCount} pedidos cobrados/despachados`;
+
+            if (elTicket) elTicket.innerText = `$ ${Math.round(ticketPromedio).toLocaleString('es-AR')}`;
+            if (elTicketSub) elTicketSub.innerText = `Promedio por venta concretada`;
+
+            if (elConv) elConv.innerText = `${tasaConversion}%`;
+            if (elConvSub) elConvSub.innerText = `${totalVentasCerradas} de ${totalPresupuestos} pedidos cerrados`;
+
+            if (elUnid) elUnid.innerText = `${unidadesTotales.toLocaleString('es-AR')} un.`;
+            if (elUnidSub) elUnidSub.innerText = `${Object.keys(prodMap).length} productos diferentes`;
+
+            // 4. Renderizar Top 10 Productos Más Vendidos
+            const topProds = Object.values(prodMap).sort((a, b) => b.unidades - a.unidades).slice(0, 10);
+            const containerProds = document.getElementById('stat-top-productos-list');
+            const countProds = document.getElementById('stat-prods-count');
+            if (countProds) countProds.innerText = `${topProds.length} destacados`;
+
+            if (containerProds) {
+                if (topProds.length === 0) {
+                    containerProds.innerHTML = `<div class="text-center py-12 text-gray-500 text-xs italic">No hay registros de ventas en este período.</div>`;
+                } else {
+                    const maxUnits = topProds[0].unidades || 1;
+                    containerProds.innerHTML = topProds.map((p, idx) => {
+                        const pct = Math.round((p.unidades / maxUnits) * 100);
+                        const medalClass = idx === 0 ? 'bg-amber-400/20 text-amber-300 border-amber-400/40' : (idx === 1 ? 'bg-slate-300/20 text-slate-200 border-slate-300/40' : (idx === 2 ? 'bg-amber-700/20 text-amber-500 border-amber-700/40' : 'bg-white/5 text-gray-400 border-white/10'));
+                        return `
+                            <div class="p-3 rounded-xl bg-white/[0.03] border border-white/10 space-y-2 hover:bg-white/[0.06] transition-all">
+                                <div class="flex justify-between items-center gap-2">
+                                    <div class="flex items-center gap-2 max-w-[70%]">
+                                        <span class="w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs border ${medalClass} shrink-0">#${idx + 1}</span>
+                                        <span class="font-bold text-xs text-white truncate" title="${p.nombre}">${p.nombre}</span>
+                                    </div>
+                                    <div class="text-right shrink-0">
+                                        <span class="font-bold text-xs text-emerald-400 font-mono">${p.unidades} un.</span>
+                                        <span class="text-[10px] text-gray-400 block font-mono">$${Math.round(p.facturacion).toLocaleString('es-AR')}</span>
+                                    </div>
+                                </div>
+                                <div class="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden">
+                                    <div class="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-500" style="width: ${pct}%"></div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                }
+            }
+
+            // 5. Renderizar Top 10 Clientes Mayoristas
+            const topClients = Object.values(clientMap).sort((a, b) => b.totalComprado - a.totalComprado).slice(0, 10);
+            const containerClients = document.getElementById('stat-top-clientes-list');
+            const countClients = document.getElementById('stat-clients-count');
+            if (countClients) countClients.innerText = `${topClients.length} destacados`;
+
+            if (containerClients) {
+                if (topClients.length === 0) {
+                    containerClients.innerHTML = `<div class="text-center py-12 text-gray-500 text-xs italic">No hay compras registradas en este período.</div>`;
+                } else {
+                    containerClients.innerHTML = topClients.map((c, idx) => {
+                        const medalClass = idx === 0 ? 'bg-amber-400/20 text-amber-300 border-amber-400/40' : (idx === 1 ? 'bg-slate-300/20 text-slate-200 border-slate-300/40' : (idx === 2 ? 'bg-amber-700/20 text-amber-500 border-amber-700/40' : 'bg-white/5 text-gray-400 border-white/10'));
+                        return `
+                            <div class="p-3 rounded-xl bg-white/[0.03] border border-white/10 flex justify-between items-center gap-2 hover:bg-white/[0.06] transition-all">
+                                <div class="flex items-center gap-2.5 max-w-[65%]">
+                                    <span class="w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs border ${medalClass} shrink-0">#${idx + 1}</span>
+                                    <div class="truncate">
+                                        <span class="font-bold text-xs text-white block truncate">${c.nombre}</span>
+                                        <span class="text-[10px] text-gray-400 block truncate">${c.localidad} • ${c.pedidosCount} pedido(s)</span>
+                                    </div>
+                                </div>
+                                <div class="text-right shrink-0">
+                                    <span class="font-bold text-xs text-brand-yellow font-mono block">$${Math.round(c.totalComprado).toLocaleString('es-AR')}</span>
+                                    <span class="text-[9px] text-emerald-400 font-bold">Mayorista Activo</span>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                }
+            }
+
+            // 6. Distribución de Métodos de Envío
+            const containerEnvios = document.getElementById('stat-distribucion-envios');
+            if (containerEnvios) {
+                const totalEnv = Object.values(shippingMap).reduce((a, b) => a + b, 0) || 1;
+                containerEnvios.innerHTML = Object.keys(shippingMap).map(k => {
+                    const val = shippingMap[k];
+                    const pct = Math.round((val / totalEnv) * 100);
+                    return `
+                        <div class="space-y-1 text-xs">
+                            <div class="flex justify-between items-center text-[11px]">
+                                <span class="text-gray-300 font-bold">${k}</span>
+                                <span class="font-mono text-brand-yellow font-bold">${pct}% ($${Math.round(val).toLocaleString('es-AR')})</span>
+                            </div>
+                            <div class="w-full bg-slate-900 rounded-full h-2 overflow-hidden">
+                                <div class="bg-gradient-to-r from-purple-500 to-blue-400 h-full rounded-full transition-all duration-500" style="width: ${pct}%"></div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            // 7. Estado del Embudo
+            const containerEstados = document.getElementById('stat-distribucion-estados');
+            if (containerEstados) {
+                const totalEsts = Object.values(statusMap).reduce((a, b) => a + b, 0) || 1;
+                const colorsMap = {
+                    'Presupuesto': 'from-amber-500 to-yellow-400',
+                    'Confirmado': 'from-blue-500 to-cyan-400',
+                    'Pagado': 'from-emerald-500 to-teal-400',
+                    'Despachado': 'from-purple-500 to-indigo-400',
+                    'Cancelado': 'from-red-500 to-rose-400'
+                };
+                containerEstados.innerHTML = Object.keys(statusMap).map(k => {
+                    const count = statusMap[k];
+                    const pct = Math.round((count / totalEsts) * 100);
+                    return `
+                        <div class="space-y-1 text-xs">
+                            <div class="flex justify-between items-center text-[11px]">
+                                <span class="text-gray-300 font-bold">${k}</span>
+                                <span class="font-mono text-white font-bold">${count} (${pct}%)</span>
+                            </div>
+                            <div class="w-full bg-slate-900 rounded-full h-2 overflow-hidden">
+                                <div class="bg-gradient-to-r ${colorsMap[k] || 'from-gray-500 to-gray-400'} h-full rounded-full transition-all duration-500" style="width: ${pct}%"></div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            // 8. Categorías Líderes
+            const containerCats = document.getElementById('stat-distribucion-categorias');
+            if (containerCats) {
+                const topCats = Object.entries(catMap).sort((a, b) => b[1].unidades - a[1].unidades).slice(0, 5);
+                if (topCats.length === 0) {
+                    containerCats.innerHTML = `<div class="text-center py-6 text-gray-500 text-xs italic">Sin datos de categorías.</div>`;
+                } else {
+                    const totalCatUnits = topCats.reduce((acc, cur) => acc + cur[1].unidades, 0) || 1;
+                    containerCats.innerHTML = topCats.map(([catName, data]) => {
+                        const pct = Math.round((data.unidades / totalCatUnits) * 100);
+                        return `
+                            <div class="space-y-1 text-xs">
+                                <div class="flex justify-between items-center text-[11px]">
+                                    <span class="text-gray-300 font-bold truncate max-w-[60%]">${catName}</span>
+                                    <span class="font-mono text-emerald-400 font-bold">${data.unidades} un. (${pct}%)</span>
+                                </div>
+                                <div class="w-full bg-slate-900 rounded-full h-2 overflow-hidden">
+                                    <div class="bg-gradient-to-r from-amber-500 to-emerald-400 h-full rounded-full transition-all duration-500" style="width: ${pct}%"></div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                }
+            }
         }
 
 
