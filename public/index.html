@@ -597,14 +597,19 @@ ightarrow$ Ventas</p>
 
                 <!-- DOS COLUMNAS: TOP 10 PRODUCTOS Y TOP 10 CLIENTES -->
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <!-- CARD: TOP 10 PRODUCTOS MÁS VENDIDOS -->
-                    <div class="glass-panel p-5 rounded-2xl border border-white/10 space-y-4">
-                        <div class="flex justify-between items-center border-b border-white/10 pb-3">
+                    <!-- CARD: TOP PRODUCTOS MÁS VENDIDOS (CON FILTRO Y DRILL-DOWN POR CATEGORÍA) -->
+                    <div id="card-top-productos" class="glass-panel p-5 rounded-2xl border border-white/10 space-y-4 shadow-xl">
+                        <div class="flex justify-between items-center border-b border-white/10 pb-3 flex-wrap gap-2">
                             <div class="flex items-center gap-2">
                                 <span class="material-symbols-outlined text-amber-400">military_tech</span>
-                                <h3 class="font-title text-sm font-bold uppercase text-white tracking-wider">Top 10 Productos Más Vendidos</h3>
+                                <h3 id="stat-prods-title" class="font-title text-sm font-bold uppercase text-white tracking-wider">Top 10 Productos Más Vendidos</h3>
                             </div>
-                            <span id="stat-prods-count" class="text-[10px] font-bold text-brand-yellow bg-brand-yellow/10 px-2.5 py-0.5 rounded-full border border-brand-yellow/20">0 productos</span>
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <select id="stat-filter-cat-select" onchange="filtrarTopProductosPorCategoria(this.value)" class="bg-black/50 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-brand-yellow font-bold">
+                                    <option value="TODAS">🏆 Todas las Categorías</option>
+                                </select>
+                                <span id="stat-prods-count" class="text-[10px] font-bold text-brand-yellow bg-brand-yellow/10 px-2.5 py-1 rounded-full border border-brand-yellow/20">0 productos</span>
+                            </div>
                         </div>
 
                         <div id="stat-top-productos-list" class="space-y-3 max-h-[420px] overflow-y-auto pr-1 scrollbar-thin">
@@ -6675,9 +6680,31 @@ ightarrow$ Ventas</p>
         // MOTOR DE ANALÍTICAS & ESTADÍSTICAS B2B (TOP PRODUCTOS, CLIENTES, KPI)
         // =========================================================================
         let periodoEstadisticasActual = 'mes';
+        let categoriaFiltroActual = 'TODAS';
+        let statsCacheData = { prodMap: {}, catMap: {}, clientMap: {}, shippingMap: {}, statusMap: {} };
+
+        function inferirCategoriaProductoStats(nombre) {
+            const nUp = (nombre || '').toUpperCase();
+            if (nUp.includes('SAHUMERIO') || nUp.includes('AMOGH') || nUp.includes('CONO') || nUp.includes('AROMANZA') || nUp.includes('ILUMINARTE') || nUp.includes('SAGRADA MADRE') || nUp.includes('TUK TUK')) return 'Sahumerios & Aromas';
+            if (nUp.includes('CLORO') || nUp.includes('BOYA') || nUp.includes('ALGUICIDA') || nUp.includes('CLARIFICANTE') || nUp.includes('PASTILLA')) return 'Cloro & Piletas';
+            if (nUp.includes('DETERGENTE') || nUp.includes('DESENGRASANTE') || nUp.includes('LAVAVAJILLA') || nUp.includes('COCINA')) return 'Detergentes & Cocina';
+            if (nUp.includes('JABON') || nUp.includes('JABÓN') || nUp.includes('LAVANDINA') || nUp.includes('ALA') || nUp.includes('ARIEL') || nUp.includes('SKIP')) return 'Lavandería & Ropa';
+            if (nUp.includes('SUAVIZANTE')) return 'Suavizantes';
+            if (nUp.includes('CONCENTRADO') || nUp.includes('PASTA')) return 'Pastas & Concentrados';
+            if (nUp.includes('DESODORANTE') || nUp.includes('PISO') || nUp.includes('POETT') || nUp.includes('LYSOFORM')) return 'Desodorantes & Pisos';
+            if (nUp.includes('PAPEL') || nUp.includes('HIGIENICO') || nUp.includes('HIGIÉNICO') || nUp.includes('MORITA') || nUp.includes('HIGHPEL') || nUp.includes('MAXISEC')) return 'Papeles & Higiene';
+            if (nUp.includes('BOLSA') || nUp.includes('RESIDUO') || nUp.includes('CONSORCIO')) return 'Bolsas de Residuo';
+            if (nUp.includes('ESPONJA') || nUp.includes('FIBRA') || nUp.includes('VIRANA')) return 'Esponjas & Fibras';
+            if (nUp.includes('ESCOBA') || nUp.includes('ESCOBILLON') || nUp.includes('CEPILLO')) return 'Escobillones & Cepillos';
+            if (nUp.includes('COMBO')) return 'Combos Emprendedores';
+            if (nUp.includes('AUTO') || nUp.includes('SILICONA') || nUp.includes('SHAMPOO AUTO') || nUp.includes('REVIVIDOR')) return 'Automotor';
+            if (nUp.includes('INSECTICIDA') || nUp.includes('ESPIRAL') || nUp.includes('REPELENTE') || nUp.includes('OFF') || nUp.includes('FUYI') || nUp.includes('BAYGON')) return 'Insecticidas & Repelentes';
+            return 'Química General';
+        }
 
         function cambiarFiltroEstadisticas(periodo) {
             periodoEstadisticasActual = periodo;
+            categoriaFiltroActual = 'TODAS';
             const btnIds = ['hoy', 'semana', 'mes', 'ano', 'todo'];
             btnIds.forEach(id => {
                 const btn = document.getElementById(`btn-stat-${id}`);
@@ -6691,6 +6718,92 @@ ightarrow$ Ventas</p>
             });
 
             calcularMetricasEstadisticas(periodo);
+        }
+
+        function filtrarTopProductosPorCategoria(catName, shouldScroll = true) {
+            categoriaFiltroActual = catName || 'TODAS';
+
+            // Actualizar selector
+            const selectCat = document.getElementById('stat-filter-cat-select');
+            if (selectCat) selectCat.value = categoriaFiltroActual;
+
+            // Actualizar título
+            const titleEl = document.getElementById('stat-prods-title');
+            if (titleEl) {
+                if (categoriaFiltroActual === 'TODAS') {
+                    titleEl.innerText = 'Top 10 Productos Más Vendidos';
+                } else {
+                    titleEl.innerHTML = `Top Productos en: <span class="text-amber-400">${categoriaFiltroActual}</span>`;
+                }
+            }
+
+            renderTopProductosListUI();
+
+            if (shouldScroll) {
+                const cardEl = document.getElementById('card-top-productos');
+                if (cardEl) {
+                    cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    cardEl.classList.add('border-amber-500/50', 'scale-[1.01]');
+                    setTimeout(() => {
+                        cardEl.classList.remove('border-amber-500/50', 'scale-[1.01]');
+                    }, 1200);
+                }
+            }
+        }
+
+        function renderTopProductosListUI() {
+            const containerProds = document.getElementById('stat-top-productos-list');
+            const countProds = document.getElementById('stat-prods-count');
+            if (!containerProds) return;
+
+            let prodsArray = Object.values(statsCacheData.prodMap || {});
+
+            if (categoriaFiltroActual !== 'TODAS') {
+                prodsArray = prodsArray.filter(p => p.categoria === categoriaFiltroActual);
+            }
+
+            prodsArray.sort((a, b) => b.unidades - a.unidades);
+            const topProds = prodsArray.slice(0, 15);
+
+            if (countProds) {
+                countProds.innerText = `${topProds.length} ${categoriaFiltroActual === 'TODAS' ? 'destacados' : 'en ' + categoriaFiltroActual}`;
+            }
+
+            if (topProds.length === 0) {
+                containerProds.innerHTML = `
+                    <div class="text-center py-12 text-gray-400 text-xs italic space-y-2">
+                        <div>No se registraron ventas en la categoría <strong>${categoriaFiltroActual}</strong> para este período.</div>
+                        <button onclick="filtrarTopProductosPorCategoria('TODAS')" class="px-3 py-1 bg-white/10 hover:bg-white/20 text-white rounded-lg text-[11px] font-bold">Ver Todas las Categorías</button>
+                    </div>
+                `;
+                return;
+            }
+
+            const maxUnits = topProds[0].unidades || 1;
+            containerProds.innerHTML = topProds.map((p, idx) => {
+                const pct = Math.round((p.unidades / maxUnits) * 100);
+                const medalClass = idx === 0 ? 'bg-amber-400/20 text-amber-300 border-amber-400/40' : (idx === 1 ? 'bg-slate-300/20 text-slate-200 border-slate-300/40' : (idx === 2 ? 'bg-amber-700/20 text-amber-500 border-amber-700/40' : 'bg-white/5 text-gray-400 border-white/10'));
+                return `
+                    <div class="p-3 rounded-xl bg-white/[0.03] border border-white/10 space-y-2 hover:bg-white/[0.06] transition-all">
+                        <div class="flex justify-between items-center gap-2">
+                            <div class="flex items-center gap-2 max-w-[70%]">
+                                <span class="w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs border ${medalClass} shrink-0">#${idx + 1}</span>
+                                <div class="truncate">
+                                    <span class="font-bold text-xs text-white block truncate" title="${p.nombre}">${p.nombre}</span>
+                                    <span class="text-[10px] text-gray-400 block">${p.categoria}</span>
+                                </div>
+                            </div>
+                            <div class="text-right shrink-0">
+                                <span class="font-bold text-xs text-emerald-400 font-mono">${p.unidades} un.</span>
+                                <span class="text-[10px] text-gray-400 block font-mono">$${Math.round(p.facturacion).toLocaleString('es-AR')}</span>
+                            </div>
+                        </div>
+                        <div class="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden">
+                            <div class="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-500" style="width: ${pct}%"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
         }
 
         function calcularMetricasEstadisticas(periodo = 'mes') {
@@ -6778,29 +6891,28 @@ ightarrow$ Ventas</p>
 
                     unidadesTotales += cant;
 
+                    const catInferida = inferirCategoriaProductoStats(pNombre);
+
                     if (!prodMap[pNombre]) {
-                        prodMap[pNombre] = { nombre: pNombre, unidades: 0, facturacion: 0 };
+                        prodMap[pNombre] = { nombre: pNombre, unidades: 0, facturacion: 0, categoria: catInferida };
                     }
                     prodMap[pNombre].unidades += cant;
                     prodMap[pNombre].facturacion += sub;
 
-                    // Inferencia de categoría para el desglose
-                    const nUp = pNombre.toUpperCase();
-                    let cat = 'Química General';
-                    if (nUp.includes('SAHUMERIO') || nUp.includes('AMOGH') || nUp.includes('AROMANZA')) cat = 'Sahumerios & Aromas';
-                    else if (nUp.includes('CLORO') || nUp.includes('BOYA') || nUp.includes('ALGUICIDA')) cat = 'Cloro & Piletas';
-                    else if (nUp.includes('DETERGENTE') || nUp.includes('DESENGRASANTE')) cat = 'Detergentes & Cocina';
-                    else if (nUp.includes('JABON') || nUp.includes('JABÓN') || nUp.includes('LAVANDINA')) cat = 'Lavandería & Ropa';
-                    else if (nUp.includes('CONCENTRADO') || nUp.includes('PASTA')) cat = 'Pastas & Concentrados';
-                    else if (nUp.includes('DESODORANTE') || nUp.includes('PISO')) cat = 'Desodorantes & Pisos';
-                    else if (nUp.includes('COMBO')) cat = 'Combos Emprendedores';
-                    else if (nUp.includes('AUTO') || nUp.includes('SILICONA')) cat = 'Automotor';
-
-                    if (!catMap[cat]) catMap[cat] = { unidades: 0, facturacion: 0 };
-                    catMap[cat].unidades += cant;
-                    catMap[cat].facturacion += sub;
+                    if (!catMap[catInferida]) {
+                        catMap[catInferida] = { unidades: 0, facturacion: 0, topProducto: pNombre, topUnits: 0 };
+                    }
+                    catMap[catInferida].unidades += cant;
+                    catMap[catInferida].facturacion += sub;
+                    if (prodMap[pNombre].unidades > catMap[catInferida].topUnits) {
+                        catMap[catInferida].topProducto = pNombre;
+                        catMap[catInferida].topUnits = prodMap[pNombre].unidades;
+                    }
                 });
             });
+
+            // Guardar en caché para filtrado instantáneo
+            statsCacheData = { prodMap, catMap, clientMap, shippingMap, statusMap };
 
             // 3. Renderizar KPIs Superiores
             const ticketPromedio = pedidosCobradosCount > 0 ? (facturacionCobrada / pedidosCobradosCount) : 0;
@@ -6827,42 +6939,18 @@ ightarrow$ Ventas</p>
             if (elUnid) elUnid.innerText = `${unidadesTotales.toLocaleString('es-AR')} un.`;
             if (elUnidSub) elUnidSub.innerText = `${Object.keys(prodMap).length} productos diferentes`;
 
-            // 4. Renderizar Top 10 Productos Más Vendidos
-            const topProds = Object.values(prodMap).sort((a, b) => b.unidades - a.unidades).slice(0, 10);
-            const containerProds = document.getElementById('stat-top-productos-list');
-            const countProds = document.getElementById('stat-prods-count');
-            if (countProds) countProds.innerText = `${topProds.length} destacados`;
-
-            if (containerProds) {
-                if (topProds.length === 0) {
-                    containerProds.innerHTML = `<div class="text-center py-12 text-gray-500 text-xs italic">No hay registros de ventas en este período.</div>`;
-                } else {
-                    const maxUnits = topProds[0].unidades || 1;
-                    containerProds.innerHTML = topProds.map((p, idx) => {
-                        const pct = Math.round((p.unidades / maxUnits) * 100);
-                        const medalClass = idx === 0 ? 'bg-amber-400/20 text-amber-300 border-amber-400/40' : (idx === 1 ? 'bg-slate-300/20 text-slate-200 border-slate-300/40' : (idx === 2 ? 'bg-amber-700/20 text-amber-500 border-amber-700/40' : 'bg-white/5 text-gray-400 border-white/10'));
-                        return `
-                            <div class="p-3 rounded-xl bg-white/[0.03] border border-white/10 space-y-2 hover:bg-white/[0.06] transition-all">
-                                <div class="flex justify-between items-center gap-2">
-                                    <div class="flex items-center gap-2 max-w-[70%]">
-                                        <span class="w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs border ${medalClass} shrink-0">#${idx + 1}</span>
-                                        <span class="font-bold text-xs text-white truncate" title="${p.nombre}">${p.nombre}</span>
-                                    </div>
-                                    <div class="text-right shrink-0">
-                                        <span class="font-bold text-xs text-emerald-400 font-mono">${p.unidades} un.</span>
-                                        <span class="text-[10px] text-gray-400 block font-mono">$${Math.round(p.facturacion).toLocaleString('es-AR')}</span>
-                                    </div>
-                                </div>
-                                <div class="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden">
-                                    <div class="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-500" style="width: ${pct}%"></div>
-                                </div>
-                            </div>
-                        `;
-                    }).join('');
-                }
+            // 4. Poblar selector de categorías dinámico
+            const selectCat = document.getElementById('stat-filter-cat-select');
+            if (selectCat) {
+                const catsDisponibles = Object.keys(catMap).sort();
+                selectCat.innerHTML = '<option value="TODAS">🏆 Todas las Categorías</option>' +
+                    catsDisponibles.map(c => `<option value="${c}" ${c === categoriaFiltroActual ? 'selected' : ''}>📂 ${c} (${catMap[c].unidades} un.)</option>`).join('');
             }
 
-            // 5. Renderizar Top 10 Clientes Mayoristas
+            // 5. Renderizar lista de Top Productos (con filtro de categoría activo)
+            renderTopProductosListUI();
+
+            // 6. Renderizar Top 10 Clientes Mayoristas
             const topClients = Object.values(clientMap).sort((a, b) => b.totalComprado - a.totalComprado).slice(0, 10);
             const containerClients = document.getElementById('stat-top-clientes-list');
             const countClients = document.getElementById('stat-clients-count');
@@ -6893,7 +6981,7 @@ ightarrow$ Ventas</p>
                 }
             }
 
-            // 6. Distribución de Métodos de Envío
+            // 7. Distribución de Métodos de Envío
             const containerEnvios = document.getElementById('stat-distribucion-envios');
             if (containerEnvios) {
                 const totalEnv = Object.values(shippingMap).reduce((a, b) => a + b, 0) || 1;
@@ -6914,7 +7002,7 @@ ightarrow$ Ventas</p>
                 }).join('');
             }
 
-            // 7. Estado del Embudo
+            // 8. Estado del Embudo
             const containerEstados = document.getElementById('stat-distribucion-estados');
             if (containerEstados) {
                 const totalEsts = Object.values(statusMap).reduce((a, b) => a + b, 0) || 1;
@@ -6942,24 +7030,37 @@ ightarrow$ Ventas</p>
                 }).join('');
             }
 
-            // 8. Categorías Líderes
+            // 9. Categorías Líderes (CON CLIC INTERACTIVO Y DRILL-DOWN)
             const containerCats = document.getElementById('stat-distribucion-categorias');
             if (containerCats) {
-                const topCats = Object.entries(catMap).sort((a, b) => b[1].unidades - a[1].unidades).slice(0, 5);
+                const topCats = Object.entries(catMap).sort((a, b) => b[1].unidades - a[1].unidades).slice(0, 6);
                 if (topCats.length === 0) {
                     containerCats.innerHTML = `<div class="text-center py-6 text-gray-500 text-xs italic">Sin datos de categorías.</div>`;
                 } else {
                     const totalCatUnits = topCats.reduce((acc, cur) => acc + cur[1].unidades, 0) || 1;
                     containerCats.innerHTML = topCats.map(([catName, data]) => {
                         const pct = Math.round((data.unidades / totalCatUnits) * 100);
+                        const isSelected = (catName === categoriaFiltroActual);
                         return `
-                            <div class="space-y-1 text-xs">
+                            <div onclick="filtrarTopProductosPorCategoria('${catName}')" title="Clic para ver los productos más vendidos de ${catName}" class="p-2.5 rounded-xl ${isSelected ? 'bg-amber-500/20 border-amber-500/50' : 'bg-white/[0.03] border-white/10'} border hover:border-amber-500/40 hover:bg-white/[0.08] transition-all cursor-pointer space-y-1.5 group shadow-sm">
                                 <div class="flex justify-between items-center text-[11px]">
-                                    <span class="text-gray-300 font-bold truncate max-w-[60%]">${catName}</span>
-                                    <span class="font-mono text-emerald-400 font-bold">${data.unidades} un. (${pct}%)</span>
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="material-symbols-outlined text-[15px] ${isSelected ? 'text-amber-400' : 'text-gray-400 group-hover:text-amber-400'} transition-colors">category</span>
+                                        <span class="text-gray-200 font-bold group-hover:text-amber-300 transition-colors">${catName}</span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-mono text-emerald-400 font-bold">${data.unidades} un. (${pct}%)</span>
+                                        <span class="text-[10px] text-amber-400 font-bold opacity-0 group-hover:opacity-100 transition-all flex items-center">
+                                            Ver →
+                                        </span>
+                                    </div>
                                 </div>
                                 <div class="w-full bg-slate-900 rounded-full h-2 overflow-hidden">
                                     <div class="bg-gradient-to-r from-amber-500 to-emerald-400 h-full rounded-full transition-all duration-500" style="width: ${pct}%"></div>
+                                </div>
+                                <div class="text-[10px] text-gray-400 flex items-center justify-between pt-0.5">
+                                    <span class="truncate">Líder: <strong class="text-gray-200">${data.topProducto}</strong></span>
+                                    <span class="font-mono text-amber-300/80 font-bold shrink-0">$${Math.round(data.facturacion).toLocaleString('es-AR')}</span>
                                 </div>
                             </div>
                         `;
