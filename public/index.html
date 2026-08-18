@@ -221,7 +221,7 @@
             </div>
         </header>
 
-        <main class="flex-grow max-w-7xl mx-auto w-full px-3 sm:px-6 py-4 sm:py-6 space-y-6">
+        <main class="flex-grow max-w-[1720px] mx-auto w-full px-3 sm:px-6 py-4 sm:py-6 space-y-6">
 
             <!-- Tabs de Navegación (Sleek Drag-to-Scroll con Manito y Flechas Flotantes) -->
             <div class="relative w-full border-b border-white/10 pb-1 group">
@@ -719,7 +719,7 @@ ightarrow$ Ventas</p>
             <!-- TAB 4: GESTIÓN CATÁLOGO E IA -->
             <!-- TAB 4: CATÁLOGO E IA CON MENÚ LATERAL EN DESKTOP Y MODAL EMERGENTE EN MÓVIL -->
             <section id="view-catalogo" class="hidden space-y-6">
-                <div class="glass-panel p-4 sm:p-6 rounded-2xl space-y-6 max-w-6xl mx-auto">
+                <div class="glass-panel p-4 sm:p-6 rounded-2xl space-y-6 w-full mx-auto shadow-2xl">
                     <!-- ENCABEZADO CON SELECTOR DE HERRAMIENTA PARA MÓVILES -->
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-white/10 pb-4">
                         <div class="flex items-center gap-3">
@@ -744,52 +744,67 @@ ightarrow$ Ventas</p>
                         </div>
                     </div>
 
-                    <!-- LAYOUT: MENÚ LATERAL EN DESKTOP (hidden lg:block) Y CONTENIDO -->
-                    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                    <!-- LAYOUT FLEXIBLE: MENÚ LATERAL COLAPSABLE EN DESKTOP Y CONTENIDO DINÁMICO EXPANDIDO -->
+                    <div class="flex flex-col lg:flex-row items-start gap-6 w-full">
                         
-                        <!-- MENÚ LATERAL IZQUIERDO (SOLO EN PANTALLAS GRANDES PARA EVITAR SOLAPAMIENTO EN CELULAR) -->
-                        <div class="hidden lg:block lg:col-span-1 space-y-2 bg-slate-900/80 p-3 rounded-2xl border border-white/10 h-fit lg:sticky lg:top-24">
-                            <span class="text-[10px] font-black uppercase text-gray-400 tracking-wider block px-2 py-1 border-b border-white/5 mb-2">Herramientas</span>
+                        <!-- MENÚ LATERAL IZQUIERDO (COLAPSABLE / EXPANDIBLE CON ICONOS O TEXTO) -->
+                        <div id="catalogo-sidebar" class="hidden lg:flex flex-col gap-1.5 bg-slate-900/90 p-3 rounded-2xl border border-white/10 w-64 shrink-0 transition-all duration-300 lg:sticky lg:top-24 shadow-2xl">
+                            <!-- HEADER DEL SIDEBAR CON BOTÓN MINIMIZADOR -->
+                            <div class="flex items-center justify-between pb-2 border-b border-white/10 mb-1 px-1">
+                                <span id="catalogo-sidebar-title" class="text-[10px] font-black uppercase text-gray-400 tracking-wider sidebar-label">Herramientas</span>
+                                <button type="button" onclick="toggleCatalogoSidebar()" id="catalogo-sidebar-toggle-btn" title="Minimizar / Expandir Menú de Herramientas" class="p-1.5 rounded-lg bg-white/5 hover:bg-brand-yellow hover:text-slate-950 text-gray-300 transition-all flex items-center justify-center cursor-pointer">
+                                    <span id="catalogo-sidebar-toggle-icon" class="material-symbols-outlined text-[18px]">menu_open</span>
+                                </button>
+                            </div>
                             
-                            <button id="btn-subtab-combos" onclick="switchCatSubTab('combos')" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all bg-white/15 border border-white/30 text-white shadow-md">
-                                <span class="material-symbols-outlined text-sm text-purple-400">view_carousel</span> Combos Emprendedores
+                            <button id="btn-subtab-combos" onclick="switchCatSubTab('combos')" title="Combos Emprendedores" class="cat-sidebar-btn w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2.5 transition-all bg-white/15 border border-white/30 text-white shadow-md cursor-pointer group">
+                                <span class="material-symbols-outlined text-[18px] text-purple-400 shrink-0">view_carousel</span>
+                                <span class="sidebar-label whitespace-nowrap overflow-hidden transition-all duration-200">Combos Emprendedores</span>
                             </button>
 
-                            <button id="btn-subtab-precios" onclick="switchCatSubTab('precios')" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all text-gray-400 hover:bg-white/5">
-                                <span class="material-symbols-outlined text-sm text-emerald-400">price_change</span> Actualizador de Precios
+                            <button id="btn-subtab-precios" onclick="switchCatSubTab('precios')" title="Actualizador de Precios" class="cat-sidebar-btn w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2.5 transition-all text-gray-400 hover:bg-white/5 hover:text-white cursor-pointer group">
+                                <span class="material-symbols-outlined text-[18px] text-emerald-400 shrink-0">price_change</span>
+                                <span class="sidebar-label whitespace-nowrap overflow-hidden transition-all duration-200">Actualizador de Precios</span>
                             </button>
 
-                            <button id="btn-subtab-atributos" onclick="switchCatSubTab('atributos')" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all text-gray-400 hover:bg-white/5">
-                                <span class="material-symbols-outlined text-sm text-amber-400">tune</span> Gestor de Atributos
+                            <button id="btn-subtab-atributos" onclick="switchCatSubTab('atributos')" title="Gestor de Atributos" class="cat-sidebar-btn w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2.5 transition-all text-gray-400 hover:bg-white/5 hover:text-white cursor-pointer group">
+                                <span class="material-symbols-outlined text-[18px] text-amber-400 shrink-0">tune</span>
+                                <span class="sidebar-label whitespace-nowrap overflow-hidden transition-all duration-200">Gestor de Atributos</span>
                             </button>
 
-                            <button id="btn-subtab-ofertas" onclick="switchCatSubTab('ofertas')" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all text-gray-400 hover:bg-white/5">
-                                <span class="material-symbols-outlined text-sm text-amber-400">local_offer</span> Ofertas Semanales
+                            <button id="btn-subtab-ofertas" onclick="switchCatSubTab('ofertas')" title="Ofertas Semanales" class="cat-sidebar-btn w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2.5 transition-all text-gray-400 hover:bg-white/5 hover:text-white cursor-pointer group">
+                                <span class="material-symbols-outlined text-[18px] text-amber-400 shrink-0">local_offer</span>
+                                <span class="sidebar-label whitespace-nowrap overflow-hidden transition-all duration-200">Ofertas Semanales</span>
                             </button>
 
-                            <button id="btn-subtab-banners" onclick="switchCatSubTab('banners')" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all text-gray-400 hover:bg-white/5">
-                                <span class="material-symbols-outlined text-sm text-cyan-400">collections_bookmark</span> Banners de Secciones
+                            <button id="btn-subtab-banners" onclick="switchCatSubTab('banners')" title="Banners de Secciones" class="cat-sidebar-btn w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2.5 transition-all text-gray-400 hover:bg-white/5 hover:text-white cursor-pointer group">
+                                <span class="material-symbols-outlined text-[18px] text-cyan-400 shrink-0">collections_bookmark</span>
+                                <span class="sidebar-label whitespace-nowrap overflow-hidden transition-all duration-200">Banners de Secciones</span>
                             </button>
 
-                            <button id="btn-subtab-single" onclick="switchCatSubTab('single')" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all text-gray-400 hover:bg-white/5">
-                                <span class="material-symbols-outlined text-sm text-blue-400">add_photo_alternate</span> Buscar Producto / Imagen
+                            <button id="btn-subtab-single" onclick="switchCatSubTab('single')" title="Buscar Producto / Imagen" class="cat-sidebar-btn w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2.5 transition-all text-gray-400 hover:bg-white/5 hover:text-white cursor-pointer group">
+                                <span class="material-symbols-outlined text-[18px] text-blue-400 shrink-0">add_photo_alternate</span>
+                                <span class="sidebar-label whitespace-nowrap overflow-hidden transition-all duration-200">Buscar Producto / Imagen</span>
                             </button>
 
-                            <button id="btn-subtab-excel" onclick="switchCatSubTab('excel')" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all text-gray-400 hover:bg-white/5">
-                                <span class="material-symbols-outlined text-sm text-emerald-400">description</span> Carga Masiva Excel
+                            <button id="btn-subtab-excel" onclick="switchCatSubTab('excel')" title="Carga Masiva Excel" class="cat-sidebar-btn w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2.5 transition-all text-gray-400 hover:bg-white/5 hover:text-white cursor-pointer group">
+                                <span class="material-symbols-outlined text-[18px] text-emerald-400 shrink-0">description</span>
+                                <span class="sidebar-label whitespace-nowrap overflow-hidden transition-all duration-200">Carga Masiva Excel</span>
                             </button>
 
-                            <button id="btn-subtab-ia" onclick="switchCatSubTab('ia')" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all text-gray-400 hover:bg-white/5">
-                                <span class="material-symbols-outlined text-sm text-brand-yellow">psychology</span> Instrucción IA / Voz
+                            <button id="btn-subtab-ia" onclick="switchCatSubTab('ia')" title="Instrucción IA / Voz" class="cat-sidebar-btn w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2.5 transition-all text-gray-400 hover:bg-white/5 hover:text-white cursor-pointer group">
+                                <span class="material-symbols-outlined text-[18px] text-brand-yellow shrink-0">psychology</span>
+                                <span class="sidebar-label whitespace-nowrap overflow-hidden transition-all duration-200">Instrucción IA / Voz</span>
                             </button>
 
-                            <button id="btn-subtab-sync" onclick="switchCatSubTab('sync')" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all text-gray-400 hover:bg-white/5">
-                                <span class="material-symbols-outlined text-sm text-teal-400">sync</span> Sincronizar Web
+                            <button id="btn-subtab-sync" onclick="switchCatSubTab('sync')" title="Sincronizar Web" class="cat-sidebar-btn w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2.5 transition-all text-gray-400 hover:bg-white/5 hover:text-white cursor-pointer group">
+                                <span class="material-symbols-outlined text-[18px] text-teal-400 shrink-0">sync</span>
+                                <span class="sidebar-label whitespace-nowrap overflow-hidden transition-all duration-200">Sincronizar Web</span>
                             </button>
                         </div>
 
-                        <!-- CONTENIDO DERECHO (SE MUESTRA SOLO LA PESTAÑA SELECCIONADA EN EL MENÚ LATERAL) -->
-                        <div class="lg:col-span-3 space-y-6">
+                        <!-- CONTENIDO DERECHO (EXPANDIBLE AL 100% DE ANCHO) -->
+                        <div id="catalogo-main-content" class="flex-1 min-w-0 w-full space-y-6 transition-all duration-300">
 
                             <!-- SUB-TAB 0: ACTUALIZADOR MASIVO DE PRECIOS (% Y MONTO FIJO) -->
                             <div id="subtab-content-precios" class="hidden space-y-6">
@@ -839,18 +854,18 @@ ightarrow$ Ventas</p>
                                         <!-- 1. Operación -->
                                         <div>
                                             <label class="block text-[11px] font-extrabold uppercase text-gray-300 tracking-wider mb-2">1. Operación</label>
-                                            <div class="grid grid-cols-3 gap-1 bg-black/40 p-1.5 rounded-xl border border-white/10">
-                                                <button type="button" id="btn-op-aumentar" onclick="setOperacionPrecios('Aumentar')" class="py-2 px-1 rounded-lg text-[10px] sm:text-xs font-bold uppercase transition-all bg-emerald-500 text-slate-950 shadow-md flex items-center justify-center gap-1 overflow-hidden cursor-pointer">
-                                                    <span class="material-symbols-outlined text-[13px] sm:text-[14px]">arrow_upward</span>
-                                                    <span class="truncate">Aumentar</span>
+                                            <div class="grid grid-cols-3 gap-1.5 bg-black/40 p-1.5 rounded-xl border border-white/10">
+                                                <button type="button" id="btn-op-aumentar" onclick="setOperacionPrecios('Aumentar')" class="py-2.5 px-1.5 sm:px-2 rounded-xl text-xs font-black uppercase transition-all bg-emerald-500 text-slate-950 shadow-md flex items-center justify-center gap-1 cursor-pointer">
+                                                    <span class="material-symbols-outlined text-[15px]">arrow_upward</span>
+                                                    <span>Aumentar</span>
                                                 </button>
-                                                <button type="button" id="btn-op-restar" onclick="setOperacionPrecios('Restar')" class="py-2 px-1 rounded-lg text-[10px] sm:text-xs font-bold uppercase transition-all text-gray-400 hover:text-white flex items-center justify-center gap-1 overflow-hidden cursor-pointer">
-                                                    <span class="material-symbols-outlined text-[13px] sm:text-[14px]">arrow_downward</span>
-                                                    <span class="truncate">Restar</span>
+                                                <button type="button" id="btn-op-restar" onclick="setOperacionPrecios('Restar')" class="py-2.5 px-1.5 sm:px-2 rounded-xl text-xs font-bold uppercase transition-all text-gray-400 hover:text-white hover:bg-white/5 flex items-center justify-center gap-1 cursor-pointer">
+                                                    <span class="material-symbols-outlined text-[15px]">arrow_downward</span>
+                                                    <span>Restar</span>
                                                 </button>
-                                                <button type="button" id="btn-op-igualar" onclick="setOperacionPrecios('Igualar')" class="py-2 px-1 rounded-lg text-[10px] sm:text-xs font-bold uppercase transition-all text-gray-400 hover:text-white flex items-center justify-center gap-1 overflow-hidden cursor-pointer">
-                                                    <span class="material-symbols-outlined text-[13px] sm:text-[14px]">equal</span>
-                                                    <span class="truncate">Fijar</span>
+                                                <button type="button" id="btn-op-igualar" onclick="setOperacionPrecios('Igualar')" class="py-2.5 px-1.5 sm:px-2 rounded-xl text-xs font-bold uppercase transition-all text-gray-400 hover:text-white hover:bg-white/5 flex items-center justify-center gap-1 cursor-pointer">
+                                                    <span class="material-symbols-outlined text-[15px]">equal</span>
+                                                    <span>Fijar</span>
                                                 </button>
                                             </div>
                                         </div>
@@ -908,19 +923,19 @@ ightarrow$ Ventas</p>
                                     </div>
                                 </div>
 
-                                <!-- TABLA DE VISTA PREVIA EN VIVO (LIVE PREVIEW) -->
+                                <!-- TABLA DE VISTA PREVIA EN VIVO (LIVE PREVIEW CON DRAG-TO-SCROLL DE MANITO) -->
                                 <div class="glass-panel rounded-2xl border border-white/10 overflow-hidden shadow-2xl">
-                                    <div class="overflow-x-auto max-h-[500px] overflow-y-auto">
-                                        <table class="w-full text-left text-xs">
-                                            <thead class="bg-black/60 sticky top-0 z-10 text-gray-400 uppercase text-[10px] tracking-wider border-b border-white/10">
+                                    <div id="tabla-precios-scroll-container" class="overflow-x-auto max-h-[620px] overflow-y-auto scrollbar-none drag-scroll-container select-none">
+                                        <table class="w-full text-left text-xs min-w-[750px] lg:min-w-full">
+                                            <thead class="bg-black/80 backdrop-blur-md sticky top-0 z-10 text-gray-400 uppercase text-[10px] tracking-wider border-b border-white/10">
                                                 <tr>
-                                                    <th class="py-3 px-3 w-10 text-center">Sel.</th>
-                                                    <th class="py-3 px-3">Producto & Variación</th>
-                                                    <th class="py-3 px-3">SKU</th>
-                                                    <th class="py-3 px-3">Categoría</th>
-                                                    <th class="py-3 px-3 text-right">P. Original</th>
-                                                    <th class="py-3 px-3 text-center">Variación</th>
-                                                    <th class="py-3 px-3 text-right text-emerald-400">P. Actualizado (Live)</th>
+                                                    <th class="py-3.5 px-3.5 w-12 text-center">Sel.</th>
+                                                    <th class="py-3.5 px-4 min-w-[280px]">Producto & Variación</th>
+                                                    <th class="py-3.5 px-3 min-w-[120px]">SKU</th>
+                                                    <th class="py-3.5 px-3 min-w-[140px]">Categoría</th>
+                                                    <th class="py-3.5 px-3 text-right min-w-[100px]">P. Original</th>
+                                                    <th class="py-3.5 px-3 text-center min-w-[110px]">Variación</th>
+                                                    <th class="py-3.5 px-4 text-right text-emerald-400 min-w-[130px]">P. Actualizado (Live)</th>
                                                 </tr>
                                             </thead>
                                             <tbody id="tbody-precios-masivo" class="divide-y divide-white/5 font-sans">
@@ -1982,13 +1997,111 @@ ightarrow$ Ventas</p>
             }, { passive: false });
         }
 
+        
+        // =========================================================================
+        // MINIMIZADOR / EXPANSOR DE MENÚ LATERAL DE CATÁLOGO (ICON-ONLY MODE)
+        // =========================================================================
+        function toggleCatalogoSidebar() {
+            const sidebar = document.getElementById('catalogo-sidebar');
+            const icon = document.getElementById('catalogo-sidebar-toggle-icon');
+            const title = document.getElementById('catalogo-sidebar-title');
+            if (!sidebar) return;
+
+            const isCollapsed = sidebar.classList.contains('sidebar-collapsed');
+            if (isCollapsed) {
+                // Expandir a menú completo
+                sidebar.classList.remove('sidebar-collapsed', 'w-16', 'p-2');
+                sidebar.classList.add('w-64', 'p-3');
+                if (icon) icon.innerText = 'menu_open';
+                if (title) title.classList.remove('hidden');
+                sidebar.querySelectorAll('.sidebar-label').forEach(el => el.classList.remove('hidden'));
+                sidebar.querySelectorAll('.cat-sidebar-btn').forEach(b => {
+                    b.classList.remove('justify-center', 'px-0');
+                    b.classList.add('px-3', 'text-left');
+                });
+                localStorage.setItem('dec_crm_cat_sidebar_collapsed', 'false');
+            } else {
+                // Minimizar a solo iconos
+                sidebar.classList.add('sidebar-collapsed', 'w-16', 'p-2');
+                sidebar.classList.remove('w-64', 'p-3');
+                if (icon) icon.innerText = 'menu';
+                if (title) title.classList.add('hidden');
+                sidebar.querySelectorAll('.sidebar-label').forEach(el => el.classList.add('hidden'));
+                sidebar.querySelectorAll('.cat-sidebar-btn').forEach(b => {
+                    b.classList.add('justify-center', 'px-0');
+                    b.classList.remove('px-3', 'text-left');
+                });
+                localStorage.setItem('dec_crm_cat_sidebar_collapsed', 'true');
+            }
+        }
+
+        function restoreCatalogoSidebarState() {
+            const isCollapsed = localStorage.getItem('dec_crm_cat_sidebar_collapsed') === 'true';
+            if (isCollapsed) {
+                const sidebar = document.getElementById('catalogo-sidebar');
+                const icon = document.getElementById('catalogo-sidebar-toggle-icon');
+                const title = document.getElementById('catalogo-sidebar-title');
+                if (sidebar) {
+                    sidebar.classList.add('sidebar-collapsed', 'w-16', 'p-2');
+                    sidebar.classList.remove('w-64', 'p-3');
+                    if (icon) icon.innerText = 'menu';
+                    if (title) title.classList.add('hidden');
+                    sidebar.querySelectorAll('.sidebar-label').forEach(el => el.classList.add('hidden'));
+                    sidebar.querySelectorAll('.cat-sidebar-btn').forEach(b => {
+                        b.classList.add('justify-center', 'px-0');
+                        b.classList.remove('px-3', 'text-left');
+                    });
+                }
+            }
+        }
+
+        function initDragToScrollTables() {
+            const tableContainers = document.querySelectorAll('.drag-scroll-container');
+            tableContainers.forEach(slider => {
+                if (slider.id === 'nav-tabs-scroll-container') return; // already handled
+
+                let isDown = false;
+                let startX = 0;
+                let scrollLeftPos = 0;
+                let hasMoved = false;
+
+                slider.addEventListener('mousedown', (e) => {
+                    // Don't drag if clicking input or select
+                    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
+                    isDown = true;
+                    hasMoved = false;
+                    slider.classList.add('is-dragging');
+                    startX = e.pageX - slider.offsetLeft;
+                    scrollLeftPos = slider.scrollLeft;
+                });
+
+                slider.addEventListener('mouseleave', () => {
+                    isDown = false;
+                    slider.classList.remove('is-dragging');
+                });
+
+                slider.addEventListener('mouseup', () => {
+                    isDown = false;
+                    slider.classList.remove('is-dragging');
+                });
+
+                slider.addEventListener('mousemove', (e) => {
+                    if (!isDown) return;
+                    e.preventDefault();
+                    const x = e.pageX - slider.offsetLeft;
+                    const walk = (x - startX) * 1.5;
+                    slider.scrollLeft = scrollLeftPos - walk;
+                });
+            });
+        }
+
         function checkAuth() {
             const token = localStorage.getItem('dec_crm_auth');
             if (token === 'granted') {
                 document.getElementById('login-modal').classList.add('hidden');
                 document.getElementById('crm-app-content').classList.remove('hidden');
                 document.getElementById('crm-app-content').classList.add('flex');
-                init(); initDragToScrollNav();
+                init(); initDragToScrollNav(); restoreCatalogoSidebarState(); initDragToScrollTables();
             } else {
                 document.getElementById('login-modal').classList.remove('hidden');
                 document.getElementById('crm-app-content').classList.add('hidden');
@@ -5335,13 +5448,24 @@ ightarrow$ Ventas</p>
             const labelEl = document.getElementById('label-herramienta-activa-movil');
             if (labelEl) labelEl.innerText = labelsMap[subtab] || subtab;
 
+            const sidebar = document.getElementById('catalogo-sidebar');
+            const isCollapsed = sidebar && sidebar.classList.contains('sidebar-collapsed');
+
             const subtabs = ['precios', 'combos', 'atributos', 'ofertas', 'banners', 'single', 'excel', 'ia', 'sync'];
             subtabs.forEach(s => {
                 const content = document.getElementById(`subtab-content-${s}`);
                 const btn = document.getElementById(`btn-subtab-${s}`);
                 if (content) content.classList.add('hidden');
                 if (btn) {
-                    btn.className = "w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all text-gray-400 hover:bg-white/5";
+                    btn.classList.remove('bg-white/15', 'border', 'border-white/30', 'text-white', 'shadow-md');
+                    btn.classList.add('text-gray-400', 'hover:bg-white/5', 'hover:text-white');
+                    if (isCollapsed) {
+                        btn.classList.add('justify-center', 'px-0');
+                        btn.classList.remove('px-3', 'text-left');
+                    } else {
+                        btn.classList.remove('justify-center', 'px-0');
+                        btn.classList.add('px-3', 'text-left');
+                    }
                 }
             });
 
@@ -5349,7 +5473,8 @@ ightarrow$ Ventas</p>
             const activeBtn = document.getElementById(`btn-subtab-${subtab}`);
             if (activeContent) activeContent.classList.remove('hidden');
             if (activeBtn) {
-                activeBtn.className = "w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all bg-white/15 border border-white/30 text-white shadow-md";
+                activeBtn.classList.remove('text-gray-400', 'hover:bg-white/5');
+                activeBtn.classList.add('bg-white/15', 'border', 'border-white/30', 'text-white', 'shadow-md');
             }
 
             if (subtab === 'precios') cargarCatalogoPreciosMasivo();
@@ -5357,6 +5482,8 @@ ightarrow$ Ventas</p>
             if (subtab === 'atributos') cargarTablaAtributos();
             if (subtab === 'ofertas') cargarVisorOfertas();
             if (subtab === 'banners') renderBannersGridUI();
+            
+            setTimeout(initDragToScrollTables, 200);
         }
 
         
@@ -6471,9 +6598,9 @@ ightarrow$ Ventas</p>
             const btnIgualar = document.getElementById('btn-op-igualar');
             const signo = document.getElementById('label-signo-precios');
 
-            if (btnAumentar) btnAumentar.className = op === 'Aumentar' ? 'py-2 px-1 rounded-lg text-[10px] sm:text-xs font-bold uppercase transition-all bg-emerald-500 text-slate-950 shadow-md flex items-center justify-center gap-1 overflow-hidden cursor-pointer' : 'py-2 px-1 rounded-lg text-[10px] sm:text-xs font-bold uppercase transition-all text-gray-400 hover:text-white flex items-center justify-center gap-1 overflow-hidden cursor-pointer';
-            if (btnRestar) btnRestar.className = op === 'Restar' ? 'py-2 px-1 rounded-lg text-[10px] sm:text-xs font-bold uppercase transition-all bg-red-500 text-white shadow-md flex items-center justify-center gap-1 overflow-hidden cursor-pointer' : 'py-2 px-1 rounded-lg text-[10px] sm:text-xs font-bold uppercase transition-all text-gray-400 hover:text-white flex items-center justify-center gap-1 overflow-hidden cursor-pointer';
-            if (btnIgualar) btnIgualar.className = op === 'Igualar' ? 'py-2 px-1 rounded-lg text-[10px] sm:text-xs font-bold uppercase transition-all bg-blue-500 text-white shadow-md flex items-center justify-center gap-1 overflow-hidden cursor-pointer' : 'py-2 px-1 rounded-lg text-[10px] sm:text-xs font-bold uppercase transition-all text-gray-400 hover:text-white flex items-center justify-center gap-1 overflow-hidden cursor-pointer';
+            if (btnAumentar) btnAumentar.className = op === 'Aumentar' ? 'py-2.5 px-1.5 sm:px-2 rounded-xl text-xs font-black uppercase transition-all bg-emerald-500 text-slate-950 shadow-md flex items-center justify-center gap-1 cursor-pointer' : 'py-2.5 px-1.5 sm:px-2 rounded-xl text-xs font-bold uppercase transition-all text-gray-400 hover:text-white hover:bg-white/5 flex items-center justify-center gap-1 cursor-pointer';
+            if (btnRestar) btnRestar.className = op === 'Restar' ? 'py-2.5 px-1.5 sm:px-2 rounded-xl text-xs font-black uppercase transition-all bg-red-500 text-white shadow-md flex items-center justify-center gap-1 cursor-pointer' : 'py-2.5 px-1.5 sm:px-2 rounded-xl text-xs font-bold uppercase transition-all text-gray-400 hover:text-white hover:bg-white/5 flex items-center justify-center gap-1 cursor-pointer';
+            if (btnIgualar) btnIgualar.className = op === 'Igualar' ? 'py-2.5 px-1.5 sm:px-2 rounded-xl text-xs font-black uppercase transition-all bg-blue-500 text-white shadow-md flex items-center justify-center gap-1 cursor-pointer' : 'py-2.5 px-1.5 sm:px-2 rounded-xl text-xs font-bold uppercase transition-all text-gray-400 hover:text-white hover:bg-white/5 flex items-center justify-center gap-1 cursor-pointer';
 
             if (signo) {
                 signo.innerText = op === 'Aumentar' ? '+' : (op === 'Restar' ? '-' : '=');
@@ -6597,13 +6724,13 @@ ightarrow$ Ventas</p>
                         <td class="py-2.5 px-3 text-center">
                             <input type="checkbox" onchange="toggleSelectItemPrecio(${idx}, this.checked)" ${p.seleccionado ? 'checked' : ''} class="rounded bg-black/40 border-white/30 text-brand-yellow focus:ring-0">
                         </td>
-                        <td class="py-2.5 px-3 font-bold text-white max-w-[280px] truncate" title="${p.name}">
+                        <td class="py-3 px-4 font-bold text-white text-xs leading-snug" title="${p.name}">
                             ${p.name}
                         </td>
-                        <td class="py-2.5 px-3 font-mono text-[11px] text-amber-300/80">
+                        <td class="py-3 px-3 font-mono text-[11px] text-amber-300/90 whitespace-nowrap">
                             ${p.sku || '-'}
                         </td>
-                        <td class="py-2.5 px-3 text-[11px] text-gray-400 max-w-[150px] truncate" title="${p.category}">
+                        <td class="py-3 px-3 text-[11px] text-gray-400 whitespace-nowrap" title="${p.category}">
                             ${p.category}
                         </td>
                         <td class="py-2.5 px-3 text-right font-mono text-gray-300 font-bold">
