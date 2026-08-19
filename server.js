@@ -1355,6 +1355,92 @@ app.post('/api/crm/pedidos/crear-presupuesto', async (req, res) => {
     }
 });
 
+
+// Endpoint para editar / corregir pedidos existentes (agregar/quitar items, cambiar cantidades, precios, envío)
+app.post('/api/crm/pedidos/editar-pedido', async (req, res) => {
+    try {
+        const { pedido_id, cliente_id, items, observaciones, origen, tipo_envio, monto_total_final } = req.body;
+        if (!pedido_id) {
+            return res.status(400).json({ error: 'Falta el ID del pedido a editar' });
+        }
+
+        const itemsList = Array.isArray(items) ? items : [];
+        let calculatedTotal = 0;
+        itemsList.forEach(it => {
+            const cant = parseInt(it.cantidad || 1);
+            const pu = parseFloat(it.precio_unitario || 0);
+            calculatedTotal += (cant * pu);
+        });
+
+        const tipoEnvioStr = tipo_envio || '';
+        let finalTotal = monto_total_final ? parseFloat(monto_total_final) : calculatedTotal;
+        if (!monto_total_final && (tipoEnvioStr.includes('Entre Ríos') || tipoEnvioStr.includes('Mostto'))) {
+            finalTotal = calculatedTotal * 1.05;
+        }
+
+        let origenFormatted = origen || 'CRM Directo';
+        if (tipoEnvioStr && !origenFormatted.includes('Envío:')) origenFormatted += ` | Envío: ${tipoEnvioStr}`;
+        if (observaciones && !origenFormatted.includes('Nota:')) origenFormatted += ` | Nota: ${observaciones}`;
+
+        // 1. Actualizar tabla pedidos (monto, cliente, origen)
+        const { data: updatedOrder, error: orderErr } = await supabase
+            .from('pedidos')
+            .update({
+                cliente_id: cliente_id,
+                origen: origenFormatted,
+                monto_total: parseFloat(finalTotal.toFixed(2))
+            })
+            .eq('id', pedido_id)
+            .select()
+            .single();
+
+        if (orderErr) throw orderErr;
+
+        // 2. Reemplazar items_pedido: eliminar anteriores y reinsertar actualizados
+        await supabase.from('items_pedido').delete().eq('pedido_id', pedido_id);
+
+        if (itemsList.length > 0) {
+            const itemsPayload = itemsList.map((it, idx) => {
+                let varTam = it.variacion_tamano ? String(it.variacion_tamano) : null;
+                if (idx === 0) {
+                    let noteParts = [];
+                    if (tipoEnvioStr) noteParts.push(`Envío: ${tipoEnvioStr}`);
+                    if (observaciones) noteParts.push(`Nota: ${observaciones}`);
+                    if (noteParts.length > 0) varTam = noteParts.join(' | ').substring(0, 250);
+                }
+
+                return {
+                    pedido_id: pedido_id,
+                    sku: it.sku ? String(it.sku).substring(0, 50) : null,
+                    producto_nombre: String(it.producto_nombre || 'Producto sin nombre').substring(0, 150),
+                    variacion_tamano: varTam,
+                    cantidad: parseInt(it.cantidad || 1),
+                    precio_unitario: parseFloat(it.precio_unitario || 0)
+                };
+            });
+
+            const { error: itemsErr } = await supabase.from('items_pedido').insert(itemsPayload);
+            if (itemsErr) console.error('Error reinsertando items_pedido:', itemsErr);
+        }
+
+        // Traer pedido completo con relaciones
+        const { data: fullOrder } = await supabase
+            .from('pedidos')
+            .select('*, clientes(razon_social, whatsapp), items_pedido(*)')
+            .eq('id', pedido_id)
+            .single();
+
+        res.json({
+            success: true,
+            mensaje: '✅ ¡Pedido corregido y actualizado con éxito!',
+            pedido: fullOrder || updatedOrder
+        });
+    } catch (err) {
+        console.error('[EDITAR PEDIDO ERROR]:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Webhook para recibir pedidos en tiempo real desde el Carrito de WooCommerce (quimicadec.com)
 app.all(['/api/crm/webhooks/woocommerce-order', '/api/webhooks/woocommerce-order', '/webhook/woocommerce-order'], async (req, res) => {
     try {
