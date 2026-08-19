@@ -407,56 +407,73 @@ async function isBotPausado(clienteId) {
     return false;
 }
 
-// Motor de IA Doble Ultra-Resiliente (Groq Llama-3.1 + Gemini 2.5 Flash)
+// Motor de IA Ultra-Resiliente con Cascada Multi-Modelo (Gemini 2.5 Flash Lite + Flash Latest + Groq)
 async function generateDaniResponse(messagesPayload) {
-    // 1. Intentar Groq Llama-3.1-8b-instant con timeout de 7.5s
+    const geminiKey = process.env.GOOGLE_API_KEY || "AIzaSyDtnoZ1ii7RNuHQOIw7a7ugJw834q3_QIs";
+    const systemMsg = messagesPayload.find(m => m.role === 'system')?.content || '';
+    const conversationMsgs = messagesPayload.filter(m => m.role !== 'system');
+
+    // Cascada de modelos Gemini de ultra-baja latencia y alta disponibilidad
+    const geminiModels = ['gemini-2.5-flash-lite', 'gemini-flash-latest', 'gemini-2.5-flash', 'gemini-3.6-flash'];
+
+    const contents = conversationMsgs.map(m => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.content }]
+    }));
+
+    // 1. Probar modelos Gemini en cascada
+    for (const modelName of geminiModels) {
+        try {
+            const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: contents,
+                    systemInstruction: { parts: [{ text: systemMsg }] },
+                    generationConfig: { temperature: 0.25, maxOutputTokens: 600 }
+                }),
+                signal: AbortSignal.timeout(7000)
+            });
+
+            if (geminiRes.ok) {
+                const data = await geminiRes.json();
+                const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (text && text.trim().length > 0) {
+                    return text.trim();
+                }
+            } else {
+                console.warn(`[GEMINI ${modelName} HTTP ${geminiRes.status}], probando siguiente modelo...`);
+            }
+        } catch (err) {
+            console.warn(`[GEMINI ${modelName} ERROR: ${err.message}], probando siguiente modelo...`);
+        }
+    }
+
+    // 2. Intentar Groq Llama-3.1 como respaldo adicional
     try {
-        const groqPromise = groq.chat.completions.create({
-            messages: messagesPayload,
-            model: "llama-3.1-8b-instant",
-            temperature: 0.2
-        });
-        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Groq timeout 7.5s')), 7500));
-        const completion = await Promise.race([groqPromise, timeoutPromise]);
-        if (completion && completion.choices && completion.choices[0]?.message?.content) {
-            return completion.choices[0].message.content;
+        if (process.env.GROQ_API_KEY && groq) {
+            const groqPromise = groq.chat.completions.create({
+                messages: messagesPayload,
+                model: "llama-3.1-8b-instant",
+                temperature: 0.2
+            });
+            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Groq timeout 5s')), 5000));
+            const completion = await Promise.race([groqPromise, timeoutPromise]);
+            if (completion && completion.choices && completion.choices[0]?.message?.content) {
+                return completion.choices[0].message.content.trim();
+            }
         }
     } catch (e) {
-        console.warn('[GROQ TIMEOUT / ERROR, ACTIVANDO GEMINI 2.5 FLASH]:', e.message);
+        console.warn('[GROQ BACKUP ERROR]:', e.message);
     }
 
-    // 2. Fallback de alta velocidad: Gemini 2.5 Flash
-    try {
-        const geminiKey = process.env.GOOGLE_API_KEY || "AIzaSyD9WIsEODLjprXG-wdQdNYHBlqFyAQowz0";
-        const systemMsg = messagesPayload.find(m => m.role === 'system')?.content || '';
-        const conversationMsgs = messagesPayload.filter(m => m.role !== 'system');
-
-        const contents = conversationMsgs.map(m => ({
-            role: m.role === 'assistant' ? 'model' : 'user',
-            parts: [{ text: m.content }]
-        }));
-
-        const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: contents,
-                systemInstruction: { parts: [{ text: systemMsg }] },
-                generationConfig: { temperature: 0.2 }
-            }),
-            signal: AbortSignal.timeout(6000)
-        });
-
-        if (geminiRes.ok) {
-            const data = await geminiRes.json();
-            const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (text) return text;
-        }
-    } catch (err) {
-        console.error('[GEMINI FLASH ERROR]:', err.message);
+    // 3. Fallback inteligente contextual si no hay conexión externa
+    const lastUserMsg = [...conversationMsgs].reverse().find(m => m.role === 'user')?.content || '';
+    if (lastUserMsg.toLowerCase().includes('lavandina') || lastUserMsg.toLowerCase().includes('cloro') || lastUserMsg.toLowerCase().includes('jabon')) {
+        return "¡Hola! En Química DEC tenemos stock disponible de lavandinas, cloros y artículos de limpieza para venta mayorista (mínimo $80.000). ¿Qué cantidad o presentación (5L, 10L, 25L) estás necesitando para armarte el presupuesto?";
     }
 
-    return "¡Hola! En Química DEC vendemos al por mayor. ¿En qué producto y cantidad estás interesado?";
+    return "¡Hola! Soy Dani de Química DEC. Trabajamos con venta mayorista directa de fábrica en Entre Ríos y envíos a todo el país (mínimo $80.000). ¿En qué productos o cantidades estás interesado para prepararte la cotización?";
 }
 
 // =========================================================================
