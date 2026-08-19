@@ -409,7 +409,7 @@ async function isBotPausado(clienteId) {
 
 // Motor de IA Ultra-Resiliente con Cascada Multi-Modelo (Gemini 2.5 Flash Lite + Flash Latest + Groq)
 async function generateDaniResponse(messagesPayload) {
-    const geminiKey = process.env.GOOGLE_API_KEY || "AIzaSyDtnoZ1ii7RNuHQOIw7a7ugJw834q3_QIs";
+    const geminiKey = process.env.GOOGLE_API_KEY;
     const systemMsg = messagesPayload.find(m => m.role === 'system')?.content || '';
     const conversationMsgs = messagesPayload.filter(m => m.role !== 'system');
 
