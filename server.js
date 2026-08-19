@@ -1464,12 +1464,19 @@ app.all(['/api/crm/webhooks/woocommerce-order', '/api/webhooks/woocommerce-order
 
         const nombre = `${billing.first_name || ''} ${billing.last_name || ''}`.trim() || 'Cliente Web WooCommerce';
         let rawPhone = billing.phone || shipping.phone || '';
-        let cleanPhone = rawPhone.replace(/[^\d+]/g, '').trim();
+        let digits = String(rawPhone).replace(/\D/g, '');
+        let cleanPhone = '';
 
-        if (!cleanPhone) {
+        if (digits.startsWith('54954')) digits = '549' + digits.substring(5);
+        else if (digits.startsWith('5454')) digits = '549' + digits.substring(4);
+        else if (digits.startsWith('549')) { cleanPhone = digits; }
+        else if (digits.startsWith('54')) cleanPhone = '549' + digits.substring(2);
+        else if (digits.startsWith('0')) cleanPhone = '549' + digits.substring(1);
+        else if (digits.length >= 10) cleanPhone = '549' + digits;
+        else cleanPhone = digits;
+
+        if (!cleanPhone || cleanPhone.length < 6) {
             cleanPhone = `Web_${wcOrderId}`;
-        } else if (!cleanPhone.startsWith('54') && cleanPhone.length >= 10) {
-            cleanPhone = `549${cleanPhone}`;
         }
 
         const direccion = (shipping.address_1 || billing.address_1 || '').trim();
@@ -1531,30 +1538,51 @@ app.all(['/api/crm/webhooks/woocommerce-order', '/api/webhooks/woocommerce-order
         // Monto Total
         const montoTotal = parseFloat(payload.total || 0);
 
-        // Crear pedido en el Embudo de Pedidos (estado Presupuesto)
-        const pedidoPayload = {
-            cliente_id: clienteId,
-            woocommerce_order_id: String(wcOrderId),
-            origen: `WooCommerce Web #${wcOrderId} | Envío: ${tipoEnvio}`.substring(0, 50),
-            monto_total: montoTotal,
-            estado: 'Presupuesto'
-        };
-
-        const { data: orderData, error: orderErr } = await supabase
+                // Verificar si la orden de WooCommerce ya existe para no duplicar pedidos
+        const { data: existingOrder } = await supabase
             .from('pedidos')
-            .insert([pedidoPayload])
-            .select()
-            .single();
+            .select('id')
+            .eq('woocommerce_order_id', String(wcOrderId))
+            .limit(1);
 
-        if (orderErr) throw orderErr;
+        let finalOrderId = null;
+
+        if (existingOrder && existingOrder.length > 0) {
+            finalOrderId = existingOrder[0].id;
+            console.log(`[WOOCOMMERCE WEBHOOK] Actualizando pedido existente #${wcOrderId} (ID: ${finalOrderId})`);
+            await supabase.from('pedidos').update({
+                cliente_id: clienteId,
+                origen: `WooCommerce Web #${wcOrderId} | Envío: ${tipoEnvio}`.substring(0, 50),
+                monto_total: montoTotal
+            }).eq('id', finalOrderId);
+
+            // Eliminar items anteriores para evitar duplicidad
+            await supabase.from('items_pedido').delete().eq('pedido_id', finalOrderId);
+        } else {
+            console.log(`[WOOCOMMERCE WEBHOOK] Creando nuevo pedido #${wcOrderId}`);
+            const { data: newOrder, error: orderErr } = await supabase
+                .from('pedidos')
+                .insert([{
+                    cliente_id: clienteId,
+                    woocommerce_order_id: String(wcOrderId),
+                    origen: `WooCommerce Web #${wcOrderId} | Envío: ${tipoEnvio}`.substring(0, 50),
+                    monto_total: montoTotal,
+                    estado: 'Presupuesto'
+                }])
+                .select()
+                .single();
+
+            if (orderErr) throw orderErr;
+            finalOrderId = newOrder.id;
+        }
 
         // Insertar items del pedido
         const lineItems = payload.line_items || [];
         if (lineItems.length > 0) {
             const itemsPayload = lineItems.map((it, idx) => ({
-                pedido_id: orderData.id,
+                pedido_id: finalOrderId,
                 sku: it.sku ? String(it.sku).substring(0, 50) : null,
-                producto_nombre: String(it.name || 'Producto Web').substring(0, 150),
+                producto_nombre: String(it.name || it.producto_nombre || 'Producto Web').substring(0, 150),
                 variacion_tamano: idx === 0 ? `Pedido Web WooCommerce #${wcOrderId} | Envío: ${tipoEnvio}`.substring(0, 250) : null,
                 cantidad: parseInt(it.quantity || 1),
                 precio_unitario: parseFloat(it.price || (parseFloat(it.total || 0) / parseFloat(it.quantity || 1)))

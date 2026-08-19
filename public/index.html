@@ -2519,24 +2519,46 @@ ightarrow$ Ventas</p>
             });
 
             await refreshData();
-            // Auto-polling cada 3 segundos para sincronización en tiempo real sin recargar página
+            // Auto-polling cada 4 segundos para sincronización en TIEMPO REAL de Pedidos, Embudo y Chats
             setInterval(async () => {
                 try {
-                    const res = await fetch(`${API_URL}/crm/chat/conversaciones`);
-                    const data = await res.json();
-                    if (data.success) {
-                        conversacionesData = data.conversaciones || [];
-                        renderConversacionesList();
-                        if (selectedClienteId) {
-                            const mRes = await fetch(`${API_URL}/crm/chat/mensajes/${selectedClienteId}`);
-                            const mData = await mRes.json();
-                            if (mData.success && mData.mensajes) {
-                                renderChatMessages(mData.mensajes);
+                    // Polling simultáneo de Pedidos y Conversaciones para actualizar el CRM en vivo
+                    const [resChat, resPed] = await Promise.allSettled([
+                        fetch(`${API_URL}/crm/chat/conversaciones`),
+                        fetch(`${API_URL}/crm/pedidos`)
+                    ]);
+
+                    if (resChat.status === 'fulfilled' && resChat.value.ok) {
+                        const dataChat = await resChat.value.json();
+                        if (dataChat.success) {
+                            conversacionesData = dataChat.conversaciones || [];
+                            renderConversacionesList();
+                            if (selectedClienteId) {
+                                const mRes = await fetch(`${API_URL}/crm/chat/mensajes/${selectedClienteId}`);
+                                const mData = await mRes.json();
+                                if (mData.success && mData.mensajes) {
+                                    renderChatMessages(mData.mensajes);
+                                }
                             }
                         }
                     }
+
+                    if (resPed.status === 'fulfilled' && resPed.value.ok) {
+                        const dataPed = await resPed.value.json();
+                        if (dataPed.success && Array.isArray(dataPed.pedidos)) {
+                            // Comparar si hubo cambios en pedidos (cantidad o ids)
+                            const prevCount = (pedidosData || []).length;
+                            const newCount = dataPed.pedidos.length;
+                            const prevFirstId = (pedidosData && pedidosData[0]) ? pedidosData[0].id : '';
+                            const newFirstId = dataPed.pedidos[0] ? dataPed.pedidos[0].id : '';
+
+                            pedidosData = dataPed.pedidos;
+                            // Si cambió la lista o se está en la pestaña embudo, re-renderizar
+                            renderKanban();
+                        }
+                    }
                 } catch (e) {}
-            }, 3000);
+            }, 4000);
         }
 
         async function refreshData() {
@@ -3319,7 +3341,11 @@ ightarrow$ Ventas</p>
                     containerLista.innerHTML = listItems.map(p => {
                         const clienteNombre = p.clientes ? p.clientes.razon_social : 'Cliente Web';
                         const clientePhone = p.clientes ? (p.clientes.whatsapp || '') : '';
-                        const waLimpio = clientePhone.replace(/[^0-9]/g, '');
+                        let waLimpio = clientePhone.replace(/\D/g, '');
+                        if (waLimpio.startsWith('54954')) waLimpio = '549' + waLimpio.substring(5);
+                        else if (waLimpio.startsWith('5454')) waLimpio = '549' + waLimpio.substring(4);
+                        else if (waLimpio.startsWith('54') && !waLimpio.startsWith('549')) waLimpio = '549' + waLimpio.substring(2);
+                        else if (waLimpio.length === 10) waLimpio = '549' + waLimpio;
                         const montoStr = parseFloat(p.monto_total || 0).toLocaleString('es-AR', { style: 'currency', currency: 'ARS' });
                         const fechaStr = formatFechaAR(p.creado_el || p.created_at);
                         const itemsPedido = p.items_pedido || [];
