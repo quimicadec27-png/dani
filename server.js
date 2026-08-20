@@ -1381,6 +1381,7 @@ app.post('/api/crm/pedidos/editar-pedido', async (req, res) => {
         let origenFormatted = origen || 'CRM Directo';
         if (tipoEnvioStr && !origenFormatted.includes('Envío:')) origenFormatted += ` | Envío: ${tipoEnvioStr}`;
         if (observaciones && !origenFormatted.includes('Nota:')) origenFormatted += ` | Nota: ${observaciones}`;
+        origenFormatted = String(origenFormatted).substring(0, 50);
 
         // 1. Actualizar tabla pedidos (monto, cliente, origen)
         const { data: updatedOrder, error: orderErr } = await supabase
