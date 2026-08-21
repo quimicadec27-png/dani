@@ -686,39 +686,66 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
 
             let normalized = searchContext.toLowerCase()
                 .replace(/\bsaumerios?\b/gi, 'sahumerio')
-                .replace(/\blitros?\b|\blts?\b/gi, 'LT')
+                .replace(/\blitros?\b|\blts?\b/gi, 'lt')
+                .replace(/\bunidades\b|\bunids?\b/gi, 'u')
+                .replace(/\bpack\s*de\b/gi, 'pack x')
                 .replace(/\bcloros?\b/gi, 'cloro');
 
             const stopWords = [
                 'hola', 'cuanto', 'sale', 'tenes', 'opciones', 'producto', 'precio', 'este', 'para', 'saber',
-                'quisiera', 'quiero', 'necesito', 'unidades', 'paquetes', 'cajas', 'favor', 'gracias', 'buenas',
-                'tardes', 'dias', 'envio', 'costo', 'extra', 'paso', 'nombre', 'numero', 'whats', 'whatsapp',
-                'dni', 'cuit', 'cuil', 'direccion', 'americas', 'rosario', 'tala', 'imagino', 'bien', 'las', 'los',
-                'del', 'con', 'sin', 'una', 'uno', 'unos', 'unas', 'que', 'por', 'son', 'mis', 'tus', 'sus',
-                'donde', 'como', 'cuando', 'quien', 'cual', 'estoy', 'estan', 'esta', 'estos', 'estas', 'enviame'
+                'quisiera', 'quiero', 'necesito', 'favor', 'gracias', 'buenas', 'tardes', 'dias', 'envio', 'costo',
+                'extra', 'paso', 'nombre', 'numero', 'whats', 'whatsapp', 'dni', 'cuit', 'cuil', 'direccion',
+                'americas', 'rosario', 'tala', 'imagino', 'bien', 'las', 'los', 'del', 'con', 'sin', 'una', 'uno',
+                'unos', 'unas', 'que', 'por', 'son', 'mis', 'tus', 'sus', 'donde', 'como', 'cuando', 'quien',
+                'cual', 'estoy', 'estan', 'esta', 'estos', 'estas', 'enviame'
             ];
-            const tokens = normalized.match(/[a-záéíóúñ0-9+]{3,}/gi) || [];
+            const tokens = normalized.match(/[a-záéíóúñ0-9+,\.]{2,}/gi) || [];
             const keywords = tokens.filter(t => !stopWords.includes(t) && !/^\d+$/.test(t));
 
-            const sizeMatch = normalized.match(/\b(20|40|60|120|200|5|10)\s*lt\b/i) || normalized.match(/\b(20|40|60|120|200|5|10)\b/);
-            const requestedSize = sizeMatch ? sizeMatch[1] : null;
+            // Detección de litros / tamaños variables (desde 0.5L hasta 200L)
+            const sizeMatch = normalized.match(/\b(0[\.,]5|1|2|3|4|5|6|8|10|20|25|40|50|60|100|120|200)\s*(?:lt|l)?\b/i);
+            const reqSize = sizeMatch ? sizeMatch[1].replace(',', '.') : null;
+
+            // Detección de packs / unidades (pack x3, x5, x10, x50, etc.)
+            const packMatch = normalized.match(/\b(?:pack\s*x?\s*|x\s*|)(\d{1,3})\s*(?:u|unidades)?\b/i);
+            const reqPack = packMatch ? packMatch[1] : null;
 
             if (keywords.length > 0) {
-                let matches = PRODUCT_CATALOG_CACHE.filter(p => {
+                let scored = [];
+                PRODUCT_CATALOG_CACHE.forEach(p => {
                     const pName = (p.name || '').toLowerCase();
-                    return keywords.some(k => pName.includes(k));
+                    let score = 0;
+
+                    const matchedKw = keywords.filter(k => pName.includes(k)).length;
+                    if (matchedKw === 0) return;
+                    score += matchedKw * 10;
+
+                    keywords.forEach(k => {
+                        if (k.length > 4 && pName.includes(k)) score += 8;
+                    });
+
+                    if (reqSize) {
+                        if (pName.includes(`${reqSize} lt`) || pName.includes(`${reqSize}lt`) || pName.includes(`desde ${reqSize} lt`) || pName.includes(`p/${reqSize}lt`) || pName.includes(`p/${reqSize} lt`) || pName.includes(`para ${reqSize} lt`)) {
+                            score += 35;
+                        } else if (pName.includes(` ${reqSize} `) || pName.includes(`(${reqSize})`) || pName.includes(`x${reqSize}`)) {
+                            score += 15;
+                        }
+                    }
+
+                    if (reqPack) {
+                        if (pName.includes(`pack x${reqPack}`) || pName.includes(`(${reqPack} unidades)`) || pName.includes(`(${reqPack}u)`) || pName.includes(`x${reqPack}`) || pName.includes(`x ${reqPack}`)) {
+                            score += 30;
+                        }
+                    }
+
+                    if (score > 10) scored.push({ score, prod: p });
                 });
 
-                if (requestedSize && matches.length > 0) {
-                    matches.sort((a, b) => {
-                        const aHas = (a.name || '').toLowerCase().includes(`${requestedSize} lt`) || (a.name || '').toLowerCase().includes(requestedSize);
-                        const bHas = (b.name || '').toLowerCase().includes(`${requestedSize} lt`) || (b.name || '').toLowerCase().includes(requestedSize);
-                        return bHas - aHas;
-                    });
-                }
+                scored.sort((a, b) => b.score - a.score);
+                const matches = scored.slice(0, 5).map(s => s.prod);
 
                 if (matches.length > 0) {
-                    matches.slice(0, 5).forEach(prod => {
+                    matches.forEach(prod => {
                         const rawPrice = parseFloat(prod.price || 0);
                         const stockText = prod.stock_status === 'instock' || !prod.stock_status ? 'Disponible ✅' : 'Consultar ⚠️';
                         const cleanName = prod.name.replace(/\(SKU:.*?\)/gi, '').trim();
