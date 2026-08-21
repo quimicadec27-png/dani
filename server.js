@@ -447,64 +447,78 @@ async function isBotPausado(clienteId) {
     return false;
 }
 
-// Motor de IA Ultra-Resiliente con Cascada Multi-Modelo (Gemini 2.5 Flash Lite + Flash Latest + Groq)
+// Motor de IA Ultra-Resiliente con Cascada Multi-Modelo (Gemini 2.5 Flash + Groq GPT-OSS 120b/20b + Fallbacks)
 async function generateDaniResponse(messagesPayload) {
     const geminiKey = process.env.GOOGLE_API_KEY;
     const systemMsg = messagesPayload.find(m => m.role === 'system')?.content || '';
     const conversationMsgs = messagesPayload.filter(m => m.role !== 'system');
 
     // Cascada de modelos Gemini de ultra-baja latencia y alta disponibilidad
-    const geminiModels = ['gemini-2.5-flash-lite', 'gemini-flash-latest', 'gemini-2.5-flash', 'gemini-3.6-flash'];
+    const geminiModels = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-flash-latest', 'gemini-2.0-flash-exp'];
 
     const contents = conversationMsgs.map(m => ({
         role: m.role === 'assistant' ? 'model' : 'user',
         parts: [{ text: m.content }]
     }));
 
-    // 1. Probar modelos Gemini en cascada
-    for (const modelName of geminiModels) {
-        try {
-            const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiKey}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: contents,
-                    systemInstruction: { parts: [{ text: systemMsg }] },
-                    generationConfig: { temperature: 0.25, maxOutputTokens: 600 }
-                }),
-                signal: AbortSignal.timeout(7000)
-            });
+    // 1. Probar modelos Gemini en cascada (si la clave está configurada y activa)
+    if (geminiKey && geminiKey.trim().length > 10 && !geminiKey.includes('placeholder')) {
+        for (const modelName of geminiModels) {
+            try {
+                const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: contents,
+                        systemInstruction: { parts: [{ text: systemMsg }] },
+                        generationConfig: { temperature: 0.25, maxOutputTokens: 600 }
+                    }),
+                    signal: AbortSignal.timeout(6000)
+                });
 
-            if (geminiRes.ok) {
-                const data = await geminiRes.json();
-                const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-                if (text && text.trim().length > 0) {
-                    return text.trim();
+                if (geminiRes.ok) {
+                    const data = await geminiRes.json();
+                    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (text && text.trim().length > 0) {
+                        return text.trim();
+                    }
+                } else {
+                    const errBody = await geminiRes.text();
+                    console.warn(`[GEMINI ${modelName} HTTP ${geminiRes.status}]: ${errBody.slice(0, 120)}`);
+                    if (geminiRes.status === 403 && errBody.includes('leaked')) {
+                        console.warn('[GEMINI KEY LEAKED] La clave GOOGLE_API_KEY fue reportada como filtrada. Pasando a Groq...');
+                        break;
+                    }
                 }
-            } else {
-                console.warn(`[GEMINI ${modelName} HTTP ${geminiRes.status}], probando siguiente modelo...`);
+            } catch (err) {
+                console.warn(`[GEMINI ${modelName} ERROR: ${err.message}], probando siguiente modelo...`);
             }
-        } catch (err) {
-            console.warn(`[GEMINI ${modelName} ERROR: ${err.message}], probando siguiente modelo...`);
         }
     }
 
-    // 2. Intentar Groq Llama-3.1 como respaldo adicional
-    try {
-        if (process.env.GROQ_API_KEY && groq) {
-            const groqPromise = groq.chat.completions.create({
-                messages: messagesPayload,
-                model: "llama-3.1-8b-instant",
-                temperature: 0.2
-            });
-            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Groq timeout 5s')), 5000));
-            const completion = await Promise.race([groqPromise, timeoutPromise]);
-            if (completion && completion.choices && completion.choices[0]?.message?.content) {
-                return completion.choices[0].message.content.trim();
+    // 2. Motor Groq de Ultra-Alta Velocidad con modelos activos y vigentes
+    if (process.env.GROQ_API_KEY && groq) {
+        const groqModels = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'groq/compound-mini', 'qwen/qwen3.6-27b'];
+        for (const gModel of groqModels) {
+            try {
+                const groqPromise = groq.chat.completions.create({
+                    messages: messagesPayload,
+                    model: gModel,
+                    temperature: 0.25
+                });
+                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error(`Groq ${gModel} timeout 6s`)), 6000));
+                const completion = await Promise.race([groqPromise, timeoutPromise]);
+                let content = completion?.choices?.[0]?.message?.content;
+                if (content && content.trim().length > 0) {
+                    content = content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+                    if (content.length > 0) {
+                        return content;
+                    }
+                }
+            } catch (e) {
+                console.warn(`[GROQ ${gModel} ERROR]:`, e.message);
             }
         }
-    } catch (e) {
-        console.warn('[GROQ BACKUP ERROR]:', e.message);
     }
 
     // 3. Fallback inteligente contextual si no hay conexión externa
@@ -1192,20 +1206,29 @@ app.post('/api/crm/configurar-umbrales-ia', async (req, res) => {
         const { instruccion_texto } = req.body;
         if (!instruccion_texto) return res.status(400).json({ error: 'Instrucción requerida' });
 
-        const completion = await groq.chat.completions.create({
-            messages: [
-                {
-                    role: "system",
-                    content: `Analiza la instrucción para definir umbrales mínimos de stock. Devuelve JSON: {"umbral_general": 30, "mensaje_confirmacion": "Se estableció el límite mínimo de alerta en 30 unidades."}`
-                },
-                { role: "user", content: instruccion_texto }
-            ],
-            model: "llama-3.3-70b-versatile",
-            response_format: { type: "json_object" },
-            temperature: 0.1
-        });
+        const modelsToTry = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'groq/compound-mini', 'qwen/qwen3.6-27b'];
+        let completion = null;
+        for (const m of modelsToTry) {
+            try {
+                completion = await groq.chat.completions.create({
+                    messages: [
+                        {
+                            role: "system",
+                            content: `Analiza la instrucción para definir umbrales mínimos de stock. Devuelve JSON: {"umbral_general": 30, "mensaje_confirmacion": "Se estableció el límite mínimo de alerta en 30 unidades."}`
+                        },
+                        { role: "user", content: instruccion_texto }
+                    ],
+                    model: m,
+                    response_format: { type: "json_object" },
+                    temperature: 0.1
+                });
+                if (completion?.choices?.[0]?.message?.content) break;
+            } catch (e) {
+                console.warn(`[UMBRALES GROQ ${m} ERROR]:`, e.message);
+            }
+        }
 
-        const parsed = JSON.parse(completion.choices[0]?.message?.content || '{}');
+        const parsed = JSON.parse(completion?.choices?.[0]?.message?.content || '{}');
         res.json({
             success: true,
             umbral: parsed.umbral_general || 20,
@@ -1689,11 +1712,15 @@ app.post('/api/crm/parse-presupuesto-texto-ia', async (req, res) => {
             return res.status(400).json({ error: 'Texto no proporcionado' });
         }
 
-        const completion = await groq.chat.completions.create({
-            messages: [
-                {
-                    role: "system",
-                    content: `Sos un extractor de items de pedido para un CRM comercial de productos químicos y sahumerios.
+        const modelsToTry = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'groq/compound-mini', 'qwen/qwen3.6-27b'];
+        let completion = null;
+        for (const m of modelsToTry) {
+            try {
+                completion = await groq.chat.completions.create({
+                    messages: [
+                        {
+                            role: "system",
+                            content: `Sos un extractor de items de pedido para un CRM comercial de productos químicos y sahumerios.
 Analizá el texto recibido y extraé CADA producto mencionado con su cantidad y precio unitario si está especificado.
 Ignorá totales generales, nombres de clientes o mensajes introductorios.
 
@@ -1707,15 +1734,20 @@ Respondé ÚNICAMENTE con JSON válido en este formato:
     }
   ]
 }`
-                },
-                { role: "user", content: texto.trim() }
-            ],
-            model: "llama-3.3-70b-versatile",
-            response_format: { type: "json_object" },
-            temperature: 0.05
-        });
+                        },
+                        { role: "user", content: texto.trim() }
+                    ],
+                    model: m,
+                    response_format: { type: "json_object" },
+                    temperature: 0.05
+                });
+                if (completion?.choices?.[0]?.message?.content) break;
+            } catch (e) {
+                console.warn(`[PARSE PRESUPUESTO GROQ ${m} ERROR]:`, e.message);
+            }
+        }
 
-        const result = JSON.parse(completion.choices[0]?.message?.content || '{}');
+        const result = JSON.parse(completion?.choices?.[0]?.message?.content || '{}');
         res.json({
             success: true,
             items: result.items || []

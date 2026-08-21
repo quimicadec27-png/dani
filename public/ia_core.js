@@ -584,7 +584,7 @@
         var clientUuid = localStorage.getItem('dani_client_uuid') || null;
 
         var payload = {
-            model: 'llama-3.3-70b-versatile',
+            model: 'openai/gpt-oss-120b',
             session_id: sessionId,
             cliente_id: clientUuid,
             messages: messages,
