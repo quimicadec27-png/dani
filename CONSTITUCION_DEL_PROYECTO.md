@@ -1,6 +1,7 @@
 # 📜 CONSTITUCIÓN TÉCNICA Y REGLAS MAESTRAS DEL PROYECTO QUÍMICA DEC
-> **Documento de Arquitectura, Flujos de Negocio, Directivas de IA y Resolución de Problemas Críticos.**  
-> *Lectura obligatoria para cualquier Agente de IA o Desarrollador que interactúe con el ecosistema de Química DEC.*
+> **Documento de Arquitectura, Flujos de Negocio, Directivas de IA, Catálogo y Resolución de Problemas Críticos.**  
+> *Lectura obligatoria e indispensable para cualquier Agente de IA o Desarrollador que interactúe con el ecosistema de Química DEC.*
+> **Última Actualización:** Agosto 2026
 
 ---
 
@@ -12,243 +13,122 @@
   * ❌ *Prohibido español neutro o de España:* "si eres", "recuerda", "puedes", "tienes", "quieres".
   * ❌ *Prohibido:* Usar la palabra "Che" (el trato debe ser cálido y cercano pero profesional).
   * ❌ *Prohibido frases victimistas:* Queda rotundamente prohibido decir "estoy aprendiendo", "soy solo un bot", "perdoná por no saber" o "¿me ayudás a aprender?". Ante quejas o frustración, responder con sobriedad profesional y ofrecer derivación con un asesor humano.
+* **Políticas Comerciales Clave:**
+  * **Compra mínima mayorista (primer pedido cliente nuevo):** **$80.000**.
+  * **Retiro en local:** A partir de **$2.500** (exclusivo para clientes que ya son mayoristas registrados).
+  * **Medios de Pago Oficiales:** Únicamente **EFECTIVO** (en local) y **TRANSFERENCIA BANCARIA**. Queda terminantemente prohibido inventar tarjetas de crédito, débito o cuotas.
+  * **Seguridad Bancaria:** Queda terminantemente prohibido inventar CBUs, alias o nombres de vendedores ficticios.
 
 ---
 
-## 💾 2. ARQUITECTURA DEL CHAT WEB Y PERSISTENCIA MULTI-PESTAÑA (`ia_core.js`)
+## 🌳 2. ARQUITECTURA DEL CATÁLOGO (4 MACRO-SECTORES, 32 CATEGORÍAS Y 3 NIVELES)
 
-### ⚠️ El Problema que existía:
-Al navegar entre pestañas (ej: pasar de `/catalogo` a `/tienda` o al `/`), la ventana del chat se cerraba, el historial se borraba o se abría una conversación en blanco porque el almacenamiento dependía de variables volátiles en memoria.
+El catálogo oficial de Química DEC (`quimicadec.com/catalogo`) cuenta con más de 3.500 productos y se estructura en 3 niveles jerárquicos:
 
-### 🛠️ Solución Implementada y Regla de Arquitectura:
-1. **Persistencia Unificada en `localStorage` y `sessionStorage`:**
-   * `dani_chat_history`: Almacena el array completo de mensajes `[{role: 'user', content: '...'}, {role: 'assistant', content: '...'}]`.
-   * `dani_client_uuid`: Identificador UUID persistente del Lead en la base de datos Supabase.
-   * `dani_session_id`: Código de sesión web único (ej: `Web_abc12_123456`, longitud controlada < 20 caracteres).
-   * `dani_chat_open`: Booleano que recuerda si la ventana flotante del chat estaba abierta o minimizada.
-2. **Rehidratación Automática al Cargar Página (`initDani()`):**
-   * Al iniciar cualquier página web, el script lee `localStorage` y vuelve a renderizar todos los mensajes previos sin hacer llamadas innecesarias al servidor.
-3. **Envío Directo del Historial en el Payload (`req.body.messages`):**
-   * Al enviar un mensaje, `ia_core.js` envía el historial completo en el POST a `/api/whatsapp/incoming-ai`.
-   * El backend procesa el contexto en **0.00ms en memoria**, evitando bloqueos o demoras de lectura en la base de datos.
+### Nivel 1: Los 4 Macro-Sectores y 32 Categorías Oficiales
+1. **LIMPIEZA Y QUÍMICOS (9 Categorías):**
+   * *Ofertas Semanales*
+   * *Combos Emprendedores*
+   * *Productos Líquidos* (Jabones Skip/Ariel, Suavizantes Downy/Vivere/Mary Cher, Lavandina 1+2, Cloro líquido, Ceras, Siliconas, Desengrasantes en bidones de 5L a 200L).
+   * *Productos para Diluir* (Desodorantes de piso concentrados 1+9, 1+20 y 1+50 para rendir 5L, 25L y 50L en packs de 3, 5 y 10 unidades).
+   * *Primeras Marcas* (Cif, Ala, Skip, Ariel, Glade, Blem, Magistral, etc.).
+   * *Pastas y Concentrados* (Pastas base para fabricar jabón líquido, suavizante, detergente y ceras).
+   * *Aerosoles* (Glade, Blem, Cif Desinfectante, Poett, Lysoform).
+   * *Jabón en Polvo*
+   * *Jabón en Pan*
 
----
+2. **ACCESORIOS DE LIMPIEZA (8 Categorías):**
+   * *Esponjas* | *Escobillones* | *Cepillos* | *Secadores* | *Cabos* | *Burlete* | *Bolsas* | *Envases*.
 
-## 🗃️ 3. GESTIÓN DE LEADS Y DIFERENCIACIÓN ESTRICTA DNI VS WHATSAPP (`clientes` en Supabase)
+3. **HOGAR Y AMBIENTES (8 Categorías):**
+   * *Baño* | *Cocina* | *Perfumería* | *Sahumerios* (Varillas, Conos Cascada, Dhoop, Bombitas: Prana, Amogh, Sagrada Madre, Iluminarte, Aspan) | *Textiles* | *Papeles* | *Repelentes* | *Insecticidas*.
 
-### ⚠️ Los Problemas que existían:
-1. **Confusión de Teléfono como DNI:** Expresiones regulares no delimitadas capturaban secuencias numéricas (ej: `344854263` o `3442546484`) y las guardaban en el campo `cuit` (DNI), dejando el campo `whatsapp` vacío y bloqueando el botón de chat directo.
-2. **Polución de Códigos Técnicos en DNI/CUIT:** El campo `cuit` se autocompletaba con códigos internos como `Web_ZPA39`.
-3. **Error de Longitud en PostgreSQL (`varchar(20)`):** La columna `clientes.whatsapp` tiene un límite de 20 caracteres.
+4. **ESPECIALIDADES Y VARIOS (8 Categorías):**
+   * *Higiene Personal* | *Jabón Tocador* | *Jardín* | *Pileta* (Cloro líquido 1+2, Cloro granulado simple/triple acción x 1kg, pastillas 50g/200g, clarificantes, alguicidas) | *Automóvil* (Siliconas, shampoos siliconados, revividores, pinitos) | *Kiosco y Varios* | *Plásticos* | *Limpieza Hogar*.
 
-### 🛠️ Solución Implementada y Reglas Estrictas:
-1. **Regla Obligatoria de Palabra Clave para DNI/CUIT:**
-   * Un número **SOLO se considera DNI si está precedido explícitamente por palabras clave** (`dni:`, `cuit:`, `documento:`, `doc:`) o si tiene formato con guiones (`XX-XXXXXXXX-X`).
-   * Si no hay palabra clave, **PROHIBIDO adivinar que un número es DNI**.
-   * Validación cruzada: Si un número es idéntico o termina con el número de teléfono, **nunca se asigna a DNI**.
-2. **Normalización Automática a Estándar WhatsApp Argentina (`549...`):**
-   * Números de 10 dígitos (ej: `3442546484` u `1123456789`) se normalizan automáticamente a `5493442546484`.
-   * Números con `0` inicial o `15` se limpian y convierten al formato internacional.
-3. **Enlace y Botón Dinámico de WhatsApp en Tiempo Real:**
-   * En la ficha del CRM, el botón `📲 Abrir Chat en WhatsApp (+549...)` se actualiza y activa en vivo mientras el operador tipea en el campo de teléfono, generando el enlace directo `https://wa.me/549...`.
-4. **CUIT / DNI Limpio por Defecto:**
-   * Al registrar un nuevo visitante web, `cuit: null`.
-   * En la ficha (`renderClienteFicha`), si detecta un teléfono guardado erróneamente en el DNI de un lead previo, lo migra automáticamente a `whatsapp`.
+### Nivel 2: Pestañas / Subcategorías de Acordeón (`wpcode_*.php`)
+* En **Pastas y Concentrados**: `Jabones y Suavizantes (Pastas)`, `Desinfección y Fragancias`, `Limpieza de Pisos y Superficies`, `Línea Automotor`, `Tratamiento de Agua y Piletas`.
+* En **Automóvil**: `Revividores`, `Limpiadores`, `Shampoos siliconados`, `Pinitos aromatizantes`.
+* En **Papeles**: `Morita`, `Maxisec`, `New Pel`, `Toallas intercaladas`, `Bobinas industriales`, `Pañuelos`.
+* En **Bolsas**: `Bolsas en rollo`, `Camiseta`, `Bolsas x100u`, `Bolsas de consorcio`, `Ecológicas`.
+
+### Nivel 3: Tablas de "Opciones Disponibles" / Variaciones y Atributos
+* **Escala de Litros / Volúmenes:** Desde 0.5L, 1L, 2L, 3L, 4L, 5L, 6L, 8L, 10L, 20L, 40L, 60L, 100L, 120L, 200L.
+* **Packs Mayoristas:** Pack x3, Pack x5, Pack x10, Pack x50, Unidades sueltas vs Kilos.
+* **Variantes de Color y Tipo:** Cera Natural, Negra, Roja; Desengrasante Alcalino; Fragancias variadas.
+* **Motor de Búsqueda Ponderado (`server.js`):** Pondera coincidencias por tamaño en litros (`reqSize`), cantidad en pack (`reqPack`) y palabra clave para emparejar la variación exacta en 0ms.
 
 ---
 
-## 🔄 4. CONTINUIDAD CONVERSACIONAL Y CIERRE DE PEDIDOS (Directiva Anti-Reinicio)
-
-### ⚠️ El Problema que existía:
-Tras una cotización exitosa (ej: 120 litros de cloro), cuando el usuario enviaba sus datos de contacto ("Javier Aguirre, tel 344854263, Las Américas 514"), la IA borraba el hilo mental y respondía saludando de nuevo ("¡Hola! Soy Dani... ¿en qué puedo ayudarte hoy?").
-
-### 🛠️ Solución Implementada:
-Se introdujo la directiva de continuidad estricta en el System Prompt:
-```javascript
-// Si hay historial previo, aplicar Directiva de Continuidad:
-"Esta conversación YA ESTÁ EN CURSO. Recordá lo hablado en el historial.
-- Si el cliente te brinda su nombre, teléfono, dirección o confirmación: agradecé cordialmente, confirmale que todos sus datos y pedido quedaron registrados y agendados, y que un asesor comercial humano se comunicará por WhatsApp para coordinar el pago y despacho.
-- Queda ROTUNDAMENTE PROHIBIDO volver a saludar ('¡Hola! Soy Dani...'), PROHIBIDO decir '¿En qué puedo ayudarte hoy?' o preguntar qué producto busca si ya se definió antes.
-- PROHIBIDO usar corchetes como '[Nombre]' o inventar datos bancarios."
-```
+## 🗄️ 3. PRECIOS Y BASE DE DATOS SUPABASE (`dec_products`)
+* **Fuente Oficial de la Verdad:** El archivo CSV [`Quimica_DEC_Catalogo_WooCommerce_2026-07-29_22-10.csv`](file:///c:/Users/wilde.WIL/OneDrive/Escritorio/PROYECTOS%20IA/Qu%C3%ADmica%20DEC/quimica_dec/Quimica_DEC_Catalogo_WooCommerce_2026-07-29_22-10.csv).
+* **Auditoría y Corrección de Escala Decimal (Bug x100 resuelto):**
+  * Se corrigieron **2.765 productos** en la base de datos Supabase (`dec_products`) y en `catalogo_completo_3800.json` que tenían precios inflados por pérdida del punto decimal.
+  * Ejemplos verificados:
+    * *Cloro Líquido 1+2 (Desde 10 LT):* `$7.538,25` (antes figuraba $753.825).
+    * *Cloro Líquido 1+2 (Desde 5 LT):* `$3.769,12` (antes figuraba $376.912).
+    * *Clarificante (Desde 200 LT):* `$370.972,44` (antes figuraba $37.097.244).
+    * *Aerosol Glade 360cc:* `$4.124,74` (antes figuraba $412.474).
+* **Precios en Vivo para la IA (RAG en RAM):** Dani **NUNCA memoriza precios**. En cada mensaje, el backend consulta `dec_products` (o su caché RAM sincronizado) y le inyecta a Dani el bloque de precios exactos del día: `[DATOS REALES Y CÁLCULOS MATEMÁTICOS OFICIALES DE QUÍMICA DEC]`.
 
 ---
 
-## 📦 5. CATÁLOGO OFICIAL, REGLAS DE CONFINAMIENTO Y PRECIOS EN VIVO
+## 📦 4. GESTIÓN DE PEDIDOS Y EMBUDO CRM (`pedidos` y `items_pedido`)
 
-### ⚠️ El Problema que existía:
-La IA alucinaba productos o medidas inexistentes (ej: ofrecía "cloro líquido de 1 litro fraccionado" que no existe, o inventaba marcas de desinfectantes inexistentes).
+### A. Edición / Corrección de Pedidos en Vivo ("Corregir Pedido")
+* **Funcionalidad:** En la sección "Embudo de Pedidos", tanto en la lista detallada como en las columnas Kanban, los vendedores cuentan con el botón **"Corregir Pedido"**.
+* **Modal Reutilizado:** Se reutiliza el modal `#modal-nuevo-pedido` precargando cliente, método de envío, notas y la lista completa de productos editables (cantidades, precios, agregar/quitar ítems).
+* **Endpoint Backend:** `POST /api/crm/pedidos/editar-pedido`.
 
-### 🛠️ Solución Implementada:
-1. **Matriz de 32 Categorías Maestras (`CATALOGO_REGLAS_DANI.md`):**
-   * Se procesaron los archivos oficiales (`Quimica_DEC_Catalogo_WooCommerce_2026-07-29_22-10.csv` y `SAHUMERIOS_para_WooCommerce_2026-07-30.xlsx`).
-   * **Filtro Estricto:** Se eliminaron **1.260 borradores y productos privados**, dejando únicamente los **3.014 productos y variaciones publicados**.
-2. **Presentaciones Estándar Definidas:**
-   * **Cloro Líquido:** Únicamente bidones de 20L, 40L, 60L, 120L y 200L. (Prohibido fraccionar en 1L).
-   * **Pastillas de Cloro:** 50g y 200g (individuales o por kg).
-   * **Líquidos Sueltos / Concentrados:** Bidones de 5L o pastas para 50L/100L.
-   * **Sahumerios:** Paquetes x10, x20, x50, Conos y Dhoop sticks de marcas autorizadas (Tuk Tuk, Iluminarte, Sagrada Madre, Amogh, Sree Vani, Nuna Terra, Aromanza).
-3. **Precios y Stock Dinámicos en Tiempo Real desde Supabase:**
-   * Los precios **nunca van fijos en el prompt**.
-   * El backend mantiene `PRODUCT_CATALOG_CACHE` sincronizado en RAM con `dec_products` (filtrado por `status = 'publish' OR status = 'publicado'`).
-   * Cuando el cliente consulta por un producto, el servidor inyecta los precios exactos vigentes del día en el contexto:
-     ```text
-     [DATOS REALES Y CÁLCULOS MATEMÁTICOS DE SUPABASE]:
-     • CLORO LÍQUIDO 120 LT: $85.534,80 [Stock: Disponible]
-     ```
-4. **Regla de Confinamiento (Fencing):**
-   * Si un producto, aroma o medida no está en la base de datos inyectada, Dani tiene **estrictamente prohibido inventarlo**.
+### B. Corrección de Longitud de Campo en PostgreSQL (`VARCHAR(50)`)
+* **Problema:** La columna `pedidos.origen` en PostgreSQL tiene límite estricto de **50 caracteres**.
+* **Regla Obligatoria:** En `server.js` (`crear-presupuesto`, `editar-pedido` y webhooks), el campo `origen` debe truncarse estrictamente a 50 caracteres:
+  ```javascript
+  origenFormatted = String(origenFormatted).substring(0, 50);
+  ```
+* Las notas extensas y métodos de envío se almacenan en `items_pedido.variacion_tamano` (`VARCHAR(250)`).
 
 ---
 
-## ⚡ 6. MOTOR DE IA DOBLE CON FAILOVER AUTOMÁTICO (Groq + Gemini 2.5 Flash)
-
-### 🛠️ Arquitectura de Ejecución en `server.js`:
-1. **Motor Primario:** Groq `llama-3.1-8b-instant` con timeout protegido de **7.5 segundos**.
-2. **Motor Secundario (Failover Instantáneo):** Google `gemini-2.5-flash` con timeout de **6 segundos**.
-3. **Validación de Roles Alternados:**
-   * Para evitar errores `400 Bad Request` por mensajes consecutivos con el mismo rol, el array de mensajes se compacta y garantiza una alternancia perfecta `system` $\rightarrow$ `user` $\rightarrow$ `assistant` $\rightarrow$ `user`.
-
----
-
-## 📊 7. FLUJO OFICIAL DEL EMBUDO DE VENTAS Y CICLO DE VIDA DEL PEDIDO
-
-El ciclo de un pedido en el CRM debe respetar **estrictamente las 4 etapas secuenciales del negocio**:
-
-```
-[ Presupuesto ] ──▶ [ Confirmado ] ──▶ [ Pagado ] ──▶ [ Despachado / Entregado ]
-      │                   │                 │
-      ▼                   ▼                 ▼
- [ Cancelado ]       [ Cancelado ]     [ Cancelado ]
-```
-
-### 1️⃣ Etapa: Presupuesto (`Presupuesto`)
-* **Estado:** El cliente solicitó una cotización o el vendedor armó el presupuesto.
-* **Acciones:**
-  * `🔵 Confirmar Pedido`: El cliente aceptó el presupuesto. El pedido pasa a **Confirmado** para enviarle los datos de pago/CBU.
-  * `🔴 Cancelar`: Si el cliente desiste.
-
-### 2️⃣ Etapa: Confirmado (`Confirmado`)
-* **Estado:** El pedido está confirmado y se le enviaron los datos bancarios (CBU / Alias) al cliente para depositar o transferir.
-* **Acciones:**
-  * `🟢 Confirmar Pago & Restar Stock`: El cliente depositó y el comercio verificó el dinero en su cuenta bancaria. Al hacer clic, **el pedido pasa a Pagado, se descuenta el stock en Supabase y se ofrece imprimir el ticket de bulto**.
-  * `🔴 Cancelar`: Si el cliente no transfiere tras el plazo acordado.
-
-### 3️⃣ Etapa: Pagado (`Pagado`)
-* **Estado:** El dinero está acreditado y el depósito está armando y embalando el pedido.
-* **Acciones:**
-  * `🖨️ Ticket 80mm`: Imprime el remito de despacho y rótulo de bulto optimizado para la impresora térmica Global POS80.
-  * `🟣 Marcar como Despachado`: Se entrega al transporte (Mostto / Andreani) o en mano. El pedido pasa a **Despachado**.
-
-### 4️⃣ Etapa: Despachado / Entregado (`Despachado`)
-* **Estado:** Pedido finalizado con éxito.
-* **Acciones:**
-  * `🖨️ Re-Imprimir Ticket`: Por si se requiere una copia adicional para el transportista o archivo.
-  * `✅ Pedido Despachado / Entregado`.
+## 🖨️ 5. IMPRESIÓN DE TICKETS TÉRMICOS 80MM (POS-80)
+* **Ubicación:** Función `imprimirTicketTermico80mm(pedidoId)` en `crm-backend/public/index.html`.
+* **Diseño para Cabezales Térmicos:**
+  * `font-weight: bold / 900` y color `#000000` en todo el documento para forzar doble quemado de punto térmico (negro nítido, sin textos desvanecidos).
+  * **Escala Tipográfica (Mínimo estricto 11px):**
+    * `18px`: Título `QUÍMICA DEC`.
+    * `16px`: `TOTAL FINAL`.
+    * `14px`: Nombre del destinatario.
+    * `12px`: Productos, cantidades (`50x`), precios (`$420.250`), teléfono, remito y transporte.
+    * `11px`: Fecha, dirección, cabeceras de tabla (`CANT / DETALLE / TOTAL`), rótulo de bultos y pie. *(Eliminados 8px, 9px y 10px).*
+  * **Número de Pedido:** Detecta `#${pedido.woocommerce_order_id}` si proviene de WooCommerce (ej: `#7303`).
 
 ---
 
-## 🚚 8. CAPTURA Y RESOLUCIÓN DE DATOS DE ENVÍO Y DIRECCIÓN
-
-### 🛠️ Solución Implementada:
-1. **Campos Directos en el Modal de Presupuestos:**
-   * El modal incluye selectores para: `Método de Envío`, `Dirección (Calle y Nro)`, `Ciudad / Localidad` y `Provincia`.
-   * Al seleccionar un cliente, los campos se auto-completan automáticamente con sus datos guardados.
-2. **Actualización Bidireccional en Base de Datos:**
-   * Al guardar el presupuesto, se actualiza la ficha del cliente en Supabase (`clientes.localidad`, `clientes.provincia`) y se guarda el método de envío en el pedido (`pedidos.origen` y `items_pedido[0].variacion_tamano`).
-3. **Resolución Visual en el Embudo:**
-   * La consulta `/api/crm/pedidos` trae todos los campos del cliente (`id, razon_social, whatsapp, cuit, contacto_nombre, localidad, provincia`).
-   * La tarjeta del embudo lee prioritariamente el método de envío registrado en el pedido (`Entre Ríos (Mostto +5%)`, `Resto del País`, `Retira en Local`) y muestra la dirección exacta (`📍 Paraná (Entre Ríos)`).
-   * La advertencia `⚠️ Sin Dirección` solo aparece si el pedido requiere transporte y verdaderamente no tiene localidad/dirección cargada.
+## 🛒 6. INTEGRACIÓN WOOCOMMERCE & EXPERIENCIA POST-CHECKOUT
+1. **Popup Post-Compra con Redirección a WhatsApp (`wpcode_popup_gracias_compra_whatsapp.php`):**
+   * Al finalizar compra en WooCommerce (`woocommerce_thankyou`), se abre un modal profesional informando el número de pedido e invitando al cliente a tocar el botón verde para contactar al vendedor por WhatsApp.
+   * Se eliminó "Cheque" de los métodos de pago.
+2. **Deduplicación de Webhook de Pedidos:**
+   * En `/api/crm/webhooks/woocommerce-order`, si `woocommerce_order_id` ya existe en Supabase, el backend actualiza la orden existente en lugar de duplicarla.
+3. **Auto-Polling en Tiempo Real del CRM:**
+   * `public/index.html` realiza polling automático cada 4 segundos de `/crm/pedidos` y `/crm/chat/conversaciones`, reflejando nuevos pedidos del carrito sin necesidad de recargar la página (`F5`).
+4. **Normalización de Teléfonos Argentinos:**
+   * Formato único estándar: `549` + código de área + número (sin símbolos `+` ni duplicaciones `+54`).
 
 ---
 
-## 🖨️ 9. SISTEMA DE TICKETS TÉRMICOS DE 80MM (Global POS80 / POS-80 Series)
-
-### ⚠️ El Problema que existía:
-Los tickets impresos desde plataformas externas (Pedix / WooCommerce) contenían frases repetitivas de plantillas web (`SELECCIONA EL PRODUCTO PARA VER SU PRECIO...`), haciendo que un pedido simple midiera más de 1 metro de largo, desperdiciando papel térmico y dificultando la lectura para el armado del bulto.
-
-### 🛠️ Solución Implementada:
-1. **Especificaciones del Hardware:**
-   * Impresora: **Global POS80 / POS-80 Series Driver** (Térmica directa, conexión USB).
-   * Ancho de bobina: **80 mm**.
-   * Ancho de impresión útil: **72 mm (576 puntos / 48 columnas)**.
-2. **Sanitización Total de Nombres de Productos (`limpiarNombreItemParaTicket`):**
-   * Elimina automáticamente cualquier prefijo o texto residual de catálogo, dejando únicamente el nombre limpio del producto, aroma/presentación, cantidad y precio.
-3. **Diseño de Remito & Rótulo de Bulto Compacto:**
-   * Encabezado institucional de Química DEC.
-   * Rótulo destacado de envío (Destinatario, Teléfono, DNI, Método de transporte y Dirección completa).
-   * Tabla compacta de 3 columnas: `CANT` | `PRODUCTO / PRESENTACIÓN` | `TOTAL`.
-   * Desglose financiero claro: Subtotal productos, Recargo Mostto (+5%) y Total Final.
-   * Recuadro para logística: `BULTOS: [ ] de [ ]  |  PESO: [ ] KG`.
-   * Espacio para firma y aclaración del receptor.
-4. **Disparador Automático y Manual en CRM:**
-   * Disponible mediante el botón `🖨️ Ticket 80mm` en las etapas de **Pagados** y **Despachados**.
-   * Diálogo automático de confirmación al marcar un pedido como **Pagado** para acelerar el embalaje.
+## 🔒 7. SEGURIDAD Y ZERO HARDCODED SECRETS
+* **Regla Absoluta:** Prohibido escribir claves API, tokens o credenciales dentro del código fuente.
+* **Variables de Entorno (`.env`):**
+  * `GOOGLE_API_KEY`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `GROQ_API_KEY`, `SESSION_SECRET`, `PORT`.
+* **Archivos `.gitignore`:** Configurados tanto en la raíz como en `crm-backend/` para proteger `.env`, respaldos y credenciales.
 
 ---
 
-## 📱 10. ARQUITECTURA PWA E IDENTIDAD GRÁFICA NATIVA
-
-### 🛠️ Características Implementadas:
-1. **Logo e Íconos Oficiales de Química DEC:**
-   * Se utiliza exclusivamente el **logo circular oficial de Química DEC** (el matraz químico azul con letras doradas y borde amarillo).
-   * Generados en resoluciones 192x192, 512x512, maskable, apple-touch-icon y favicon.ico.
-2. **Web App Manifest (`manifest.json`):**
-   * Nombre: `Química DEC CRM - Gestión & Ventas`.
-   * Modo: `standalone` (pantalla completa sin barra de navegador).
-   * Color de tema: `#f5c400` (Dorado Química DEC) y fondo `#0a1628`.
-3. **Service Worker (`sw.js`):**
-   * Estrategia *Network-First* para datos en tiempo real de Supabase y caché inteligente para arranque instantáneo de la app.
-4. **Botón de Instalación en la Interfaz (`📲 Instalar App`):**
-   * Detecta automáticamente si el dispositivo es Android/PC (dispara el prompt nativo de Google Play/Chrome) o iOS (muestra guía paso a paso para Safari).
-
----
-
-## 💵 11. GESTOR DE ACTUALIZACIÓN MASIVA DE PRECIOS (% Y MONTO FIJO)
-
-### 🛠️ Características Implementadas:
-1. **Ubicación:** Pestaña `Catálogo e IA` $\rightarrow$ Herramienta `💵 Actualizador de Precios (% y $)`.
-2. **Filtros por Categoría y Buscador en Tiempo Real:**
-   * Selector dinámico que agrupa las 32 categorías oficiales del catálogo.
-   * Buscador de texto instantáneo por nombre de producto, fragancia o SKU.
-3. **Panel de Control de Cálculo (Estándar Pedix):**
-   * **Operación:** `[ 🟢 Aumentar (+) ]` | `[ 🔴 Restar (-) ]` | `[ 🔵 Fijar / Igualar (=) ]`.
-   * **Método:** `[ 📊 Porcentaje (%) ]` | `[ 💵 Monto Fijo ($) ]`.
-   * **Cantidad:** Input interactivo con recálculo dinámico en vivo en 0ms.
-   * **Redondeo:** Opción para descartar decimales y redondear al entero más cercano.
-4. **Tabla de Vista Previa en Vivo (Live Preview):**
-   * Checkbox de selección individual y botón para seleccionar todos los filtrados.
-   * Columnas: `P. Original`, `Variación (+/- % y $)` y `P. Actualizado (badge verde brillante)`.
-5. **Persistencia Directa en Supabase y Memoria RAM de Dani:**
-   * Al guardar, se actualiza `dec_products` en Supabase y se refresca `PRODUCT_CATALOG_CACHE` en RAM de inmediato.
-   * Dani cotiza automáticamente con los nuevos precios vigentes en el chat.
-
-## 💼 12. POLÍTICAS COMERCIALES Y DE LOGÍSTICA OFICIALES
-* **Compra Mínima Inicial Mayorista:** **$80.000** (para clientes nuevos).
-* **Retiro en Local Mayorista:** A partir de **$2.500** (exclusivamente para clientes mayoristas ya registrados).
-* **Medios de Pago:** **Efectivo** o **Transferencia Bancaria**. (Prohibido mencionar tarjetas o cuotas).
-* **Envíos en Entre Ríos:** Transporte **MOSTTO a domicilio** con un costo del **5% del total de la factura**.
-* **Envíos al Resto del País:** Despacho por expreso / transporte de cargas generales a convenir.
-
----
-
-## 📊 13. TABLERO KANBAN RESPONSIVO, ARCHIVO HISTÓRICO Y ESTADÍSTICAS B2B
-
-### 🛠️ Especificaciones Técnicas:
-1. **Tablero Kanban con Scroll Interno Independiente:**
-   * Las 5 columnas (*Presupuestos, Confirmados, Pagados, Despachados, Cancelados*) cuentan con altura fija (`max-h-[76vh]`) y scrollbar interno suave (`max-h-[66vh] overflow-y-auto`).
-   * En dispositivos móviles (pantallas pequeñas y tablets), el contenedor se transforma en un carrusel horizontal táctil con ajuste por snap (`snap-x snap-mandatory flex overflow-x-auto gap-4`).
-2. **Filtros Temporales y Archivo Histórico:**
-   * Selector rápido por: `Hoy`, `Esta Semana`, `Este Mes` (por defecto), `Este Año (2026)`, `Todo el Histórico` y `📦 Archivados`.
-   * Botón de **Archivar / Desarchivar** en cada tarjeta para ocultar del flujo diario pedidos viejos o cancelados sin eliminarlos de la base de datos.
-3. **Módulo de Estadísticas & Analíticas B2B (`view-metricas`):**
-   * **KPIs en Tiempo Real:** Facturación Total Cobrada ($), Ticket Promedio Mayorista ($), Tasa de Conversión (%) y Unidades Totales Vendidas.
-   * **Top 10 Productos Más Vendidos:** Ranking ordenado por unidades con barra proporcional de volumen y total recaudado.
-   * **Top 10 Clientes Mayoristas:** Ranking por volumen acumulado de compras, frecuencia y localidad.
-   * **Desglose Logístico & Categorías:** Distribución de envíos (*Mostto Entre Ríos +5%, Retiro en Local, Transporte Nacional*) y demanda por rubro.
-
----
-
-> 🔒 *Cualquier modificación al backend, frontend o base de datos debe respetar rigurosamente los principios establecidos en esta Constitución.*
-
+## 📂 8. MAPA DE ARCHIVOS CLAVE DEL PROYECTO
+* [`crm-backend/server.js`](file:///c:/Users/wilde.WIL/OneDrive/Escritorio/PROYECTOS%20IA/Qu%C3%ADmica%20DEC/quimica_dec/crm-backend/server.js): Servidor central Express, endpoints CRM, webhook WooCommerce, caché de catálogo y lógica de IA Dani.
+* [`crm-backend/public/index.html`](file:///c:/Users/wilde.WIL/OneDrive/Escritorio/PROYECTOS%20IA/Qu%C3%ADmica%20DEC/quimica_dec/crm-backend/public/index.html): Frontend del CRM DEC, Embudo de pedidos, Chat en vivo, Gestión de leads, modal de Corregir Pedido e Impresión Térmica 80mm.
+* [`Quimica_DEC_Catalogo_WooCommerce_2026-07-29_22-10.csv`](file:///c:/Users/wilde.WIL/OneDrive/Escritorio/PROYECTOS%20IA/Qu%C3%ADmica%20DEC/quimica_dec/Quimica_DEC_Catalogo_WooCommerce_2026-07-29_22-10.csv): Catálogo oficial maestro con precios, atributos y variaciones.
+* [`crm-backend/catalogo_completo_3800.json`](file:///c:/Users/wilde.WIL/OneDrive/Escritorio/PROYECTOS%20IA/Qu%C3%ADmica%20DEC/quimica_dec/crm-backend/catalogo_completo_3800.json): Respaldo JSON de los 3.533+ productos con precios corregidos.
+* [`wpcode_popup_gracias_compra_whatsapp.php`](file:///c:/Users/wilde.WIL/OneDrive/Escritorio/PROYECTOS%20IA/Qu%C3%ADmica%20DEC/quimica_dec/wpcode_popup_gracias_compra_whatsapp.php): Hook de WooCommerce para el popup post-compra hacia WhatsApp.
+* [`CONSTITUCION_DEL_PROYECTO.md`](file:///c:/Users/wilde.WIL/OneDrive/Escritorio/PROYECTOS%20IA/Qu%C3%ADmica%20DEC/quimica_dec/CONSTITUCION_DEL_PROYECTO.md): Este documento maestro de reglas y arquitectura.
