@@ -447,22 +447,51 @@ async function isBotPausado(clienteId) {
     return false;
 }
 
-// Motor de IA Ultra-Resiliente con Cascada Multi-Modelo (Gemini 2.5 Flash + Groq GPT-OSS 120b/20b + Fallbacks)
+// Motor de IA Ultra-Resiliente con Cascada Multi-Modelo (Groq GPT-OSS 120b + Qwen 27b + Gemini 2.5 + Fallback Inteligente Contextual)
 async function generateDaniResponse(messagesPayload) {
     const geminiKey = process.env.GOOGLE_API_KEY;
     const systemMsg = messagesPayload.find(m => m.role === 'system')?.content || '';
     const conversationMsgs = messagesPayload.filter(m => m.role !== 'system');
 
-    // Cascada de modelos Gemini de ultra-baja latencia y alta disponibilidad
-    const geminiModels = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-flash-latest', 'gemini-2.0-flash-exp'];
+    // 1. Motor Groq de Ultra-Alta Velocidad y Razonamiento (Modelos de producción activos)
+    if (process.env.GROQ_API_KEY && groq) {
+        const groqConfigs = [
+            { model: 'openai/gpt-oss-120b', timeout: 12000, temperature: 0.25, max_tokens: 750 },
+            { model: 'qwen/qwen3.6-27b', timeout: 8000, temperature: 0.2, max_tokens: 650 },
+            { model: 'groq/compound', timeout: 8000, temperature: 0.25, max_tokens: 650 }
+        ];
 
-    const contents = conversationMsgs.map(m => ({
-        role: m.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: m.content }]
-    }));
+        for (const cfg of groqConfigs) {
+            try {
+                const groqPromise = groq.chat.completions.create({
+                    messages: messagesPayload,
+                    model: cfg.model,
+                    temperature: cfg.temperature,
+                    max_tokens: cfg.max_tokens
+                });
+                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error(`Groq ${cfg.model} timeout ${cfg.timeout}ms`)), cfg.timeout));
+                const completion = await Promise.race([groqPromise, timeoutPromise]);
+                let content = completion?.choices?.[0]?.message?.content;
+                if (content && typeof content === 'string' && content.trim().length > 0) {
+                    content = content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+                    if (content.length > 5) {
+                        return content;
+                    }
+                }
+            } catch (e) {
+                console.warn(`[GROQ ${cfg.model} ERROR]:`, e.message);
+            }
+        }
+    }
 
-    // 1. Probar modelos Gemini en cascada (si la clave está configurada y activa)
+    // 2. Probar modelos Gemini en cascada (si la clave está configurada y activa)
     if (geminiKey && geminiKey.trim().length > 10 && !geminiKey.includes('placeholder')) {
+        const geminiModels = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-flash-latest'];
+        const contents = conversationMsgs.map(m => ({
+            role: m.role === 'assistant' ? 'model' : 'user',
+            parts: [{ text: m.content }]
+        }));
+
         for (const modelName of geminiModels) {
             try {
                 const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiKey}`, {
@@ -473,7 +502,7 @@ async function generateDaniResponse(messagesPayload) {
                         systemInstruction: { parts: [{ text: systemMsg }] },
                         generationConfig: { temperature: 0.25, maxOutputTokens: 600 }
                     }),
-                    signal: AbortSignal.timeout(6000)
+                    signal: AbortSignal.timeout(7000)
                 });
 
                 if (geminiRes.ok) {
@@ -486,7 +515,7 @@ async function generateDaniResponse(messagesPayload) {
                     const errBody = await geminiRes.text();
                     console.warn(`[GEMINI ${modelName} HTTP ${geminiRes.status}]: ${errBody.slice(0, 120)}`);
                     if (geminiRes.status === 403 && errBody.includes('leaked')) {
-                        console.warn('[GEMINI KEY LEAKED] La clave GOOGLE_API_KEY fue reportada como filtrada. Pasando a Groq...');
+                        console.warn('[GEMINI KEY LEAKED] Clave GOOGLE_API_KEY filtrada. Omitiendo Gemini...');
                         break;
                     }
                 }
@@ -496,34 +525,22 @@ async function generateDaniResponse(messagesPayload) {
         }
     }
 
-    // 2. Motor Groq de Ultra-Alta Velocidad con modelos activos y vigentes
-    if (process.env.GROQ_API_KEY && groq) {
-        const groqModels = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'groq/compound-mini', 'qwen/qwen3.6-27b'];
-        for (const gModel of groqModels) {
-            try {
-                const groqPromise = groq.chat.completions.create({
-                    messages: messagesPayload,
-                    model: gModel,
-                    temperature: 0.25
-                });
-                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error(`Groq ${gModel} timeout 6s`)), 6000));
-                const completion = await Promise.race([groqPromise, timeoutPromise]);
-                let content = completion?.choices?.[0]?.message?.content;
-                if (content && content.trim().length > 0) {
-                    content = content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
-                    if (content.length > 0) {
-                        return content;
-                    }
-                }
-            } catch (e) {
-                console.warn(`[GROQ ${gModel} ERROR]:`, e.message);
-            }
+    // 3. Fallback inteligente y contextualizado (NUNCA reiniciar la charla si ya hay historial en curso)
+    const hasPriorConversation = conversationMsgs.length > 1;
+    const lastUserMsg = [...conversationMsgs].reverse().find(m => m.role === 'user')?.content || '';
+    const lastUserLower = lastUserMsg.toLowerCase();
+
+    if (hasPriorConversation) {
+        if (/\b(?:\d{7,15}|nombre|telefono|whatsapp|wsp|entrego|dirección|calle|tomas|javier|daniel|matias|lucas|juan)\b/i.test(lastUserLower)) {
+            return "¡Excelente! Ya registré tus datos de contacto y el detalle de tu pedido. Un asesor comercial humano se comunicará con vos a la brevedad por WhatsApp para coordinar el pago (Efectivo o Transferencia) y el despacho. ¡Muchas gracias por elegir Química DEC!";
         }
+        if (lastUserLower.includes('pedido') || lastUserLower.includes('precio') || lastUserLower.includes('total') || lastUserLower.includes('roto') || lastUserLower.includes('estas') || lastUserLower.includes('confirm')) {
+            return "¡Tu pedido y consulta están registrados en nuestro sistema! Un asesor comercial humano se comunicará con vos por WhatsApp a la brevedad para confirmarte el presupuesto final y los datos de entrega.";
+        }
+        return "Te pido disculpas por la demora momentánea. Ya registré tu consulta para que un representante de nuestro equipo comercial se ponga en contacto con vos a la brevedad por WhatsApp y te brinde atención personalizada.";
     }
 
-    // 3. Fallback inteligente contextual si no hay conexión externa
-    const lastUserMsg = [...conversationMsgs].reverse().find(m => m.role === 'user')?.content || '';
-    if (lastUserMsg.toLowerCase().includes('lavandina') || lastUserMsg.toLowerCase().includes('cloro') || lastUserMsg.toLowerCase().includes('jabon')) {
+    if (lastUserLower.includes('lavandina') || lastUserLower.includes('cloro') || lastUserLower.includes('jabon')) {
         return "¡Hola! En Química DEC tenemos stock disponible de lavandinas, cloros y artículos de limpieza para venta mayorista (mínimo $80.000). ¿Qué cantidad o presentación (5L, 10L, 25L) estás necesitando para armarte el presupuesto?";
     }
 
@@ -628,10 +645,14 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
             historialPrevio = messages
                 .filter(m => m.role !== 'system')
                 .slice(0, -1)
-                .map(m => ({
-                    role: (m.role === 'model' || m.role === 'assistant') ? 'assistant' : 'user',
-                    content: m.content || (m.parts && m.parts[0]?.text) || ''
-                }));
+                .slice(-8)
+                .map(m => {
+                    const rawText = m.content || (m.parts && m.parts[0]?.text) || '';
+                    return {
+                        role: (m.role === 'model' || m.role === 'assistant') ? 'assistant' : 'user',
+                        content: rawText.length > 450 ? rawText.substring(0, 450) + '...' : rawText
+                    };
+                });
         } else if (clienteId) {
             // 2. Si no vino en el payload (ej. webhook de WhatsApp), consultar Supabase
             try {
@@ -640,7 +661,7 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
                     .select('emisor, texto')
                     .eq('cliente_id', clienteId)
                     .order('creado_el', { ascending: false })
-                    .limit(15);
+                    .limit(10);
 
                 if (ultimosMsgs && ultimosMsgs.length > 0) {
                     const pausadoMsg = ultimosMsgs.find(m => m.texto.includes('[BOT PAUSADO]') || m.texto.includes('[BOT REANUDADO]'));
@@ -658,13 +679,16 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
                     historialPrevio = ultimosMsgs
                         .filter(m => !m.texto.includes('[BOT PAUSADO]') && !m.texto.includes('[BOT REANUDADO]'))
                         .reverse()
+                        .slice(-8)
                         .map(m => {
+                            const rawText = m.texto || '';
+                            const cleanText = rawText.length > 450 ? rawText.substring(0, 450) + '...' : rawText;
                             if (m.emisor === 'cliente') {
-                                return { role: 'user', content: m.texto };
+                                return { role: 'user', content: cleanText };
                             } else if (m.emisor === 'vendedor') {
-                                return { role: 'assistant', content: `[Intervención de Vendedor Humano]: ${m.texto}` };
+                                return { role: 'assistant', content: `[Intervención de Vendedor]: ${cleanText}` };
                             } else {
-                                return { role: 'assistant', content: m.texto };
+                                return { role: 'assistant', content: cleanText };
                             }
                         });
                 }
