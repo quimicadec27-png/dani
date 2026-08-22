@@ -447,44 +447,13 @@ async function isBotPausado(clienteId) {
     return false;
 }
 
-// Motor de IA Ultra-Resiliente con Cascada Multi-Modelo (Groq GPT-OSS 120b + Qwen 27b + Gemini 2.5 + Fallback Inteligente Contextual)
+// Motor de IA Ultra-Resiliente con Cascada Multi-Modelo (Gemini 2.5 Flash + Groq GPT-OSS 120b / 20b)
 async function generateDaniResponse(messagesPayload) {
     const geminiKey = process.env.GOOGLE_API_KEY;
     const systemMsg = messagesPayload.find(m => m.role === 'system')?.content || '';
     const conversationMsgs = messagesPayload.filter(m => m.role !== 'system');
 
-    // 1. Motor Groq de Ultra-Alta Velocidad y Razonamiento (Modelos de producción activos)
-    if (process.env.GROQ_API_KEY && groq) {
-        const groqConfigs = [
-            { model: 'openai/gpt-oss-120b', timeout: 12000, temperature: 0.25, max_tokens: 750 },
-            { model: 'qwen/qwen3.6-27b', timeout: 8000, temperature: 0.2, max_tokens: 650 },
-            { model: 'groq/compound', timeout: 8000, temperature: 0.25, max_tokens: 650 }
-        ];
-
-        for (const cfg of groqConfigs) {
-            try {
-                const groqPromise = groq.chat.completions.create({
-                    messages: messagesPayload,
-                    model: cfg.model,
-                    temperature: cfg.temperature,
-                    max_tokens: cfg.max_tokens
-                });
-                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error(`Groq ${cfg.model} timeout ${cfg.timeout}ms`)), cfg.timeout));
-                const completion = await Promise.race([groqPromise, timeoutPromise]);
-                let content = completion?.choices?.[0]?.message?.content;
-                if (content && typeof content === 'string' && content.trim().length > 0) {
-                    content = content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
-                    if (content.length > 5) {
-                        return content;
-                    }
-                }
-            } catch (e) {
-                console.warn(`[GROQ ${cfg.model} ERROR]:`, e.message);
-            }
-        }
-    }
-
-    // 2. Probar modelos Gemini en cascada (si la clave está configurada y activa)
+    // 1. Probar modelos Gemini en cascada si hay clave activa (Prioridad #1 por excelencia y cero razonamiento residual)
     if (geminiKey && geminiKey.trim().length > 10 && !geminiKey.includes('placeholder')) {
         const geminiModels = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-flash-latest'];
         const contents = conversationMsgs.map(m => ({
@@ -500,9 +469,9 @@ async function generateDaniResponse(messagesPayload) {
                     body: JSON.stringify({
                         contents: contents,
                         systemInstruction: { parts: [{ text: systemMsg }] },
-                        generationConfig: { temperature: 0.25, maxOutputTokens: 600 }
+                        generationConfig: { temperature: 0.25, maxOutputTokens: 800 }
                     }),
-                    signal: AbortSignal.timeout(7000)
+                    signal: AbortSignal.timeout(8000)
                 });
 
                 if (geminiRes.ok) {
@@ -515,12 +484,45 @@ async function generateDaniResponse(messagesPayload) {
                     const errBody = await geminiRes.text();
                     console.warn(`[GEMINI ${modelName} HTTP ${geminiRes.status}]: ${errBody.slice(0, 120)}`);
                     if (geminiRes.status === 403 && errBody.includes('leaked')) {
-                        console.warn('[GEMINI KEY LEAKED] Clave GOOGLE_API_KEY filtrada. Omitiendo Gemini...');
+                        console.warn('[GEMINI KEY LEAKED] Clave GOOGLE_API_KEY filtrada/revocada por Google. Conmutando a Groq...');
                         break;
                     }
                 }
             } catch (err) {
                 console.warn(`[GEMINI ${modelName} ERROR: ${err.message}], probando siguiente modelo...`);
+            }
+        }
+    }
+
+    // 2. Motor Groq de Alta Velocidad (Modelos limpios directos: openai/gpt-oss-120b y openai/gpt-oss-20b)
+    if (process.env.GROQ_API_KEY && groq) {
+        const groqConfigs = [
+            { model: 'openai/gpt-oss-120b', timeout: 15000, temperature: 0.25, max_tokens: 900 },
+            { model: 'openai/gpt-oss-20b', timeout: 10000, temperature: 0.2, max_tokens: 800 }
+        ];
+
+        for (const cfg of groqConfigs) {
+            try {
+                const groqPromise = groq.chat.completions.create({
+                    messages: messagesPayload,
+                    model: cfg.model,
+                    temperature: cfg.temperature,
+                    max_tokens: cfg.max_tokens
+                });
+                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error(`Groq ${cfg.model} timeout ${cfg.timeout}ms`)), cfg.timeout));
+                const completion = await Promise.race([groqPromise, timeoutPromise]);
+                let content = completion?.choices?.[0]?.message?.content;
+                if (content && typeof content === 'string' && content.trim().length > 0) {
+                    // Sanitización rigurosa de cadenas de razonamiento
+                    content = content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+                    content = content.replace(/<think>[\s\S]*/gi, '').trim();
+                    content = content.replace(/^(?:Here's a thinking process:?|Thinking Process:?|Análisis de la consulta:?)[\s\S]*/gi, '').trim();
+                    if (content.length > 10 && !content.toLowerCase().includes('thinking process') && !content.toLowerCase().includes('analyze user input')) {
+                        return content;
+                    }
+                }
+            } catch (e) {
+                console.warn(`[GROQ ${cfg.model} ERROR]:`, e.message);
             }
         }
     }
@@ -534,8 +536,8 @@ async function generateDaniResponse(messagesPayload) {
         if (/\b(?:\d{7,15}|nombre|telefono|whatsapp|wsp|entrego|dirección|calle|tomas|javier|daniel|matias|lucas|juan)\b/i.test(lastUserLower)) {
             return "¡Excelente! Ya registré tus datos de contacto y el detalle de tu pedido. Un asesor comercial humano se comunicará con vos a la brevedad por WhatsApp para coordinar el pago (Efectivo o Transferencia) y el despacho. ¡Muchas gracias por elegir Química DEC!";
         }
-        if (lastUserLower.includes('pedido') || lastUserLower.includes('precio') || lastUserLower.includes('total') || lastUserLower.includes('roto') || lastUserLower.includes('estas') || lastUserLower.includes('confirm')) {
-            return "¡Tu pedido y consulta están registrados en nuestro sistema! Un asesor comercial humano se comunicará con vos por WhatsApp a la brevedad para confirmarte el presupuesto final y los datos de entrega.";
+        if (lastUserLower.includes('pedido') || lastUserLower.includes('precio') || lastUserLower.includes('total') || lastUserLower.includes('roto') || lastUserLower.includes('estas') || lastUserLower.includes('confirm') || lastUserLower.includes('jabon') || lastUserLower.includes('cloro')) {
+            return "¡Tomo nota de los productos y medidas! Tu consulta ya quedó registrada en nuestro sistema para que un asesor comercial se comunique con vos a la brevedad por WhatsApp, te confirme el presupuesto exacto y coordine la entrega. ¿Me confirmás tu nombre y número de WhatsApp?";
         }
         return "Te pido disculpas por la demora momentánea. Ya registré tu consulta para que un representante de nuestro equipo comercial se ponga en contacto con vos a la brevedad por WhatsApp y te brinde atención personalizada.";
     }
