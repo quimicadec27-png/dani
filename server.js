@@ -76,14 +76,14 @@ async function refreshProductCatalog() {
 
         if (allProducts.length > 0) {
             PRODUCT_CATALOG_CACHE = allProducts
-                .filter(p => !p.sku?.includes('QD-DTRG-1320') && p.stock_status !== 'outofstock' && p.status === 'publish' && !p.name?.toLowerCase().includes('skip'))
+                .filter(p => !p.sku?.includes('QD-DTRG-1320') && (p.status === 'publish' || !p.status) && !p.name?.toLowerCase().includes('skip'))
                 .map(p => ({
                     ...p,
                     price: parseFloat(p.price || 0),
                     regular_price: parseFloat(p.price || 0),
                     sku: (p.sku || '').replace(/_ID\d+$/, '')
                 }));
-            console.log(`[CATALOG CACHE] ✅ ${PRODUCT_CATALOG_CACHE.length} productos y variaciones en stock cargados en memoria RAM.`);
+            console.log(`[CATALOG CACHE] ✅ ${PRODUCT_CATALOG_CACHE.length} productos y variaciones publicados cargados en memoria RAM.`);
         } else {
             // Fallback a archivo local JSON con los productos si Supabase no responde
             try {
@@ -91,7 +91,7 @@ async function refreshProductCatalog() {
                 if (fs.existsSync(localJsonPath)) {
                     const localData = JSON.parse(fs.readFileSync(localJsonPath, 'utf-8'));
                     PRODUCT_CATALOG_CACHE = localData
-                        .filter(p => !p.sku?.includes('QD-DTRG-1320') && p.stock_status !== 'outofstock' && !p.name?.toLowerCase().includes('skip'))
+                        .filter(p => !p.sku?.includes('QD-DTRG-1320') && (p.status === 'publish' || !p.status) && !p.name?.toLowerCase().includes('skip'))
                         .map(p => ({ ...p, regular_price: p.price }));
                     console.log(`[CATALOG CACHE] ✅ ${PRODUCT_CATALOG_CACHE.length} productos cargados desde archivo local JSON.`);
                 }
@@ -131,67 +131,42 @@ Hablas en primera persona como representante oficial de la empresa ("en Química
      • Jabón Líquido Premium Verde
      • Jabón Líquido Premium para Ropa Blanca
      • Jabón Líquido Premium Suavidad (Rojo)
-     Presentaciones oficiales: 5L ($4.485 a $4.904), 10L ($8.971 a $9.671), 20L ($17.943 a $19.625), 40L, 60L, 120L, 200L, 500L.
+     Escala de precios oficiales:
+     - 5 L: entre $4.485 y $4.904,75
+     - 10 L: entre $8.971,84 y $9.009,50
+     - 20 L: entre $17.943,68 y $19.625,00
+     - 40 L: entre $35.494,84 y $38.824,00
+     - 60 L: entre $52.738,20 y $57.408,00
+     - 120 L: entre $104.465,86 y $113.022,00
+     - 200 L: entre $172.147,18 y $186.300,00
   2. LÍNEA ECO PLUS (Excelente relación calidad-precio para uso económico):
      • Jabón Líquido Eco Plus Azul
      • Jabón Líquido Eco Plus Verde
-     Presentaciones oficiales: 5L ($2.313), 10L ($4.626), 20L ($9.252), 40L, 60L, 120L, 200L, 500L.
+     Escala de precios oficiales:
+     - 5 L: $2.313
+     - 10 L: $4.626
+     - 20 L: $9.252
+     - 40 L: $18.504 | 60 L: $27.756 | 120 L: $55.512 | 200 L: $92.520
 - ⚠️ SI EL CLIENTE PREGUNTA POR SKIP O ARIEL:
   Aclarale de inmediato y con total amabilidad: "No trabajamos con marca Skip ni Ariel; somos fabricantes directos de productos de limpieza y tenemos nuestras propias líneas de Jabón Líquido para Ropa de alta concentración: la Línea Premium (Violeta, Azul, Verde, Ropa Blanca, Rojo) y la Línea Eco Plus (Azul y Verde)." Y pasale de inmediato los precios de las presentaciones disponibles (5L, 10L, 20L).
 
-⚠️ REGLA DE ORO DE DIALECTO Y VOSEO ARGENTINO RIOPLATENSE ESTRICTO:
-- Hablá SIEMPRE en Español Argentino Rioplatense natural, cercano, respetuoso y cálido.
-- ESTÁ ROTUNDAMENTE PROHIBIDO usar palabras neutras o de España.
-  ❌ Prohibido: "si eres", "ten en cuenta", "deseas", "prefieres", "recuerda", "puedes", "tienes", "quieres".
-  ✅ Obligatorio Voseo: "si sos", "tené en cuenta", "deseás", "preferís", "recordá", "podés", "tenés", "querés".
-- ESTÁ ROTUNDAMENTE PROHIBIDO usar la palabra "Che". Saludá siempre con "¡Hola! ¿Cómo estás?", "¡Hola! Decime...", etc., tuteando con voseo pero NUNCA usando "Che".
-
-⚠️ REGLA DE ADVERTENCIA SUTIL SOBRE PRIMER PEDIDO MAYORISTA:
-- ÚNICAMENTE al inicio de la conversación o al consultar precios por primera vez y SI EL PEDIDO AÚN NO ESTÁ DEFINIDO, podés recordar de forma sutil:
-  "Recordá que si sos cliente nuevo y querés activar tu cuenta mayorista, tu primer pedido debe ser de $80.000 o más."
-- ⚠️ SI EL PEDIDO YA ESTÁ DEFINIDO, SI YA SE CALCULÓ UN TOTAL O SI EL CLIENTE TE ESTÁ DANDO SUS DATOS, ESTÁ ROTUNDAMENTE PROHIBIDO REPETIR ESTA ADVERTENCIA O PREGUNTAR "¿EN QUÉ PUEDO AYUDARTE HOY?".
-- ⚠️ PROHIBIDO MEZCLAR EL RETIRO DE $2.500 EN EL SALUDO DE CLIENTE NUEVO. El retiro en local a partir de $2.500 es EXCLUSIVAMENTE para clientes que YA son mayoristas. NUNCA lo menciones al hablar de la compra inicial de cliente nuevo.
-
-⚠️ REGLA DE CONCISIÓN Y MEMORIA DE CONVERSACIÓN (PROHIBIDO SER REDUNDANTE O REPETITIVA):
-- SÉ CONCISA, DIRECTA Y EFICIENTE.
-- NO REPETÍS información que ya le diste al cliente previamente en el historial del chat.
-- No agregues texto innecesario ni explicaciones que no se te hayan consultado explícitamente. Mantené la conversación fluida y centrada en resolver la duda del momento.
-
-⚠️ REGLA ABSOLUTA Y ESTRICTA: PROHIBIDO INVENTAR O DAR DATOS BANCARIOS, NOMBRES DE VENDEDORES O NÚMEROS DE TELÉFONO:
-- ❌ Queda ROTUNDAMENTE PROHIBIDO inventar o escribir CBU, Alias, Cuentas Bancarias, Bancos o CUITs.
-- ❌ Queda ROTUNDAMENTE PROHIBIDO inventar nombres de asesores comerciales.
-- ❌ Queda ROTUNDAMENTE PROHIBIDO dar números de teléfono para que el cliente llame o prometer que "te vamos a llamar".
-
-⚠️ PROTOCOLO EXCLUSIVO PARA FINALIZAR LA COMPRA O PAGAR POR TRANSFERENCIA:
-- Cuando el cliente indique que quiere FINALIZAR LA COMPRA, CERRAR EL PEDIDO o PAGAR POR TRANSFERENCIA BANCARIA:
-  1. Si aún no te dio su número de WhatsApp, pedíselo de forma amable:
-     "Para que un asesor comercial te envíe los datos oficiales de la cuenta bancaria y coordine la entrega, ¿me compartís tu número de WhatsApp con característica?"
-  2. Si ya tenés su número de WhatsApp (o te lo acaba de compartir), respondé:
-     "¡Perfecto! Ya dejé registrada tu consulta y el resumen de tu pedido por un total de $[Monto Total]. Un asesor comercial de nuestro equipo se pondrá en contacto con vos a la brevedad por WhatsApp para pasarte los datos oficiales de la cuenta bancaria, confirmar tu pago y coordinar el despacho o retiro. ¡Muchas gracias por elegir Química DEC!"
+⚠️ FORMATO DE MENSAJES Y CHAT (LIMPIO, SIN ASTERISCOS DOBLES CRUDOS):
+- Escribí siempre con formato limpio, prolijo y natural.
+- NO uses asteriscos dobles (como **$17943** o **Jabón**). Escribí los precios de forma directa y clara (ej: $186.300).
+- Usá viñetas con punto (•), emoticones amables y saltos de línea para que sea fácil de leer en el celular.
 
 ⚠️ REGLAS SOBRE ESPECIFICACIÓN DE VARIABLES DE PRODUCTO (TAMAÑOS, LITROS, FRAGANCIAS):
-- Si el cliente consulta por un producto sin especificar la cantidad, los litros o la fragancia exacta, informale las presentaciones disponibles y sus precios de referencia.
-- Si el cliente desea explorar todas las opciones disponibles, compartí SIEMPRE el enlace Markdown oficial del catálogo: [Catálogo de Productos](https://quimicadec.com/nuestros-productos/). (PROHIBIDO escribir la URL como texto plano sin formato link).
-
-⚠️ ESTRUCTURA OFICIAL DE CATEGORÍAS DE QUÍMICA DEC (FABRICANTES Y DISTRIBUIDORES MAYORISTAS):
-1. LIMPIEZA Y QUÍMICOS:
-   - Jabones Líquidos Propios (Línea Premium: Violeta, Azul, Verde, Ropa Blanca, Rojo | Línea Eco Plus: Azul, Verde)
-   - Suavizantes para Ropa (Downy, Mary Cher, Confort, Vivere, Celeste, Rosa, Blanco)
-   - Desodorantes de Piso Concentrados (1+9, 1+20, 1+50)
-   - Cloro Líquido 1+2 y Lavandinas
-   - Pastas Concentradas para Fabricar
-   - Aerosoles Ambientales e Insecticidas (Glade, Blem, Cif Desinfectante, Poett, Raid, Fuyi)
-   - Jabón en Polvo y en Pan
-2. ACCESORIOS DE LIMPIEZA: Esponjas, Escobillones, Cepillos, Secadores, Cabos, Burletes, Bolsas consorcio y residuos, Envases plásticos.
-3. HOGAR Y AMBIENTES: Baño, Cocina, Perfumería, Sahumerios, Textiles (trapos de piso rayados, rejillas, franelas), Papeles.
-4. ESPECIALIDADES Y PILETA: Cloro líquido 20L a 200L, Cloro granulado simple y triple acción x 1kg, pastillas 50g y 200g, alguicidas, clarificantes, siliconas y shampoos para autos.
-
-⚠️ REGLAS SOBRE ESPECIFICACIÓN DE VARIABLES DE PRODUCTO (TAMAÑOS, LITROS, FRAGANCIAS):
-- CLORO LÍQUIDO (1+2 partes de agua):
-  * La presentación inicial mínima es el bidón de 20 LITROS a $15.060. ¡QUEDA ROTUNDAMENTE PROHIBIDO decir que se vende cloro líquido de 1 litro fraccionado!
-  * Otras presentaciones disponibles de Cloro Líquido: 40 LT ($29.675,60), 60 LT ($43.719,60), 120 LT ($85.534,80) y 200 LT ($139.648).
+- CLORO LÍQUIDO (1+2 partes de agua - venta sin envase):
+  * Presentaciones oficiales de Cloro Líquido:
+    - 5 LT: $3.769,12
+    - 10 LT: $7.538,25
+    - 20 LT: $15.060,00
+    - 40 LT: $29.675,60
+    - 60 LT: $43.719,60
+    - 120 LT: $85.534,80
+    - 200 LT: $139.648,00
 - PASTILLAS DE CLORO TRIPLE ACCIÓN:
-  * Disponibles en pastillas de 50g y 200g (por unidad o sueltas por 1 kg).
+  * Disponibles en pastillas de 50g y 200g (por unidad o sueltas por 1 kg a $7.760,73).
 - Desinfectantes en Aerosol: DESINFECTANTE CIF (Floral, Frescura Cítrica, Lavanda, Original 360gr a $3.591,99).
 - Insecticidas: Raid, Fuyi (exclusivamente insecticidas en aerosol / espirales / tabletas).
 - Desinfección Concentrada: Lavandina Líquida (dilución 1+2).
@@ -696,13 +671,16 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
                 'extra', 'paso', 'nombre', 'numero', 'whats', 'whatsapp', 'dni', 'cuit', 'cuil', 'direccion',
                 'americas', 'rosario', 'tala', 'imagino', 'bien', 'las', 'los', 'del', 'con', 'sin', 'una', 'uno',
                 'unos', 'unas', 'que', 'por', 'son', 'mis', 'tus', 'sus', 'donde', 'como', 'cuando', 'quien',
-                'cual', 'estoy', 'estan', 'esta', 'estos', 'estas', 'enviame'
+                'cual', 'estoy', 'estan', 'esta', 'estos', 'estas', 'enviame', 'mmm'
             ];
-            const tokens = normalized.match(/[a-záéíóúñ0-9+,\.]{2,}/gi) || [];
+
+            const stripAccents = s => (s || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+            const normalizedClean = stripAccents(normalized);
+            const tokens = normalizedClean.match(/[a-z0-9+,\.]{2,}/gi) || [];
             const keywords = tokens.filter(t => !stopWords.includes(t) && !/^\d+$/.test(t));
 
-            // Detección de litros / tamaños variables (desde 0.5L hasta 200L)
-            const sizeMatch = normalized.match(/\b(0[\.,]5|1|2|3|4|5|6|8|10|20|25|40|50|60|100|120|200)\s*(?:lt|l)?\b/i);
+            // Detección de litros / tamaños variables (desde 0.5L hasta 500L)
+            const sizeMatch = normalized.match(/\b(0[\.,]5|1|2|3|4|5|6|8|10|20|25|40|50|60|100|120|200|500)\s*(?:lt|l|litros?)\b/i) || normalized.match(/\b(0[\.,]5|1|2|3|4|5|6|8|10|20|25|40|50|60|100|120|200|500)\b/);
             const reqSize = sizeMatch ? sizeMatch[1].replace(',', '.') : null;
 
             // Detección de packs / unidades (pack x3, x5, x10, x50, etc.)
@@ -712,22 +690,33 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
             if (keywords.length > 0) {
                 let scored = [];
                 PRODUCT_CATALOG_CACHE.forEach(p => {
-                    const pName = (p.name || '').toLowerCase();
+                    const pNameRaw = (p.name || '');
+                    const pName = stripAccents(pNameRaw);
                     let score = 0;
 
                     const matchedKw = keywords.filter(k => pName.includes(k)).length;
                     if (matchedKw === 0) return;
-                    score += matchedKw * 10;
+                    score += matchedKw * 12;
+
+                    // Si el nombre del producto arranca con la palabra clave principal (ej: "CLORO LÍQUIDO...")
+                    if (keywords.length > 0 && pName.startsWith(keywords[0])) {
+                        score += 25;
+                    }
 
                     keywords.forEach(k => {
                         if (k.length > 4 && pName.includes(k)) score += 8;
                     });
 
                     if (reqSize) {
-                        if (pName.includes(`${reqSize} lt`) || pName.includes(`${reqSize}lt`) || pName.includes(`desde ${reqSize} lt`) || pName.includes(`p/${reqSize}lt`) || pName.includes(`p/${reqSize} lt`) || pName.includes(`para ${reqSize} lt`)) {
-                            score += 35;
-                        } else if (pName.includes(` ${reqSize} `) || pName.includes(`(${reqSize})`) || pName.includes(`x${reqSize}`)) {
-                            score += 15;
+                        const sizeRegex = new RegExp(`\\b(?:desde\\s*)?${reqSize}\\s*(?:lt|l|litros?|kg)?\\b`, 'i');
+                        if (sizeRegex.test(pName)) {
+                            score += 60;
+                        } else {
+                            // Penalizar si el producto es de otra medida explícita cuando el cliente pidió una específica
+                            const otherSizeMatch = pName.match(/\b(?:desde\\s*)?(\d{1,3})\s*lt\b/i);
+                            if (otherSizeMatch && otherSizeMatch[1] !== reqSize) {
+                                score -= 30;
+                            }
                         }
                     }
 

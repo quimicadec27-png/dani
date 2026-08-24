@@ -137,9 +137,16 @@ Este documento es la **fuente única de verdad** para el asistente virtual **Dan
 * **Productos:** Jabón líquido para manos con fragancias (Frutilla, Coco, Manzana, Té Verde en 1L, 5L y 10L), Jabones de tocador en pastilla (Dove, Plusbelle, Primordial).
 
 ### 27. Cloro y Piletas
-* **Productos y Reglas Estrictas:**
-  * **Cloro Líquido (1+2):** Mínimo 20 LITROS ($15.060). Presentaciones: 40L ($29.675,60), 60L ($43.719,60), 120L ($85.534,80) y 200L ($139.648). *(Prohibido decir que existe 1L fraccionado)*.
-  * **Pastillas de Cloro Triple Acción:** Pastillas de 50g y 200g (por unidad o sueltas por kilo).
+* **Productos y Presentaciones Oficiales:**
+  * **Cloro Líquido (1+2 partes de agua - venta sin envase):**
+    - Desde 5 LT: $3.769,12
+    - Desde 10 LT: $7.538,25
+    - Desde 20 LT: $15.060,00
+    - Desde 40 LT: $29.675,60
+    - Desde 60 LT: $43.719,60
+    - Desde 120 LT: $85.534,80
+    - Desde 200 LT: $139.648,00
+  * **Pastillas de Cloro Triple Acción:** Pastillas de 50g y 200g (por unidad o sueltas por kilo a $7.760,73).
   * **Cloro Granulado:** Simple y Triple Acción x 1kg.
   * **Tratamiento de Agua:** Alguicida líquido concentrado y Clarificante decantador.
 

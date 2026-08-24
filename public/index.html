@@ -3089,6 +3089,12 @@ ightarrow$ Ventas</p>
 
                 const encodedText = encodeURIComponent(cleanText);
 
+                // Formatear negritas Markdown (**texto**) en etiquetas HTML prolijas y enlaces clickeables
+                let formattedHtml = cleanText
+                    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" class="text-brand-yellow hover:underline font-bold">$1</a>')
+                    .replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-brand-yellow drop-shadow-sm">$1</strong>')
+                    .replace(/\*([^\*]+)\*/g, '<em class="italic text-gray-200">$1</em>');
+
                 return `
                     <div class="flex flex-col ${esCliente ? 'items-start' : 'items-end'} my-1 select-text" style="user-select: text !important; -webkit-user-select: text !important;">
                         <div class="max-w-[85%] p-3.5 rounded-2xl text-xs select-text cursor-text relative group ${esCliente ? 'bg-white/10 text-white rounded-tl-none' : esBot ? 'bg-brand-yellow/15 text-brand-yellow border border-brand-yellow/30 rounded-tr-none' : 'bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded-tr-none'}" style="user-select: text !important; -webkit-user-select: text !important;">
@@ -3103,7 +3109,7 @@ ightarrow$ Ventas</p>
                                     </button>
                                 </div>
                             </div>
-                            <p class="leading-relaxed whitespace-pre-wrap select-text cursor-text font-normal" style="user-select: text !important; -webkit-user-select: text !important;">${cleanText}</p>
+                            <p class="leading-relaxed whitespace-pre-wrap select-text cursor-text font-normal" style="user-select: text !important; -webkit-user-select: text !important;">${formattedHtml}</p>
                         </div>
                     </div>
                 `;
