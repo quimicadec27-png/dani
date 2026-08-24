@@ -826,8 +826,9 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
 
         let respuestaIA = await generateDaniResponse(messagesPayload);
         
-        // Filtro de seguridad post-procesamiento (elimina SKUs, tarjetas, cuotas, CBU/cuentas inventadas, teléfonos falsos, corchetes, español neutro o modismos victimistas)
-        respuestaIA = respuestaIA.replace(/\b\(?SKU:\s*[\w-]+\)?\b/gi, '')
+        // Filtro de seguridad post-procesamiento (elimina SKUs, asteriscos dobles, tarjetas, cuotas, CBU/cuentas inventadas, teléfonos falsos, corchetes, español neutro o modismos victimistas)
+        respuestaIA = respuestaIA.replace(/\*\*(.*?)\*\*/g, '$1')
+                                 .replace(/\b\(?SKU:\s*[\w-]+\)?\b/gi, '')
                                  .replace(/\[nombre\]/gi, '')
                                  .replace(/\[producto\]/gi, 'los productos que buscás')
                                  .replace(/tarjetas? de (crédito|débito)/gi, 'efectivo o transferencia bancaria')
