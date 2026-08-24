@@ -412,9 +412,9 @@ async function generateDaniResponse(messagesPayload) {
     const systemMsg = messagesPayload.find(m => m.role === 'system')?.content || '';
     const conversationMsgs = messagesPayload.filter(m => m.role !== 'system');
 
-    // 1. Probar modelos Gemini en cascada si hay clave activa (Prioridad #1 por excelencia y cero razonamiento residual)
+    // 1. Probar modelos Gemini en cascada si hay clave activa (Prioridad #1 por excelencia, cero razonamiento residual y ultra-baja latencia)
     if (geminiKey && geminiKey.trim().length > 10 && !geminiKey.includes('placeholder')) {
-        const geminiModels = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-flash-latest'];
+        const geminiModels = ['gemini-3.7-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-flash-latest'];
         const contents = conversationMsgs.map(m => ({
             role: m.role === 'assistant' ? 'model' : 'user',
             parts: [{ text: m.content }]
@@ -428,9 +428,9 @@ async function generateDaniResponse(messagesPayload) {
                     body: JSON.stringify({
                         contents: contents,
                         systemInstruction: { parts: [{ text: systemMsg }] },
-                        generationConfig: { temperature: 0.25, maxOutputTokens: 800 }
+                        generationConfig: { temperature: 0.25, maxOutputTokens: 900 }
                     }),
-                    signal: AbortSignal.timeout(8000)
+                    signal: AbortSignal.timeout(9000)
                 });
 
                 if (geminiRes.ok) {
