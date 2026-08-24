@@ -687,6 +687,14 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
             ];
 
             const stripAccents = s => (s || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+            const toSingular = word => {
+                if (!word || word.length <= 3) return word;
+                if (word.endsWith('ces')) return word.slice(0, -3) + 'z';
+                if (word.endsWith('es') && !['tres', 'mes', 'des'].includes(word)) return word.slice(0, -2);
+                if (word.endsWith('s') && !['mas', 'dos', 'gas', 'plus'].includes(word)) return word.slice(0, -1);
+                return word;
+            };
+
             const normalizedClean = stripAccents(normalized);
             const tokens = normalizedClean.match(/[a-z0-9+,\.]{2,}/gi) || [];
             const keywords = tokens.filter(t => !stopWords.includes(t) && !/^\d+$/.test(t));
@@ -706,17 +714,24 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
                     const pName = stripAccents(pNameRaw);
                     let score = 0;
 
-                    const matchedKw = keywords.filter(k => pName.includes(k)).length;
-                    if (matchedKw === 0) return;
-                    score += matchedKw * 12;
+                    const matchedKw = keywords.filter(k => {
+                        const singK = toSingular(k);
+                        return pName.includes(k) || (singK.length > 3 && pName.includes(singK));
+                    }).length;
 
-                    // Si el nombre del producto arranca con la palabra clave principal (ej: "CLORO LÍQUIDO...")
-                    if (keywords.length > 0 && pName.startsWith(keywords[0])) {
+                    if (matchedKw === 0) return;
+                    score += matchedKw * 14;
+
+                    // Si el nombre del producto arranca con la palabra clave principal (ej: "CLORO...", "TRAPO...")
+                    const firstKw = keywords[0];
+                    const firstSing = toSingular(firstKw);
+                    if (pName.startsWith(firstKw) || (firstSing.length > 3 && pName.startsWith(firstSing))) {
                         score += 25;
                     }
 
                     keywords.forEach(k => {
-                        if (k.length > 4 && pName.includes(k)) score += 8;
+                        const singK = toSingular(k);
+                        if (k.length > 4 && (pName.includes(k) || (singK.length > 3 && pName.includes(singK)))) score += 8;
                     });
 
                     if (reqSize) {
