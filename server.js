@@ -171,6 +171,13 @@ Hablas en primera persona como representante oficial de la empresa ("en Química
 - Insecticidas: Raid, Fuyi (exclusivamente insecticidas en aerosol / espirales / tabletas).
 - Desinfección Concentrada: Lavandina Líquida (dilución 1+2).
 
+⚠️ NUESTRO CATÁLOGO INTEGRAL (FABRICACIÓN PROPIA Y DISTRIBUCIÓN MAYORISTA):
+En Química DEC fabricamos y distribuimos productos en 4 Macro-Sectores y 32 Categorías:
+1. LIMPIEZA Y QUÍMICOS: Jabones Líquidos propios (Premium y Eco Plus), Suavizantes, Desodorantes de Piso Concentrados (1+9, 1+20, 1+50), Pastas Concentradas para fabricar 50L, Ceras Autobrillo (Negra, Roja, Incolora), Desengrasantes, Detergentes Lavavajillas, Limpiadores multiuso.
+2. ACCESORIOS DE LIMPIEZA: Esponjas y Fibras, Escobillones y Cepillos, Secadores de piso de goma, Cabos de madera, Burletes aislantes, Bolsas de residuos y consorcio (50x70, 80x110), Bolsas camiseta y rollo, Envases plásticos y bidones vacíos.
+3. HOGAR Y AMBIENTES: Baño e inodoros (pastillas y bloques mochila Harpic/Pato/Vim), Cocina y vajilla (esponjas de acero), Perfumería y difusores textiles, Repelentes (Off/Fuyi), Insecticidas (Raid), Desinfectantes en aerosol (Glade/Cif), Sahumerios y Defumación (Tuk Tuk x50u, Sagrada Madre, Iluminarte, Amogh, Prana), Textiles de limpieza (trapos de piso rayados, franelas, rejillas, microfibra), Toallitas y paños.
+4. ESPECIALIDADES Y PILETAS: Papeles y celulosa (Morita, New Pel, toallas intercaladas), Higiene personal (jabón de manos), Piletas (Cloro líquido 5L a 200L, pastillas triple acción 50g y 200g, cloro granulado, alguicidas, clarificantes), Línea Automotor (siliconas, shampoo siliconado, revividores), Jardinería (mangueras de 15m), Kiosco (cintas Tacsa), Bazar y Plásticos (baldes y fuentones).
+
 ⚠️ REGLA ABSOLUTA ANTI-INVENCIÓN DE PRECIOS:
 - EL VALOR "$2.500" ES ÚNICA Y EXCLUSIVAMENTE EL MONTO MÍNIMO DE COMPRA PARA RETIRAR EN EL LOCAL (para clientes mayoristas registrados). ¡BAJO NINGUNA CIRCUNSTANCIA ES EL PRECIO DE UN PRODUCTO!
 - QUEDA ROTUNDAMENTE PROHIBIDO ASIGNAR $2.500 O CUALQUIER PRECIO INVENTADO A PRODUCTOS.
@@ -447,11 +454,14 @@ async function generateDaniResponse(messagesPayload) {
                 const completion = await Promise.race([groqPromise, timeoutPromise]);
                 let content = completion?.choices?.[0]?.message?.content;
                 if (content && typeof content === 'string' && content.trim().length > 0) {
-                    // Sanitización rigurosa de cadenas de razonamiento
+                    // Sanitización rigurosa de cadenas de razonamiento y residuos
                     content = content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
                     content = content.replace(/<think>[\s\S]*/gi, '').trim();
+                    content = content.replace(/^(?:[\s\S]*?(?:Drafting the response:?|Final response:?|Here's the response:?))\s*/i, '').trim();
                     content = content.replace(/^(?:Here's a thinking process:?|Thinking Process:?|Análisis de la consulta:?)[\s\S]*/gi, '').trim();
                     if (content.length > 10 && !content.toLowerCase().includes('thinking process') && !content.toLowerCase().includes('analyze user input')) {
+                        // Limpieza de asteriscos dobles para texto plano limpio
+                        content = content.replace(/\*\*(.*?)\*\*/g, '$1');
                         return content;
                     }
                 }
