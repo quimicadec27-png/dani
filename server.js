@@ -1039,6 +1039,177 @@ app.post('/api/crm/clientes/actualizar', async (req, res) => {
     }
 });
 
+// Crear Nuevo Cliente / Lead Directo (desde WhatsApp, Local o CRM)
+app.post('/api/crm/clientes/crear', async (req, res) => {
+    try {
+        const { razon_social, whatsapp, dni_cuit, tipo_envio, direccion, localidad, provincia, notas, tipo_cliente, vendedor } = req.body;
+        
+        const cleanWhatsapp = whatsapp ? String(whatsapp).replace(/[^\d+]/g, '').trim().substring(0, 20) : '';
+        const clientName = (razon_social && String(razon_social).trim()) || (cleanWhatsapp ? `Cliente (${cleanWhatsapp})` : 'Nuevo Cliente CRM');
+
+        // 1. Si se ingresó WhatsApp, verificar si ya existe un cliente registrado
+        if (cleanWhatsapp && !cleanWhatsapp.startsWith('Web_')) {
+            const { data: existingClient } = await supabase
+                .from('clientes')
+                .select('id, razon_social, whatsapp, cuit, localidad, provincia, contacto_nombre')
+                .eq('whatsapp', cleanWhatsapp)
+                .maybeSingle();
+
+            if (existingClient) {
+                return res.json({
+                    success: true,
+                    already_exists: true,
+                    cliente_id: existingClient.id,
+                    mensaje: `El cliente con WhatsApp ${cleanWhatsapp} ya existe (${existingClient.razon_social}). Se abrió su perfil.`,
+                    cliente: existingClient
+                });
+            }
+        }
+
+        let locStr = '';
+        if (direccion) locStr += String(direccion).trim();
+        if (localidad) locStr += (locStr ? `, ${String(localidad).trim()}` : String(localidad).trim());
+
+        let contactoStr = '';
+        if (dni_cuit) contactoStr += `DNI: ${dni_cuit}`;
+        if (tipo_envio) contactoStr += (contactoStr ? ` | Envío: ${tipo_envio}` : `Envío: ${tipo_envio}`);
+        if (notas) contactoStr += (contactoStr ? ` | ${notas}` : notas);
+
+        const insertPayload = {
+            razon_social: clientName,
+            whatsapp: cleanWhatsapp || `cli_${Date.now().toString(36)}`,
+            cuit: dni_cuit ? String(dni_cuit).trim().substring(0, 30) : null,
+            provincia: provincia ? String(provincia).trim() : 'Entre Ríos',
+            localidad: locStr || null,
+            contacto_nombre: contactoStr ? contactoStr.substring(0, 150) : clientName,
+            tipo_cliente: tipo_cliente || 'Mayorista',
+            estado_lead: vendedor ? `Vendedor: ${vendedor}` : 'Cliente Directo'
+        };
+
+        const { data: newClient, error } = await supabase
+            .from('clientes')
+            .insert([insertPayload])
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        // Crear mensaje inicial en el historial para que aparezca de inmediato en la columna de Chat en Vivo
+        if (newClient && newClient.id) {
+            const inicialText = notas ? `[Cliente Creado en CRM]: ${notas}` : `[Cliente Creado en CRM / WhatsApp Directo]`;
+            try {
+                await supabase.from('mensajes_chat').insert([{
+                    cliente_id: newClient.id,
+                    emisor: 'vendedor',
+                    texto: inicialText
+                }]);
+            } catch(e) {}
+        }
+
+        res.json({
+            success: true,
+            cliente_id: newClient.id,
+            mensaje: '✅ Cliente creado exitosamente en el CRM.',
+            cliente: newClient
+        });
+    } catch (err) {
+        console.error('[CLIENTES CREAR ERROR]:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Auto-Extraer Datos de Cliente con IA desde Texto de WhatsApp / Notas
+app.post('/api/crm/clientes/extraer-datos-ia', async (req, res) => {
+    try {
+        const { texto } = req.body;
+        if (!texto || typeof texto !== 'string') {
+            return res.status(400).json({ error: 'Texto requerido' });
+        }
+
+        const raw = texto.trim();
+        const extracted = {
+            nombre: '',
+            whatsapp: '',
+            dni_cuit: '',
+            direccion: '',
+            localidad: '',
+            provincia: 'Entre Ríos',
+            tipo_envio: '',
+            notas: ''
+        };
+
+        // 1. Extracción de WhatsApp / Teléfono
+        const telMatch = raw.match(/(?:\+?54\s*9?)?\s*(?:3442|343|345|3446|3447|3444|11|221|341|351|\d{2,4})[\s.-]*\d{3,4}[\s.-]*\d{3,4}/) || raw.match(/\b(?:\+?54)?\d{9,13}\b/);
+        if (telMatch) {
+            let t = telMatch[0].replace(/[^\d+]/g, '');
+            if (!t.startsWith('+54') && !t.startsWith('54') && t.length >= 10) {
+                t = '+549' + t;
+            } else if (!t.startsWith('+') && t.length >= 10) {
+                t = '+' + t;
+            }
+            extracted.whatsapp = t;
+        }
+
+        // 2. Extracción de DNI / CUIT
+        const dniMatch = raw.match(/\b(?:\d{2}\.?\d{3}\.?\d{3}|\d{2}-\d{8}-\d{1}|\d{11})\b/);
+        if (dniMatch) {
+            extracted.dni_cuit = dniMatch[0].replace(/[\.-]/g, '');
+        }
+
+        // 3. Extracción de Dirección
+        const dirMatch = raw.match(/(?:calle|av\.?|avenida|bv\.?|bulevar|ruta|pje\.?|pasaje)?\s*([A-Za-zÀ-ÿ0-9\s]+?)\s+(?:n[°º]?\s*|\#\s*)?(\d{1,5})\b/i);
+        if (dirMatch && !dirMatch[1].toLowerCase().includes('precio') && !dirMatch[1].toLowerCase().includes('litro') && !dirMatch[1].toLowerCase().includes('jabon')) {
+            extracted.direccion = `${dirMatch[1].trim()} ${dirMatch[2]}`.trim();
+        }
+
+        // 4. Extracción de Localidad
+        const locRegex = /(?:en|de|localidad|ciudad|cp)\s+([A-Za-zÀ-ÿ\s]{3,30})/i;
+        const locMatch = raw.match(locRegex);
+        if (locMatch) {
+            const candidateLoc = locMatch[1].trim();
+            if (!['jabon', 'cloro', 'detergente', 'precio', 'envio', 'whatsapp', 'telefono', 'presupuesto'].includes(candidateLoc.toLowerCase())) {
+                extracted.localidad = candidateLoc;
+            }
+        }
+
+        // 5. Extracción de Nombre
+        const nomRegex = /(?:nombre|me llamo|soy|sr\.?|sra\.?|cliente|razon social)\s*:?\s*([A-Za-zÀ-ÿ\s]{3,35})/i;
+        const nomMatch = raw.match(nomRegex);
+        if (nomMatch) {
+            extracted.nombre = nomMatch[1].trim().split('\n')[0].replace(/[,\.]/g, '');
+        } else {
+            // Intentar con primera línea corta si parece nombre
+            const firstLine = raw.split('\n')[0].trim();
+            if (firstLine.length >= 4 && firstLine.length <= 30 && !/\d/.test(firstLine) && !firstLine.includes('$') && !firstLine.toLowerCase().includes('hola')) {
+                extracted.nombre = firstLine;
+            }
+        }
+
+        // 6. Extracción de Tipo de Envío
+        const low = raw.toLowerCase();
+        if (low.includes('retiro') || low.includes('retira') || low.includes('local') || low.includes('paso a buscar')) {
+            extracted.tipo_envio = 'Retira en Local';
+        } else if (low.includes('mostto') || (low.includes('entre rios') && !low.includes('concepcion'))) {
+            extracted.tipo_envio = 'Entre Ríos (Mostto +5%)';
+        } else if (low.includes('andreani') || low.includes('via cargo') || low.includes('resto del pais') || low.includes('encomienda')) {
+            extracted.tipo_envio = 'Resto del País (Andreani / Vía Cargo)';
+        } else if (low.includes('concepcion') || low.includes('domicilio')) {
+            extracted.tipo_envio = 'Reparto Local (C. del Uruguay)';
+        }
+
+        // 7. Notas (resumen del texto)
+        extracted.notas = raw.substring(0, 300);
+
+        res.json({
+            success: true,
+            datos: extracted
+        });
+    } catch(err) {
+        console.error('[EXTRAER DATOS IA ERROR]:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Promover Lead Web a Cliente Mayorista Oficial
 app.post('/api/crm/clientes/promover-lead', async (req, res) => {
     try {

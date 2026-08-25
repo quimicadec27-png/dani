@@ -239,6 +239,9 @@
                         <button id="tab-chat-btn" onclick="switchTab('chat')" class="tab-inactive px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl font-title text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer">
                             <span class="material-symbols-outlined text-[16px] text-blue-400">forum</span> Chat en Vivo
                         </button>
+                        <button id="tab-clientes-btn" onclick="switchTab('clientes')" class="tab-inactive px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl font-title text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer bg-brand-yellow/10 border border-brand-yellow/30 text-brand-yellow">
+                            <span class="material-symbols-outlined text-[16px] text-brand-yellow">group</span> Clientes & Prospectos
+                        </button>
                         <button id="tab-catalogo-btn" onclick="switchTab('catalogo')" class="tab-inactive px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl font-title text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer">
                             <span class="material-symbols-outlined text-[16px] text-blue-400">edit_calendar</span> Catálogo e IA
                         </button>
@@ -250,9 +253,6 @@
                         </button>
                         <button id="tab-alertas-btn" onclick="switchTab('alertas')" class="tab-inactive px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl font-title text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer">
                             <span class="material-symbols-outlined text-[16px] text-amber-400">notifications_active</span> Alertas $80k
-                        </button>
-                        <button id="tab-clientes-btn" onclick="switchTab('clientes')" class="tab-inactive px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl font-title text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer">
-                            <span class="material-symbols-outlined text-[16px] text-purple-400">group</span> Clientes
                         </button>
                         <button id="tab-users-btn" onclick="switchTab('users')" class="tab-inactive px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl font-title text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer">
                             <span class="material-symbols-outlined text-[16px] text-amber-400">admin_panel_settings</span> Usuarios
@@ -474,6 +474,10 @@
                                     <span class="text-gray-500 text-[10px]">-</span>
                                     <input type="date" id="chat-filter-hasta" onchange="filtrarConversacionesChat()" title="Fecha Hasta" class="w-1/2 bg-black/40 border border-white/10 rounded-lg px-2 py-1 text-[10px] text-gray-300 focus:outline-none">
                                 </div>
+
+                                <button onclick="abrirModalNuevoCliente()" class="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-brand-yellow to-amber-400 text-slate-950 font-title text-[11px] font-extrabold uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-lg shadow-brand-yellow/20 hover:brightness-110 transition-all cursor-pointer">
+                                    <span class="material-symbols-outlined text-[16px]">person_add</span> + Nuevo Cliente / Lead
+                                </button>
 
                                 <button onclick="exportarReporteChatsExcel()" class="w-full py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 font-bold text-[10px] flex items-center justify-center gap-1 transition-all">
                                     <span class="material-symbols-outlined text-[14px]">download</span> Exportar Chats a Excel (.xlsx)
@@ -1518,6 +1522,9 @@ ightarrow$ Ventas</p>
                             <p class="text-xs text-gray-400 mt-1">Gestión separada de Clientes Mayoristas Oficiales e interacciones de Prospectos Web.</p>
                         </div>
                         <div class="flex flex-wrap items-center gap-3">
+                            <button onclick="abrirModalNuevoCliente()" class="px-4 py-2.5 rounded-xl bg-brand-yellow text-primary-dark font-title text-xs font-extrabold uppercase tracking-wider hover:bg-yellow-400 flex items-center gap-2 transition-all shadow-lg hover:scale-105 cursor-pointer">
+                                <span class="material-symbols-outlined text-sm">person_add</span> + Nuevo Cliente / Lead
+                            </button>
                             <button onclick="abrirModalImportarClientes()" class="px-4 py-2.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 font-bold text-xs flex items-center gap-2 transition-all shadow-lg hover:scale-105">
                                 <span class="material-symbols-outlined text-sm">upload_file</span> Importar Excel / CSV
                             </button>
@@ -1637,6 +1644,111 @@ ightarrow$ Ventas</p>
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- MODAL NUEVO CLIENTE / LEAD (DIRECTO DESDE WHATSAPP O LOCAL) -->
+            <div id="modal-nuevo-cliente" class="fixed inset-0 z-[99999] bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+                <div class="glass-panel p-6 md:p-8 rounded-2xl max-w-2xl w-full space-y-5 relative border border-brand-yellow/40 max-h-[92vh] overflow-y-auto shadow-2xl">
+                    <div class="flex justify-between items-center border-b border-white/10 pb-4">
+                        <div>
+                            <h3 class="font-title text-base font-bold uppercase text-white flex items-center gap-2">
+                                <span class="material-symbols-outlined text-brand-yellow text-xl">person_add</span> Registrar Nuevo Cliente / Lead Directo
+                            </h3>
+                            <p class="text-xs text-gray-400 mt-0.5">Ingresá los datos manualmente o pegá el texto del chat de WhatsApp para auto-completar con IA.</p>
+                        </div>
+                        <button onclick="cerrarModalNuevoCliente()" class="text-gray-400 hover:text-white p-1 rounded-lg">
+                            <span class="material-symbols-outlined">close</span>
+                        </button>
+                    </div>
+
+                    <!-- SECCIÓN IA: AUTO-EXTRAER DESDE WHATSAPP -->
+                    <div class="p-4 rounded-xl bg-brand-yellow/10 border border-brand-yellow/30 space-y-2.5">
+                        <div class="flex justify-between items-center flex-wrap gap-2">
+                            <label class="block text-brand-yellow font-bold uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                                <span class="material-symbols-outlined text-[16px]">auto_awesome</span>
+                                <span>Opción A: Pegar Chat o Datos de WhatsApp (Auto-Completar con IA)</span>
+                            </label>
+                            <button type="button" onclick="autoCompletarClienteDesdeTextoIA()" id="btn-ia-extraer-cliente" class="px-3 py-1.5 rounded-lg bg-brand-yellow text-slate-950 font-extrabold text-[11px] hover:bg-yellow-400 flex items-center gap-1.5 transition-all shadow-md cursor-pointer">
+                                <span class="material-symbols-outlined text-[15px]">auto_fix_high</span> ✨ Auto-Completar Campos
+                            </button>
+                        </div>
+                        <textarea id="nuevo-cliente-texto-ia" rows="2" placeholder="Pegá acá el mensaje del cliente por WhatsApp (ej: 'Hola soy Alex Correa mi whats es 3442571100 calle Rocamora 684 Concepción del Uruguay Entre Ríos...')" class="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-400 focus:border-brand-yellow focus:outline-none select-text"></textarea>
+                        <div id="nuevo-cliente-ia-status" class="hidden text-[11px] font-bold text-emerald-400"></div>
+                    </div>
+
+                    <!-- FORMULARIO MANUAL DE CAMPOS -->
+                    <form onsubmit="guardarNuevoClienteCRM(event)" class="space-y-4 text-xs">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-gray-300 font-bold uppercase tracking-wider text-[10px] mb-1">Nombre / Razón Social *</label>
+                                <input type="text" id="nuevo-cliente-nombre" required placeholder="Ej: Alex Correa / Distribuidora San José" class="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-yellow">
+                            </div>
+                            <div>
+                                <label class="block text-gray-300 font-bold uppercase tracking-wider text-[10px] mb-1">WhatsApp / Teléfono *</label>
+                                <input type="text" id="nuevo-cliente-whatsapp" required placeholder="Ej: +5493442571100 o 3442571100" class="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-yellow font-mono">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div>
+                                <label class="block text-gray-300 font-bold uppercase tracking-wider text-[10px] mb-1">DNI / CUIT (Opcional)</label>
+                                <input type="text" id="nuevo-cliente-dni" placeholder="Ej: 30123456" class="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-yellow font-mono">
+                            </div>
+                            <div>
+                                <label class="block text-gray-300 font-bold uppercase tracking-wider text-[10px] mb-1">Tipo de Cliente</label>
+                                <select id="nuevo-cliente-tipo" class="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-yellow">
+                                    <option value="Mayorista">Mayorista Oficial</option>
+                                    <option value="Lead WhatsApp">Lead WhatsApp / Prospecto</option>
+                                    <option value="Comercio / Revendedor">Comercio / Revendedor</option>
+                                    <option value="Particular">Particular</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-gray-300 font-bold uppercase tracking-wider text-[10px] mb-1">Método de Envío</label>
+                                <select id="nuevo-cliente-envio" class="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-yellow">
+                                    <option value="Retira en Local">🏪 Retira en Local (C. del Uruguay)</option>
+                                    <option value="Entre Ríos (Mostto +5%)">🚛 Entre Ríos (Mostto +5%)</option>
+                                    <option value="Resto del País (Andreani / Vía Cargo)">✈️ Resto del País (Andreani / Vía Cargo)</option>
+                                    <option value="Reparto Local (C. del Uruguay)">🚚 Reparto Local (a partir de $50k)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div>
+                                <label class="block text-gray-300 font-bold uppercase tracking-wider text-[10px] mb-1">Dirección (Calle y Número)</label>
+                                <input type="text" id="nuevo-cliente-direccion" placeholder="Ej: Rocamora 684" class="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-yellow">
+                            </div>
+                            <div>
+                                <label class="block text-gray-300 font-bold uppercase tracking-wider text-[10px] mb-1">Ciudad / Localidad</label>
+                                <input type="text" id="nuevo-cliente-localidad" value="Concepción del Uruguay" placeholder="Ej: Concepción del Uruguay" class="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-yellow">
+                            </div>
+                            <div>
+                                <label class="block text-gray-300 font-bold uppercase tracking-wider text-[10px] mb-1">Provincia</label>
+                                <input type="text" id="nuevo-cliente-provincia" value="Entre Ríos" placeholder="Ej: Entre Ríos" class="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-yellow">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-300 font-bold uppercase tracking-wider text-[10px] mb-1">Notas u Observaciones del Cliente</label>
+                            <textarea id="nuevo-cliente-notas" rows="2" placeholder="Detalles de contacto, productos de interés, etc..." class="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-yellow"></textarea>
+                        </div>
+
+                        <div id="nuevo-cliente-error" class="hidden text-xs text-red-400 font-bold p-3 bg-red-500/10 rounded-xl border border-red-500/30"></div>
+
+                        <div class="flex flex-wrap items-center justify-end gap-3 pt-2 border-t border-white/10">
+                            <button type="button" onclick="cerrarModalNuevoCliente()" class="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 font-bold">
+                                Cancelar
+                            </button>
+                            <button type="submit" id="btn-submit-guardar-cliente" class="px-5 py-2.5 rounded-xl bg-brand-yellow text-slate-950 font-title text-xs font-extrabold uppercase tracking-wider hover:bg-yellow-400 flex items-center gap-1.5 shadow-lg cursor-pointer">
+                                <span class="material-symbols-outlined text-sm">save</span> Guardar Cliente
+                            </button>
+                            <button type="button" onclick="guardarNuevoClienteYCrearPresupuesto()" id="btn-submit-guardar-presupuesto" class="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-title text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5 shadow-lg shadow-emerald-500/20 cursor-pointer">
+                                <span class="material-symbols-outlined text-sm">request_quote</span> Guardar y Armar Presupuesto
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
 
@@ -2973,6 +3085,175 @@ ightarrow$ Ventas</p>
             }
         }
 
+        function abrirModalNuevoCliente() {
+            const modal = document.getElementById('modal-nuevo-cliente');
+            if (!modal) return;
+
+            document.getElementById('nuevo-cliente-texto-ia').value = '';
+            document.getElementById('nuevo-cliente-nombre').value = '';
+            document.getElementById('nuevo-cliente-whatsapp').value = '';
+            document.getElementById('nuevo-cliente-dni').value = '';
+            document.getElementById('nuevo-cliente-direccion').value = '';
+            document.getElementById('nuevo-cliente-localidad').value = 'Concepción del Uruguay';
+            document.getElementById('nuevo-cliente-provincia').value = 'Entre Ríos';
+            document.getElementById('nuevo-cliente-tipo').value = 'Mayorista';
+            document.getElementById('nuevo-cliente-envio').value = 'Retira en Local';
+            document.getElementById('nuevo-cliente-notas').value = '';
+
+            const errDiv = document.getElementById('nuevo-cliente-error');
+            if (errDiv) {
+                errDiv.classList.add('hidden');
+                errDiv.innerText = '';
+            }
+            const statusIa = document.getElementById('nuevo-cliente-ia-status');
+            if (statusIa) {
+                statusIa.classList.add('hidden');
+                statusIa.innerText = '';
+            }
+
+            modal.classList.remove('hidden');
+        }
+
+        function cerrarModalNuevoCliente() {
+            const modal = document.getElementById('modal-nuevo-cliente');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        async function autoCompletarClienteDesdeTextoIA() {
+            const textarea = document.getElementById('nuevo-cliente-texto-ia');
+            const statusIa = document.getElementById('nuevo-cliente-ia-status');
+            const btnIa = document.getElementById('btn-ia-extraer-cliente');
+            const texto = (textarea?.value || '').trim();
+            if (!texto) {
+                alert('Pegá un texto de WhatsApp primero en la caja de texto.');
+                return;
+            }
+
+            if (statusIa) {
+                statusIa.classList.remove('hidden', 'text-red-400', 'text-emerald-400');
+                statusIa.classList.add('text-brand-yellow');
+                statusIa.innerText = '⏳ Extrayendo datos del cliente con IA...';
+            }
+            if (btnIa) btnIa.disabled = true;
+
+            try {
+                const res = await fetch(`${API_URL}/crm/clientes/extraer-datos-ia`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ texto })
+                });
+                const data = await res.json();
+                if (data.success && data.datos) {
+                    const d = data.datos;
+                    if (d.nombre) document.getElementById('nuevo-cliente-nombre').value = d.nombre;
+                    if (d.whatsapp) document.getElementById('nuevo-cliente-whatsapp').value = d.whatsapp;
+                    if (d.dni_cuit) document.getElementById('nuevo-cliente-dni').value = d.dni_cuit;
+                    if (d.direccion) document.getElementById('nuevo-cliente-direccion').value = d.direccion;
+                    if (d.localidad) document.getElementById('nuevo-cliente-localidad').value = d.localidad;
+                    if (d.provincia) document.getElementById('nuevo-cliente-provincia').value = d.provincia;
+                    if (d.tipo_envio) document.getElementById('nuevo-cliente-envio').value = d.tipo_envio;
+                    if (d.notas) document.getElementById('nuevo-cliente-notas').value = d.notas;
+
+                    if (statusIa) {
+                        statusIa.classList.remove('text-brand-yellow', 'text-red-400');
+                        statusIa.classList.add('text-emerald-400');
+                        statusIa.innerText = '✨ ¡Datos extraídos y cargados en los campos!';
+                    }
+                } else {
+                    throw new Error(data.error || 'Error al procesar');
+                }
+            } catch(err) {
+                if (statusIa) {
+                    statusIa.classList.remove('text-brand-yellow', 'text-emerald-400');
+                    statusIa.classList.add('text-red-400');
+                    statusIa.innerText = '⚠️ No se pudieron extraer todos los campos automáticamente. Podés cargarlos a mano.';
+                }
+            } finally {
+                if (btnIa) btnIa.disabled = false;
+            }
+        }
+
+        async function guardarNuevoClienteCRM(e, abrirPresupuestoDespues = false) {
+            if (e) e.preventDefault();
+
+            const nombre = document.getElementById('nuevo-cliente-nombre').value.trim();
+            const rawTel = document.getElementById('nuevo-cliente-whatsapp').value.trim();
+            const dni = document.getElementById('nuevo-cliente-dni').value.trim();
+            const tipo = document.getElementById('nuevo-cliente-tipo').value;
+            const envio = document.getElementById('nuevo-cliente-envio').value;
+            const direccion = document.getElementById('nuevo-cliente-direccion').value.trim();
+            const localidad = document.getElementById('nuevo-cliente-localidad').value.trim();
+            const provincia = document.getElementById('nuevo-cliente-provincia').value.trim();
+            const notas = document.getElementById('nuevo-cliente-notas').value.trim();
+            const errDiv = document.getElementById('nuevo-cliente-error');
+
+            if (!nombre) {
+                if (errDiv) { errDiv.classList.remove('hidden'); errDiv.innerText = 'El nombre o razón social es obligatorio.'; }
+                return;
+            }
+            if (!rawTel) {
+                if (errDiv) { errDiv.classList.remove('hidden'); errDiv.innerText = 'El WhatsApp o teléfono es obligatorio.'; }
+                return;
+            }
+
+            let cleanDigits = rawTel.replace(/\D/g, '');
+            if (cleanDigits.startsWith('0')) cleanDigits = cleanDigits.substring(1);
+            if (cleanDigits.length === 10) cleanDigits = '549' + cleanDigits;
+            else if (cleanDigits.startsWith('54') && !cleanDigits.startsWith('549') && cleanDigits.length === 12) {
+                cleanDigits = '549' + cleanDigits.substring(2);
+            }
+            const telFinal = cleanDigits ? cleanDigits.substring(0, 20) : '';
+
+            try {
+                const res = await fetch(`${API_URL}/crm/clientes/crear`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        razon_social: nombre,
+                        whatsapp: telFinal,
+                        dni_cuit: dni,
+                        tipo_cliente: tipo,
+                        tipo_envio: envio,
+                        direccion: direccion,
+                        localidad: localidad,
+                        provincia: provincia,
+                        notas: notas,
+                        vendedor: localStorage.getItem('crm_vendor_name') || 'Vendedor'
+                    })
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    cerrarModalNuevoCliente();
+                    await refreshData();
+                    const nuevoId = data.cliente_id;
+
+                    if (abrirPresupuestoDespues) {
+                        abrirModalNuevoPedido(nuevoId);
+                    } else {
+                        switchTab('chat');
+                        if (typeof seleccionarCliente === 'function' && nuevoId) {
+                            seleccionarCliente(nuevoId);
+                        }
+                    }
+                } else {
+                    if (errDiv) {
+                        errDiv.classList.remove('hidden');
+                        errDiv.innerText = '❌ ' + (data.error || 'No se pudo crear el cliente.');
+                    }
+                }
+            } catch(err) {
+                if (errDiv) {
+                    errDiv.classList.remove('hidden');
+                    errDiv.innerText = '❌ Error de conexión al crear cliente.';
+                }
+            }
+        }
+
+        function guardarNuevoClienteYCrearPresupuesto() {
+            guardarNuevoClienteCRM(null, true);
+        }
+
         let lastRenderedChatKey = '';
 
         function obtenerTextoACopiar(btn) {
@@ -4105,10 +4386,13 @@ ightarrow$ Ventas</p>
                         <div class="item-prod-img-box w-10 h-10 rounded-lg bg-black/60 border border-white/10 flex items-center justify-center overflow-hidden flex-shrink-0">
                             <span class="material-symbols-outlined text-gray-500 text-[20px]">inventory_2</span>
                         </div>
-                        <div class="flex-grow">
-                            <input type="text" placeholder="🔍 Filtrar producto por nombre..." oninput="filtrarProductosModalRow('${filaId}', this.value)" class="item-prod-search w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1 text-[11px] text-white placeholder-gray-500 focus:border-brand-yellow focus:outline-none mb-1">
-                            <select onchange="onProductoSeleccionadoPresupuesto('${filaId}', this.value)" class="item-prod-select w-full bg-slate-900 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-brand-yellow focus:outline-none" style="background-color: #0f172a; color: #ffffff;">
-                                <option value="" style="background-color: #0f172a; color: #ffffff;">Seleccionar del catálogo...</option>
+                        <div class="flex-grow relative">
+                            <div class="relative">
+                                <input type="text" placeholder="🔍 Escribí para buscar (ej: Cloro, Jabón, Lavandina)..." oninput="filtrarProductosModalRow('${filaId}', this.value)" class="item-prod-search w-full bg-white/10 border border-white/20 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-400 focus:border-brand-yellow focus:outline-none mb-1 font-bold">
+                                <div id="${filaId}-sugerencias" class="hidden absolute top-full left-0 right-0 z-50 bg-slate-900 border border-brand-yellow/40 rounded-xl shadow-2xl overflow-hidden max-h-52 overflow-y-auto divide-y divide-white/10 mt-1 backdrop-blur-xl"></div>
+                            </div>
+                            <select onchange="onProductoSeleccionadoPresupuesto('${filaId}', this.value)" class="item-prod-select w-full bg-slate-900 border border-white/10 rounded-lg px-2 py-1 text-[11px] text-gray-300 focus:border-brand-yellow focus:outline-none" style="background-color: #0f172a; color: #ffffff;">
+                                <option value="" style="background-color: #0f172a; color: #ffffff;">O elegí del menú desplegable...</option>
                                 ${(productosCatalogoCache || []).map(p => `
                                     <option value="${p.id}" data-name="${p.name}" data-price="${p.price}" data-sku="${p.sku}" data-image="${p.image_url || ''}" style="background-color: #0f172a; color: #ffffff;">
                                         ${p.name} — $${parseFloat(p.price || 0).toLocaleString('es-AR')}
@@ -4158,33 +4442,105 @@ ightarrow$ Ventas</p>
             if (!fila) return;
 
             const select = fila.querySelector('.item-prod-select');
+            const sugBox = document.getElementById(`${filaId}-sugerencias`);
             if (!select) return;
 
             const normTerm = normalizeStr(searchText).trim();
             const terms = normTerm.split(/\s+/).filter(Boolean);
 
-            const list = (productosCatalogoCache || []).filter(p => {
-                if (terms.length === 0) return true;
+            let scoredList = (productosCatalogoCache || []).map(p => {
                 const name = normalizeStr(p.name);
                 const sku = normalizeStr(p.sku);
                 const cat = normalizeStr(p.category);
-                const fullTarget = `${name} ${sku} ${cat}`;
-                return terms.every(t => fullTarget.includes(t));
-            });
+                
+                let score = 0;
+                if (terms.length === 0) {
+                    score = 1;
+                } else {
+                    // Prioridad 100+: El nombre del producto arranca exactamente con la frase buscada (ej: "CLORO...")
+                    if (name.startsWith(normTerm)) score += 120;
+                    else if (terms.length > 0 && name.startsWith(terms[0])) score += 80;
+                    
+                    // Prioridad 50: El nombre contiene todas las palabras buscadas
+                    const allInName = terms.every(t => name.includes(t));
+                    if (allInName) score += 50;
 
-            select.innerHTML = `<option value="" style="background-color: #0f172a; color: #ffffff;">${list.length > 0 ? `Seleccionar del catálogo (${list.length} encontrados)...` : 'No se encontraron productos...'}</option>` +
-                list.map(p => `
+                    // Prioridad 30: El SKU contiene el término
+                    if (sku.includes(normTerm)) score += 30;
+
+                    // Prioridad 10: La categoría contiene el término
+                    if (cat.includes(normTerm)) score += 10;
+                }
+
+                return { prod: p, score };
+            }).filter(item => item.score > 0);
+
+            // Ordenar de mayor a menor relevancia
+            scoredList.sort((a, b) => b.score - a.score);
+            const sortedProds = scoredList.map(item => item.prod);
+
+            // 1. Actualizar el dropdown nativo sin seleccionar automáticamente a ciegas
+            select.innerHTML = `<option value="" style="background-color: #0f172a; color: #ffffff;">${sortedProds.length > 0 ? `Seleccionar del catálogo (${sortedProds.length} encontrados)...` : 'No se encontraron productos...'}</option>` +
+                sortedProds.slice(0, 80).map(p => `
                     <option value="${p.id}" data-name="${p.name}" data-price="${p.price}" data-sku="${p.sku}" data-image="${p.image_url || ''}" style="background-color: #0f172a; color: #ffffff;">
                         ${p.name} — $${parseFloat(p.price || 0).toLocaleString('es-AR')}
                     </option>
                 `).join('');
 
-            // Si hay búsqueda y existe al menos 1 coincidencia, seleccionar automáticamente la primera coincidencia
-            if (normTerm && list.length > 0) {
-                select.selectedIndex = 1;
-                onProductoSeleccionadoPresupuesto(filaId, select.value);
+            // 2. Renderizar lista interactiva flotante de sugerencias
+            if (sugBox) {
+                if (!normTerm || sortedProds.length === 0) {
+                    sugBox.classList.add('hidden');
+                    sugBox.innerHTML = '';
+                } else {
+                    sugBox.classList.remove('hidden');
+                    sugBox.innerHTML = sortedProds.slice(0, 12).map(p => `
+                        <div onclick="seleccionarProductoDesdeSugerencia('${filaId}', '${p.id}')" class="p-2 hover:bg-brand-yellow/20 cursor-pointer flex items-center justify-between gap-2 transition-colors">
+                            <div class="flex items-center gap-2 overflow-hidden">
+                                <div class="w-7 h-7 rounded bg-black/40 border border-white/10 flex items-center justify-center overflow-hidden shrink-0">
+                                    ${p.image_url ? `<img src="${p.image_url}" class="w-full h-full object-cover">` : `<span class="material-symbols-outlined text-gray-400 text-sm">inventory_2</span>`}
+                                </div>
+                                <div class="truncate">
+                                    <div class="font-bold text-white text-xs truncate">${p.name}</div>
+                                    <div class="text-[10px] text-gray-400 font-mono">${p.sku || ''} ${p.category ? '| ' + p.category : ''}</div>
+                                </div>
+                            </div>
+                            <div class="text-right shrink-0">
+                                <span class="font-bold text-brand-yellow text-xs font-mono">$${parseFloat(p.price || 0).toLocaleString('es-AR')}</span>
+                            </div>
+                        </div>
+                    `).join('');
+                }
             }
         }
+
+        function seleccionarProductoDesdeSugerencia(filaId, prodId) {
+            const fila = document.getElementById(filaId);
+            if (!fila) return;
+
+            const select = fila.querySelector('.item-prod-select');
+            const searchInput = fila.querySelector('.item-prod-search');
+            const sugBox = document.getElementById(`${filaId}-sugerencias`);
+
+            if (select) {
+                select.value = prodId;
+                onProductoSeleccionadoPresupuesto(filaId, prodId);
+                const opt = select.options[select.selectedIndex];
+                if (opt && searchInput) {
+                    searchInput.value = opt.getAttribute('data-name') || '';
+                }
+            }
+
+            if (sugBox) {
+                sugBox.classList.add('hidden');
+            }
+        }
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.item-prod-search') && !e.target.closest('[id$="-sugerencias"]')) {
+                document.querySelectorAll('[id$="-sugerencias"]').forEach(el => el.classList.add('hidden'));
+            }
+        });
 
         function onProductoSeleccionadoPresupuesto(filaId, prodId) {
             const fila = document.getElementById(filaId);
