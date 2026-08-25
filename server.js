@@ -695,9 +695,18 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
                 return word;
             };
 
-            const normalizedClean = stripAccents(normalized);
+            const normalizeSizes = s => {
+                return (s || '')
+                    .replace(/n[°º]\s*(\d+)/gi, '$1')
+                    .replace(/n(\d{2})\b/gi, '$1')
+                    .replace(/(\d+)\s*cm\b/gi, '$1')
+                    .replace(/(\d+)\s*mts?\b/gi, '$1m');
+            };
+
+            const normalizedClean = normalizeSizes(stripAccents(normalized));
             const tokens = normalizedClean.match(/[a-z0-9+,\.]{2,}/gi) || [];
-            const keywords = tokens.filter(t => !stopWords.includes(t) && !/^\d+$/.test(t));
+            const keywords = tokens.filter(t => !stopWords.includes(t));
+            const mainNoun = keywords.length > 0 ? toSingular(keywords[0]) : null;
 
             // Detección de litros / tamaños variables (desde 0.5L hasta 500L)
             const sizeMatch = normalized.match(/\b(0[\.,]5|1|2|3|4|5|6|8|10|20|25|40|50|60|100|120|200|500)\s*(?:lt|l|litros?)\b/i) || normalized.match(/\b(0[\.,]5|1|2|3|4|5|6|8|10|20|25|40|50|60|100|120|200|500)\b/);
@@ -711,18 +720,28 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
                 let scored = [];
                 PRODUCT_CATALOG_CACHE.forEach(p => {
                     const pNameRaw = (p.name || '');
-                    const pName = stripAccents(pNameRaw);
+                    const pName = normalizeSizes(stripAccents(pNameRaw));
                     let score = 0;
+
+                    // Si el cliente especificó un sustantivo principal (ej: secador, trapo, jabon, bolsa, cera)
+                    if (mainNoun && mainNoun.length > 3 && !/^\d+$/.test(mainNoun)) {
+                        if (!pName.includes(mainNoun)) {
+                            // Penalizar si no contiene el sustantivo principal consultado
+                            score -= 35;
+                        } else {
+                            score += 40;
+                        }
+                    }
 
                     const matchedKw = keywords.filter(k => {
                         const singK = toSingular(k);
                         return pName.includes(k) || (singK.length > 3 && pName.includes(singK));
                     }).length;
 
-                    if (matchedKw === 0) return;
+                    if (matchedKw === 0 && score <= 0) return;
                     score += matchedKw * 14;
 
-                    // Si el nombre del producto arranca con la palabra clave principal (ej: "CLORO...", "TRAPO...")
+                    // Si el nombre del producto arranca con la palabra clave principal (ej: "CLORO...", "TRAPO...", "SECADOR...")
                     const firstKw = keywords[0];
                     const firstSing = toSingular(firstKw);
                     if (pName.startsWith(firstKw) || (firstSing.length > 3 && pName.startsWith(firstSing))) {
@@ -732,6 +751,9 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
                     keywords.forEach(k => {
                         const singK = toSingular(k);
                         if (k.length > 4 && (pName.includes(k) || (singK.length > 3 && pName.includes(singK)))) score += 8;
+                        if (/^\d+$/.test(k) && (pName.includes(k) || pName.includes(`n${k}`) || pName.includes(`n°${k}`))) {
+                            score += 45; // Impulso para número/medida exacta (ej: 40, 50, 80x110)
+                        }
                     });
 
                     if (reqSize) {
