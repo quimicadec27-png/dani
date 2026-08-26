@@ -5839,31 +5839,92 @@ ightarrow$ Ventas</p>
 
         let excelRowsData = [];
 
+        function parseArgentinePriceClient(val) {
+            if (typeof val === 'number') return val;
+            if (!val) return 0;
+            let s = String(val).replace(/[\$]/g, '').trim();
+            if (s.includes('.') && s.includes(',')) {
+                s = s.replace(/\./g, '').replace(',', '.');
+            } else if (s.includes(',')) {
+                s = s.replace(',', '.');
+            }
+            const n = parseFloat(s);
+            return isNaN(n) ? 0 : n;
+        }
+
         function leerExcelMasivo(event) {
             const file = event.target.files[0];
             if (!file) return;
 
+            const isCsv = file.name.toLowerCase().endsWith('.csv');
+
             const reader = new FileReader();
             reader.onload = function(e) {
                 try {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
-                    const firstSheetName = workbook.SheetNames[0];
-                    const worksheet = workbook.Sheets[firstSheetName];
-                    const jsonRows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+                    let jsonRows = [];
+
+                    if (isCsv) {
+                        // Decodificar texto con soporte para UTF-8 BOM y delimitador ';' o ','
+                        const decoder = new TextDecoder('utf-8');
+                        const textContent = decoder.decode(new Uint8Array(e.target.result)).replace(/^\uFEFF/, '');
+                        const lines = textContent.split(/\r?\n/).filter(l => l.trim().length > 0);
+
+                        if (lines.length > 0) {
+                            const delim = lines[0].includes(';') ? ';' : (lines[0].includes('\t') ? '\t' : ',');
+                            
+                            function parseLine(line) {
+                                const vals = [];
+                                let cur = '';
+                                let inQ = false;
+                                for (let i = 0; i < line.length; i++) {
+                                    const c = line[i];
+                                    if (c === '"') inQ = !inQ;
+                                    else if (c === delim && !inQ) {
+                                        vals.push(cur.trim());
+                                        cur = '';
+                                    } else {
+                                        cur += c;
+                                    }
+                                }
+                                vals.push(cur.trim());
+                                return vals;
+                            }
+
+                            const headers = parseLine(lines[0]);
+                            for (let i = 1; i < lines.length; i++) {
+                                const vals = parseLine(lines[i]);
+                                const rowObj = {};
+                                headers.forEach((h, idx) => {
+                                    rowObj[h] = vals[idx] || '';
+                                });
+                                jsonRows.push(rowObj);
+                            }
+                        }
+                    }
+
+                    // Si no fue CSV o si jsonRows está vacío, usar SheetJS como fallback
+                    if (jsonRows.length === 0) {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const firstSheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[firstSheetName];
+                        jsonRows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+                    }
 
                     excelRowsData = jsonRows.map(row => {
                         const sku = row['SKU'] || row['sku'] || row['Sku'] || row['ID'] || '';
                         const name = row['Nombre del Producto / Variación'] || row['Nombre del Producto / Variacin'] || row['Nombre'] || row['Producto'] || row['name'] || '';
-                        const price = row['Precio ($)'] || row['Precio'] || row['price'] || row['Precio Regular'] || 0;
+                        const rawPrice = row['Precio ($)'] || row['Precio'] || row['price'] || row['Precio Regular'] || 0;
+                        const price = parseArgentinePriceClient(rawPrice);
                         const stock = row['Estado de Stock'] || row['Stock'] || row['stock_status'] || 'En Stock';
                         const cat = row['Categorías'] || row['Categoras'] || row['Categoría'] || row['category'] || '';
-                        return { sku, name, price, stock, cat };
+                        const estado = row['Estado'] || row['estado'] || 'ACTIVO';
+                        return { sku, name, price, stock, cat, estado };
                     }).filter(r => r.sku || r.name);
 
                     renderVistaPreviaExcel();
                 } catch(err) {
-                    alert('Error al leer el archivo Excel: ' + err.message);
+                    alert('Error al leer el archivo: ' + err.message);
                 }
             };
             reader.readAsArrayBuffer(file);

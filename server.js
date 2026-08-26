@@ -2309,6 +2309,29 @@ app.post('/api/products/bulk-excel', async (req, res) => {
         const { rows, paste_text } = req.body;
         let itemsToProcess = [];
 
+        function parseArgentinePrice(val) {
+            if (typeof val === 'number') return val;
+            if (!val) return 0;
+            let s = String(val).replace(/[\$]/g, '').trim();
+            if (s.includes('.') && s.includes(',')) {
+                s = s.replace(/\./g, '').replace(',', '.');
+            } else if (s.includes(',')) {
+                s = s.replace(',', '.');
+            }
+            const n = parseFloat(s);
+            return isNaN(n) ? 0 : n;
+        }
+
+        function normText(str) {
+            return (str || '')
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .replace(/[^a-z0-9]/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
+
         if (Array.isArray(rows) && rows.length > 0) {
             itemsToProcess = rows;
         } else if (paste_text) {
@@ -2319,7 +2342,7 @@ app.post('/api/products/bulk-excel', async (req, res) => {
                     itemsToProcess.push({
                         sku: parts[0].trim(),
                         name: parts[1].trim(),
-                        price: parts[2] ? parseFloat(parts[2].replace(/[^0-9.,]/g, '').replace(',', '.')) : 0
+                        price: parseArgentinePrice(parts[2])
                     });
                 }
             });
@@ -2329,54 +2352,120 @@ app.post('/api/products/bulk-excel', async (req, res) => {
             return res.status(400).json({ success: false, error: 'No se enviaron filas válidas para procesar.' });
         }
 
-        const upsertBatch = itemsToProcess.map(r => {
-            const sku = (r.sku || r['SKU'] || r['Sku'] || r['ID'] || '').toString().trim();
-            const name = (r.name || r['Nombre del Producto / Variación'] || r['Nombre del Producto / Variacin'] || r['Nombre'] || r['Producto'] || '').toString().trim();
-            const price = parseFloat(r.price || r['Precio ($)'] || r['Precio'] || 0);
-            const cat = (r.cat || r.category || r['Categorías'] || r['Categoría'] || 'SAHUMERIOS').toString().trim();
+        // 1. Obtener catálogo existente de dec_products para matching inteligente por SKU o Nombre
+        const existingProducts = await getAllDecProducts();
+        const existingBySku = new Map();
+        const existingByName = new Map();
+
+        existingProducts.forEach(p => {
+            if (p.sku) existingBySku.set(p.sku.toLowerCase().trim(), p);
+            if (p.name) existingByName.set(normText(p.name), p);
+        });
+
+        let updatedCount = 0;
+        let insertedCount = 0;
+        let skippedZeroCount = 0;
+        const productsToSyncWC = [];
+
+        for (const r of itemsToProcess) {
+            const rawSku = (r.sku || r['SKU'] || r['Sku'] || r['ID'] || '').toString().trim();
+            const rawName = (r.name || r['Nombre del Producto / Variación'] || r['Nombre del Producto / Variacin'] || r['Nombre'] || r['Producto'] || '').toString().trim();
+            const price = parseArgentinePrice(r.price || r['Precio ($)'] || r['Precio']);
+            const cat = (r.cat || r.category || r['Categorías'] || r['Categoría'] || 'General').toString().trim();
             const stockRaw = (r.stock || r.stock_status || r['Estado de Stock'] || 'instock').toString().toLowerCase();
-            const stockStatus = (stockRaw.includes('agotado') || stockRaw.includes('out of stock') || stockRaw.includes('outofstock')) ? 'outofstock' : 'instock';
+            const stockStatus = (stockRaw.includes('agotado') || stockRaw.includes('out of stock') || stockRaw.includes('outofstock') || stockRaw === '0') ? 'outofstock' : 'instock';
+            const statusRaw = (r.status || r['Estado'] || r['estado'] || 'ACTIVO').toString().toUpperCase();
+            const status = (statusRaw.includes('INACTIVO') || statusRaw.includes('BORRADOR') || statusRaw.includes('DRAFT')) ? 'draft' : 'publish';
 
-            const statusRaw = (r.status || r['Estado'] || r['estado'] || 'publish').toString().toLowerCase();
-            const status = (statusRaw.includes('borrador') || statusRaw.includes('draft')) ? 'draft' : 'publish';
+            if (!rawName) continue;
 
-            const wcId = r['ID'] ? parseInt(r['ID']) : null;
+            // Si el precio es 0 o vacío, no pisar precios válidos existentes
+            if (price <= 0) {
+                skippedZeroCount++;
+                continue;
+            }
 
-            return {
-                sku: sku,
-                name: name,
-                price: price,
-                category: cat,
-                stock_status: stockStatus,
-                status: status,
-                type: 'simple',
-                ...(wcId ? { woocommerce_id: wcId } : {})
-            };
-        }).filter(item => item.sku && item.name);
+            // Matching inteligente: primero por SKU exacto (si empieza con QD-), luego por Nombre normalizado
+            let matched = null;
+            if (rawSku && rawSku.toUpperCase().startsWith('QD-') && existingBySku.has(rawSku.toLowerCase())) {
+                matched = existingBySku.get(rawSku.toLowerCase());
+            } else if (existingByName.has(normText(rawName))) {
+                matched = existingByName.get(normText(rawName));
+            }
 
-        if (upsertBatch.length === 0) {
-            return res.status(400).json({ success: false, error: 'No se encontraron items con SKU y Nombre válidos.' });
+            if (matched) {
+                // Actualizar producto existente
+                const updatePayload = {
+                    price: price,
+                    stock_status: stockStatus,
+                    status: status
+                };
+                if (cat && cat !== 'General' && cat !== 'SELECCIONA EL PRODUCTO PARA VER SU PRECIO') {
+                    updatePayload.category = cat;
+                }
+
+                await supabase.from('dec_products').update(updatePayload).eq('id', matched.id);
+                updatedCount++;
+                productsToSyncWC.push({
+                    id: matched.id,
+                    sku: matched.sku,
+                    name: matched.name,
+                    price: price,
+                    category: matched.category || cat,
+                    stock_status: stockStatus
+                });
+            } else {
+                // Insertar nuevo producto
+                const finalSku = (rawSku && rawSku.toUpperCase().startsWith('QD-')) ? rawSku.toUpperCase() : `QD-IMP-${Date.now().toString(36).toUpperCase()}-${Math.floor(Math.random() * 1000)}`;
+                const insertPayload = {
+                    sku: finalSku,
+                    name: rawName,
+                    price: price,
+                    category: cat,
+                    stock_status: stockStatus,
+                    status: status,
+                    type: 'simple'
+                };
+
+                const { data: newProd } = await supabase.from('dec_products').insert([insertPayload]).select('id, sku, name').single();
+                insertedCount++;
+                if (newProd) {
+                    productsToSyncWC.push({
+                        id: newProd.id,
+                        sku: newProd.sku,
+                        name: newProd.name,
+                        price: price,
+                        category: cat,
+                        stock_status: stockStatus
+                    });
+                }
+            }
         }
 
-        const { data, error } = await supabase.from('dec_products').upsert(upsertBatch, { onConflict: 'sku' }).select('id');
-        if (error) throw error;
+        // Purgar caché en memoria del servidor
+        lastCatalogFetch = 0;
 
-        // Intentar sincronización en lote con WooCommerce si el endpoint está activo
+        // Intentar sincronización en lote con WooCommerce si está disponible
         try {
-            await fetch('https://quimicadec.com/?qdec_api=upsert_products_bulk', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    secret_key: 'qdec_crm_sec_2026',
-                    products: upsertBatch
-                })
-            });
+            if (productsToSyncWC.length > 0) {
+                await fetch('https://quimicadec.com/?qdec_api=upsert_products_bulk', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        secret_key: 'qdec_crm_sec_2026',
+                        products: productsToSyncWC.slice(0, 500)
+                    })
+                });
+            }
         } catch (e) {}
 
         res.json({
             success: true,
-            processed: upsertBatch.length,
-            mensaje: `🎉 ¡Carga Masiva completada! Se crearon/actualizaron ${upsertBatch.length} productos en la base de datos y la tienda web.`
+            updated: updatedCount,
+            inserted: insertedCount,
+            skipped_zero: skippedZeroCount,
+            processed: updatedCount + insertedCount,
+            mensaje: `🎉 ¡Carga Masiva completada! Se actualizaron precios en ${updatedCount} productos existentes y se registraron ${insertedCount} nuevos. (${skippedZeroCount} items con precio $0 fueron protegidos y omitidos).`
         });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
