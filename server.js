@@ -2886,133 +2886,186 @@ app.get('/api/crm/catalogo-precios-lista', async (req, res) => {
             }));
         }
 
+        const CATEGORIAS_OFICIALES_32 = [
+            "Ofertas Semanales",
+            "Combos Emprendedores",
+            "Productos Líquidos",
+            "Productos para Diluir",
+            "Primeras Marcas",
+            "Pastas y Concentrados",
+            "Aerosoles",
+            "Jabón en Polvo",
+            "Jabón en Pan",
+            "Esponjas",
+            "Escobillones",
+            "Cepillos",
+            "Secadores",
+            "Cabos",
+            "Burlete",
+            "Bolsas",
+            "Envases",
+            "Baño",
+            "Cocina",
+            "Perfumería",
+            "Sahumerios",
+            "Textiles",
+            "Papeles",
+            "Repelentes",
+            "Insecticidas",
+            "Higiene Personal",
+            "Jabón Tocador",
+            "Jardín",
+            "Pileta",
+            "Automóvil",
+            "Kiosco y Varios",
+            "Plásticos"
+        ];
+
         function inferirCategoriaPorNombre(name) {
             const n = (name || '').toUpperCase();
-            if (n.includes('CESTO') || n.includes('CANASTO') || n.includes('PLASTICO') || n.includes('PLÁSTICO') || n.includes('BROCHE') || n.includes('PALANGANA')) return 'Plásticos & Bazar';
-            if (n.includes('SAHUMERIO') || n.includes('AMOGH') || (/\bCONOS?\b/.test(n)) || n.includes('AROMANZA') || n.includes('ILUMINARTE') || n.includes('SAGRADA MADRE') || n.includes('TUK TUK') || n.includes('PORTA SAHUMERIO')) return 'Sahumerios & Aromas';
-            if (n.includes('CLORO') || n.includes('BOYA') || n.includes('ALGUICIDA') || n.includes('CLARIFICANTE') || n.includes('PASTILLA')) return 'Cloro & Piletas';
-            if (n.includes('DETERGENTE') || n.includes('DESENGRASANTE') || n.includes('LAVAVAJILLA') || n.includes('COCINA')) return 'Detergentes & Lavavajillas';
-            if (n.includes('DESODORANTE') || n.includes('PISO') || n.includes('LISOFORM') || n.includes('LYSOFORM') || n.includes('POETT')) return 'Desodorantes de Piso & Multiuso';
-            if (n.includes('SUAVIZANTE')) return 'Suavizantes para Ropa';
-            if (n.includes('LAVANDINA')) return 'Lavandinas & Desinfectantes';
-            if (n.includes('JABON') || n.includes('JABÓN') || n.includes('ALA') || n.includes('ARIEL') || n.includes('SKIP') || n.includes('LAVADO ROPA')) return 'Jabones Líquidos (Ropa / Lavandería)';
-            if (n.includes('CONCENTRADO') || n.includes('PASTA')) return 'Pastas & Concentrados';
+            if (n.includes('OFERTA')) return 'Ofertas Semanales';
             if (n.includes('COMBO')) return 'Combos Emprendedores';
-            if (n.includes('AUTO') || n.includes('SILICONA') || n.includes('SHAMPOO') || n.includes('REVIVIDOR')) return 'Automotor';
-            if (n.includes('PAPEL') || n.includes('HIGIENICO') || n.includes('HIGIÉNICO') || n.includes('MORITA') || n.includes('HIGHPEL') || n.includes('MAXISEC')) return 'Papeles & Higiene';
-            if (n.includes('BOLSA') || n.includes('RESIDUO') || n.includes('CONSORCIO')) return 'Bolsas de Residuo & Consorcio';
-            if (n.includes('ESPONJA') || n.includes('FIBRA') || n.includes('VIRANA')) return 'Esponjas & Fibras';
-            if (n.includes('ESCOBA') || n.includes('ESCOBILLON') || n.includes('CEPILLO')) return 'Escobillones, Escobas & Cepillos';
-            if (n.includes('CABO') || n.includes('MANGO')) return 'Cabos & Mangos';
-            if (n.includes('SECADOR')) return 'Secadores de Piso';
-            if (n.includes('BALDE') || n.includes('PALANGANA') || n.includes('FUENTON')) return 'Baldes, Palanganas & Fuentones';
-            if (n.includes('PALA')) return 'Palas & Recolectores';
-            if (n.includes('ENVAS') || n.includes('BIDON') || n.includes('PULVERIZADOR') || n.includes('GATILLO')) return 'Envases, Bidones & Pulverizadores';
-            if (n.includes('INSECTICIDA') || n.includes('ESPIRAL') || n.includes('REPELENTE') || n.includes('OFF') || n.includes('FUYI') || n.includes('BAYGON')) return 'Insecticidas, Espirales & Repelentes';
-            if (n.includes('CERA') || n.includes('AUTOBRILLO')) return 'Ceras & Cuidado de Pisos';
-            if (n.includes('PERFUMINA') || n.includes('TEXTIL') || n.includes('DILUIR')) return 'Perfuminas & Textiles';
-            if (n.includes('TRAPO') || n.includes('REJILLA') || n.includes('FRANELA') || n.includes('PANUELO')) return 'Trapos de Piso & Rejillas';
-            return 'Química General';
+            if (n.includes('SAHUMERIO') || n.includes('AMOGH') || (/\bCONOS?\b/.test(n)) || n.includes('AROMANZA') || n.includes('ILUMINARTE') || n.includes('SAGRADA MADRE') || n.includes('TUK TUK') || n.includes('PORTA SAHUMERIO')) return 'Sahumerios';
+            if (n.includes('CLORO') || n.includes('BOYA') || n.includes('ALGUICIDA') || n.includes('CLARIFICANTE') || n.includes('PASTILLA PILETA') || n.includes('PILETA')) return 'Pileta';
+            if (n.includes('CESTO') || n.includes('CANASTO') || n.includes('PLASTICO') || n.includes('PLÁSTICO') || n.includes('BROCHE') || n.includes('PALANGANA') || n.includes('BALDE') || n.includes('FUENTON') || n.includes('PALA')) return 'Plásticos';
+            if (n.includes('DETERGENTE') || n.includes('DESENGRASANTE') || n.includes('LAVAVAJILLA') || n.includes('COCINA')) return 'Cocina';
+            if (n.includes('BAÑO') || n.includes('INODORO') || n.includes('HARPIC') || n.includes('PATO PURIFIC')) return 'Baño';
+            if (n.includes('AEROSOL') || n.includes('BLEM') || n.includes('GLADE') || n.includes('POETT AEROSOL')) return 'Aerosoles';
+            if (n.includes('JABON EN POLVO') || n.includes('JABÓN EN POLVO') || n.includes('MATIC') || n.includes('GRANBY POLVO') || n.includes('ALA POLVO')) return 'Jabón en Polvo';
+            if (n.includes('JABON EN PAN') || n.includes('JABÓN EN PAN') || n.includes('PAN DE LAVAR') || n.includes('JABON BLANCO')) return 'Jabón en Pan';
+            if (n.includes('JABON TOCADOR') || n.includes('JABÓN TOCADOR') || n.includes('DOVE') || n.includes('REXONA') || n.includes('LUX') || n.includes('PLUSBELLE')) return 'Jabón Tocador';
+            if (n.includes('DENTAL') || n.includes('COLGATE') || n.includes('ALGODON') || n.includes('ALGODÓN') || n.includes('SHAMPOO PLUS') || n.includes('ACONDICIONADOR')) return 'Higiene Personal';
+            if (n.includes('CONCENTRADO') || n.includes('PASTA')) return 'Pastas y Concentrados';
+            if (n.includes('DILUIR') || n.includes('1+9') || n.includes('1+20') || n.includes('1+50')) return 'Productos para Diluir';
+            if (n.includes('AUTO') || n.includes('SILICONA') || n.includes('SHAMPOO AUTO') || n.includes('REVIVIDOR') || n.includes('PINITO')) return 'Automóvil';
+            if (n.includes('PAPEL') || n.includes('HIGIENICO') || n.includes('HIGIÉNICO') || n.includes('MORITA') || n.includes('HIGHPEL') || n.includes('MAXISEC') || n.includes('ROLLO COCINA') || n.includes('SERVILLETA')) return 'Papeles';
+            if (n.includes('BOLSA') || n.includes('RESIDUO') || n.includes('CONSORCIO') || n.includes('CAMISETA')) return 'Bolsas';
+            if (n.includes('ESPONJA') || n.includes('FIBRA') || n.includes('VIRANA')) return 'Esponjas';
+            if (n.includes('ESCOBILLON') || n.includes('ESCOBA')) return 'Escobillones';
+            if (n.includes('CEPILLO')) return 'Cepillos';
+            if (n.includes('SECADOR')) return 'Secadores';
+            if (n.includes('CABO') || n.includes('MANGO')) return 'Cabos';
+            if (n.includes('BURLETE')) return 'Burlete';
+            if (n.includes('ENVAS') || n.includes('BIDON') || n.includes('PULVERIZADOR') || n.includes('GATILLO')) return 'Envases';
+            if (n.includes('REPELENTE') || n.includes('OFF') || n.includes('FUYI REPELENTE')) return 'Repelentes';
+            if (n.includes('INSECTICIDA') || n.includes('ESPIRAL') || n.includes('RAID') || n.includes('BAYGON')) return 'Insecticidas';
+            if (n.includes('JARDIN') || n.includes('JARDÍN') || n.includes('TIERRA') || n.includes('MACETA')) return 'Jardín';
+            if (n.includes('PERFUMERIA') || n.includes('PERFUMERÍA') || n.includes('DIFUSOR') || n.includes('AROMATIZADOR')) return 'Perfumería';
+            if (n.includes('TRAPO') || n.includes('REJILLA') || n.includes('FRANELA') || n.includes('PERFUMINA') || n.includes('TEXTIL')) return 'Textiles';
+            if (n.includes('JABON LIQUIDO') || n.includes('JABÓN LÍQUIDO') || n.includes('SUAVIZANTE') || n.includes('LAVANDINA') || n.includes('DESODORANTE') || n.includes('CERA')) return 'Productos Líquidos';
+            return 'Kiosco y Varios';
         }
 
         const catMap = {
+            'OFERTAS': 'Ofertas Semanales',
+            'OFERTAS SEMANALES': 'Ofertas Semanales',
+            'COMBOS': 'Combos Emprendedores',
+            'COMBOS EMPRENDEDORES': 'Combos Emprendedores',
+            'PRIMERAS MARCAS': 'Primeras Marcas',
             'AEROSOL': 'Aerosoles',
             'AEROSOLES': 'Aerosoles',
-            'SAHUMERIOS': 'Sahumerios & Aromas',
-            'SAHUMERIOS - MINORISTA': 'Sahumerios & Aromas',
-            'SAHUMERIOS & AROMAS': 'Sahumerios & Aromas',
-            'APLICADORES': 'Aplicadores & Gatillos',
-            'APLICADORES & GATILLOS': 'Aplicadores & Gatillos',
-            'AUTOMOVIL': 'Automotor',
-            'AUTOMOTOR': 'Automotor',
-            'BAÑO': 'Baño & Sanitarios',
-            'BAÑO & SANITARIOS': 'Baño & Sanitarios',
-            'BOLSAS': 'Bolsas de Residuo & Consorcio',
-            'BOLSAS DE RESIDUO & CONSORCIO': 'Bolsas de Residuo & Consorcio',
-            'BURLETE': 'Burletes & Aislantes',
-            'BURLETES': 'Burletes & Aislantes',
-            'BURLETES & AISLANTES': 'Burletes & Aislantes',
-            'CABOS': 'Cabos & Mangos',
-            'CABOS & MANGOS': 'Cabos & Mangos',
-            'CABOS METALICOS': 'Cabos & Mangos',
-            'CEPILLOS': 'Escobillones, Escobas & Cepillos',
-            'CEPILLOS & ESCOBAS': 'Escobillones, Escobas & Cepillos',
-            'COCINA': 'Cocina & Desengrasantes',
-            'COCINA & DESENGRASANTES': 'Cocina & Desengrasantes',
-            'CONCENTRADOS': 'Pastas & Concentrados',
-            'PASTAS Y CONCENTRADOS': 'Pastas & Concentrados',
-            'PASTAS & CONCENTRADOS': 'Pastas & Concentrados',
-            'DIFUSORES': 'Difusores & Aromatizadores',
-            'DIFUSORES & AROMATIZADORES': 'Difusores & Aromatizadores',
-            'ENVASES': 'Envases & Bidones',
-            'ENVASES & BIDONES': 'Envases & Bidones',
-            'ESCOBILLONES': 'Escobillones, Escobas & Cepillos',
-            'ESCOBAS': 'Escobillones, Escobas & Cepillos',
-            'ESCOBAS & CEPILLOS': 'Escobillones, Escobas & Cepillos',
-            'ESCOBILLONES, ESCOBAS & CEPILLOS': 'Escobillones, Escobas & Cepillos',
-            'ESPONJAS': 'Esponjas & Fibras',
-            'ESPONJAS & FIBRAS': 'Esponjas & Fibras',
-            'FOCOS': 'Focos & Electricidad',
+            'SAHUMERIOS': 'Sahumerios',
+            'SAHUMERIOS - MINORISTA': 'Sahumerios',
+            'SAHUMERIOS & AROMAS': 'Sahumerios',
+            'APLICADORES': 'Envases',
+            'APLICADORES & GATILLOS': 'Envases',
+            'ENVASES': 'Envases',
+            'ENVASES & BIDONES': 'Envases',
+            'AUTOMOVIL': 'Automóvil',
+            'AUTOMÓVIL': 'Automóvil',
+            'AUTOMOTOR': 'Automóvil',
+            'BAÑO': 'Baño',
+            'BAÑO & SANITARIOS': 'Baño',
+            'BOLSAS': 'Bolsas',
+            'BOLSAS DE RESIDUO & CONSORCIO': 'Bolsas',
+            'BURLETE': 'Burlete',
+            'BURLETES': 'Burlete',
+            'BURLETES & AISLANTES': 'Burlete',
+            'CABOS': 'Cabos',
+            'CABOS & MANGOS': 'Cabos',
+            'CABOS METALICOS': 'Cabos',
+            'CEPILLOS': 'Cepillos',
+            'CEPILLOS & ESCOBAS': 'Cepillos',
+            'ESCOBILLONES': 'Escobillones',
+            'ESCOBAS': 'Escobillones',
+            'ESCOBAS & CEPILLOS': 'Escobillones',
+            'ESCOBILLONES, ESCOBAS & CEPILLOS': 'Escobillones',
+            'COCINA': 'Cocina',
+            'COCINA & DESENGRASANTES': 'Cocina',
+            'CONCENTRADOS': 'Pastas y Concentrados',
+            'PASTAS Y CONCENTRADOS': 'Pastas y Concentrados',
+            'PASTAS & CONCENTRADOS': 'Pastas y Concentrados',
+            'DIFUSORES': 'Perfumería',
+            'DIFUSORES & AROMATIZADORES': 'Perfumería',
+            'PERFUMERIA': 'Perfumería',
+            'PERFUMERÍA': 'Perfumería',
+            'PERFUMERÍA & FRAGANCIAS': 'Perfumería',
+            'ESPONJAS': 'Esponjas',
+            'ESPONJAS & FIBRAS': 'Esponjas',
+            'FOCOS': 'Kiosco y Varios',
+            'FOCOS & ELECTRICIDAD': 'Kiosco y Varios',
             'HIGIENE PERSONAL': 'Higiene Personal',
-            'INSECTICIDAS': 'Insecticidas & Repelentes',
-            'INSECTICIDAS & REPELENTES': 'Insecticidas & Repelentes',
+            'INSECTICIDAS': 'Insecticidas',
+            'INSECTICIDAS & REPELENTES': 'Insecticidas',
+            'REPELENTES': 'Repelentes',
             'JABON EN PAN': 'Jabón en Pan',
             'JABÓN EN PAN': 'Jabón en Pan',
             'JABON EN POLVO': 'Jabón en Polvo',
             'JABÓN EN POLVO': 'Jabón en Polvo',
-            'JABON TOCADOR': 'Higiene Personal',
-            'JARDIN': 'Jardín & Espacios Verdes',
-            'JARDÍN': 'Jardín & Espacios Verdes',
-            'JARDIN & ESPACIOS VERDES': 'Jardín & Espacios Verdes',
-            'KIOSCO': 'Kiosco & Varios',
-            'KIOSCO Y VARIOS': 'Kiosco & Varios',
-            'KIOSCO & VARIOS': 'Kiosco & Varios',
-            'LIQUIDOS': 'Productos Líquidos (Limpieza & Ropa)',
-            'LIQUIDOS MINORISTA': 'Productos Líquidos (Limpieza & Ropa)',
-            'PRODUCTOS LIQUIDOS': 'Productos Líquidos (Limpieza & Ropa)',
-            'PRODUCTOS LÍQUIDOS (LIMPIEZA & ROPA)': 'Productos Líquidos (Limpieza & Ropa)',
-            'PAPELES': 'Papeles & Higiene',
-            'PAPELES & HIGIENE': 'Papeles & Higiene',
-            'PERFUMERIA': 'Perfumería & Fragancias',
-            'PERFUMINAS': 'Perfuminas & Textiles',
-            'PERFUMINAS & TEXTILES': 'Perfuminas & Textiles',
-            'TEXTILES': 'Perfuminas & Textiles',
-            'PILETA': 'Cloro & Piletas',
-            'CLORO & PILETAS': 'Cloro & Piletas',
-            'PLASTICO': 'Plásticos & Bazar',
-            'PLÁSTICOS & BAZAR': 'Plásticos & Bazar',
-            'REPELENTES': 'Insecticidas & Repelentes',
-            'SECADORES': 'Secadores de Piso',
-            'SECADORES DE PISO': 'Secadores de Piso',
-            'SUAVIZANTES': 'Suavizantes para Ropa',
-            'SUAVIZANTES PARA ROPA': 'Suavizantes para Ropa',
-            'TOALLITAS': 'Toallitas Húmedas & Paños',
-            'TOALLITAS HÚMEDAS & PAÑOS': 'Toallitas Húmedas & Paños',
-            'TOALLITAS HUMEDAS Y PAÑOS': 'Toallitas Húmedas & Paños',
-            'TRAPO DE PISO': 'Trapos de Piso & Rejillas',
-            'TRAPOS DE PISO & REJILLAS': 'Trapos de Piso & Rejillas',
-            'CLORO': 'Cloro & Piletas',
-            'CERA': 'Ceras & Pisos',
-            'CERAS & PISOS': 'Ceras & Pisos',
-            'CERAS & CUIDADO DE PISOS': 'Ceras & Pisos'
+            'JABON TOCADOR': 'Jabón Tocador',
+            'JABÓN TOCADOR': 'Jabón Tocador',
+            'JARDIN': 'Jardín',
+            'JARDÍN': 'Jardín',
+            'JARDIN & ESPACIOS VERDES': 'Jardín',
+            'KIOSCO': 'Kiosco y Varios',
+            'KIOSCO Y VARIOS': 'Kiosco y Varios',
+            'KIOSCO & VARIOS': 'Kiosco y Varios',
+            'LIQUIDOS': 'Productos Líquidos',
+            'LIQUIDOS MINORISTA': 'Productos Líquidos',
+            'PRODUCTOS LIQUIDOS': 'Productos Líquidos',
+            'PRODUCTOS LÍQUIDOS': 'Productos Líquidos',
+            'PRODUCTOS LÍQUIDOS (LIMPIEZA & ROPA)': 'Productos Líquidos',
+            'PRODUCTOS PARA DILUIR': 'Productos para Diluir',
+            'DILUIR': 'Productos para Diluir',
+            'PAPELES': 'Papeles',
+            'PAPELES & HIGIENE': 'Papeles',
+            'PERFUMINAS': 'Textiles',
+            'PERFUMINAS & TEXTILES': 'Textiles',
+            'TEXTILES': 'Textiles',
+            'PILETA': 'Pileta',
+            'CLORO': 'Pileta',
+            'CLORO & PILETAS': 'Pileta',
+            'PLASTICO': 'Plásticos',
+            'PLÁSTICO': 'Plásticos',
+            'PLASTICOS': 'Plásticos',
+            'PLÁSTICOS': 'Plásticos',
+            'PLÁSTICOS & BAZAR': 'Plásticos',
+            'SECADORES': 'Secadores',
+            'SECADORES DE PISO': 'Secadores',
+            'SUAVIZANTES': 'Productos Líquidos',
+            'SUAVIZANTES PARA ROPA': 'Productos Líquidos',
+            'TOALLITAS': 'Textiles',
+            'TOALLITAS HÚMEDAS & PAÑOS': 'Textiles',
+            'TOALLITAS HUMEDAS Y PAÑOS': 'Textiles',
+            'TRAPO DE PISO': 'Textiles',
+            'TRAPOS DE PISO & REJILLAS': 'Textiles',
+            'CERA': 'Productos Líquidos',
+            'CERAS & PISOS': 'Productos Líquidos',
+            'CERAS & CUIDADO DE PISOS': 'Productos Líquidos'
         };
 
-        const categoriasSet = new Set();
         const productosFormateados = (data || []).filter(p => p.name).map((p, idx) => {
             let cat = (p.category || '').trim();
             if (!cat || cat === 'General' || cat === 'Uncategorized' || cat.includes('SELECCIONA')) {
                 cat = inferirCategoriaPorNombre(p.name);
             } else if (catMap[cat.toUpperCase()]) {
                 cat = catMap[cat.toUpperCase()];
+            } else {
+                cat = inferirCategoriaPorNombre(p.name);
             }
 
-            if (cat) {
-                cat.split(',').forEach(c => {
-                    const clean = c.trim().replace(/\(Padre\)/gi, '').trim();
-                    if (clean && clean.length > 2 && !clean.includes('SELECCIONA') && clean !== 'Uncategorized') {
-                        categoriasSet.add(clean);
-                    }
-                });
+            if (!CATEGORIAS_OFICIALES_32.includes(cat)) {
+                cat = inferirCategoriaPorNombre(p.name);
             }
 
             return {
@@ -3030,7 +3083,7 @@ app.get('/api/crm/catalogo-precios-lista', async (req, res) => {
         res.json({
             success: true,
             total: productosFormateados.length,
-            categorias: Array.from(categoriasSet).sort(),
+            categorias: CATEGORIAS_OFICIALES_32,
             productos: productosFormateados
         });
     } catch (err) {

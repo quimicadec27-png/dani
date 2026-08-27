@@ -835,12 +835,32 @@ ightarrow$ Ventas</p>
                                 <!-- FILTROS DE CATEGORÍA Y BÚSQUEDA -->
                                 <div class="glass-panel p-4 rounded-2xl border border-white/10 flex flex-col md:flex-row items-center justify-between gap-3">
                                     <div class="flex flex-wrap items-center gap-3 w-full md:w-auto flex-grow">
-                                        <div class="w-full sm:w-auto min-w-[200px]">
-                                            <label class="block text-[10px] font-bold uppercase text-gray-400 mb-1">Filtrar por Categoría:</label>
-                                            <select id="precios-filter-cat" onchange="filtrarProductosPrecios()" class="w-full bg-black/40 border border-white/20 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-yellow font-bold">
-                                                <option value="TODAS">Todas las Categorías</option>
-                                            </select>
+                                        <!-- Custom Category Dropdown (32 Oficiales) -->
+                                        <div class="relative w-full sm:w-auto min-w-[260px]" id="custom-cat-dropdown-container">
+                                            <label class="block text-[10px] font-bold uppercase text-gray-400 mb-1">Filtrar por Categoría (32 Oficiales):</label>
+                                            <input type="hidden" id="precios-filter-cat" value="TODAS">
+                                            <button type="button" id="btn-cat-dropdown-trigger" onclick="toggleCustomCatDropdown()" class="w-full flex items-center justify-between gap-2 border-2 border-brand-yellow/80 hover:border-brand-yellow rounded-xl px-3 py-2 text-xs text-white font-bold shadow-lg transition-all text-left" style="background-color: #0b1329 !important;">
+                                                <div class="flex items-center gap-2 overflow-hidden">
+                                                    <span class="material-symbols-outlined text-brand-yellow text-[18px] shrink-0">folder_open</span>
+                                                    <span id="selected-cat-label" class="truncate text-white font-black">Todas las Categorías</span>
+                                                </div>
+                                                <span class="material-symbols-outlined text-brand-yellow text-[18px] shrink-0 transition-transform duration-200" id="cat-dropdown-arrow">expand_more</span>
+                                            </button>
+
+                                            <!-- Dropdown Menu 100% Solid Dark Navy & Gold -->
+                                            <div id="custom-cat-menu" class="hidden absolute top-full left-0 mt-1.5 w-full sm:w-[320px] max-w-[95vw] rounded-2xl border-2 border-brand-yellow shadow-2xl overflow-hidden divide-y divide-white/10" style="background-color: #0b1329 !important; z-index: 99999 !important; box-shadow: 0 25px 70px rgba(0,0,0,0.98) !important;">
+                                                <div class="p-2.5 bg-black/60 border-b border-white/10">
+                                                    <div class="relative">
+                                                        <span class="material-symbols-outlined absolute left-2.5 top-2 text-gray-400 text-[16px]">search</span>
+                                                        <input type="text" id="custom-cat-search" oninput="filtrarListaCategoriasPersonalizada(this.value)" placeholder="Buscar categoría..." class="w-full bg-white/10 border border-white/15 rounded-lg pl-8 pr-2.5 py-1.5 text-xs text-white placeholder-gray-400 focus:outline-none focus:border-brand-yellow font-medium">
+                                                    </div>
+                                                </div>
+                                                <div id="custom-cat-list" class="max-h-64 overflow-y-auto divide-y divide-white/5 py-1" style="background-color: #0b1329 !important;">
+                                                    <!-- Cargado dinámicamente con las 32 categorías -->
+                                                </div>
+                                            </div>
                                         </div>
+
                                         <div class="w-full sm:w-auto flex-grow min-w-[220px]">
                                             <label class="block text-[10px] font-bold uppercase text-gray-400 mb-1">Buscar Producto o SKU:</label>
                                             <div class="relative">
@@ -7196,12 +7216,8 @@ ightarrow$ Ventas</p>
                         seleccionado: true
                     }));
 
-                    // Cargar selector de categorías
-                    const selectCat = document.getElementById('precios-filter-cat');
-                    if (selectCat && Array.isArray(data.categorias)) {
-                        selectCat.innerHTML = '<option value="TODAS">📂 Todas las Categorías (' + catalogoPreciosData.length + ')</option>' +
-                            data.categorias.map(c => `<option value="${c}">${c}</option>`).join('');
-                    }
+                    // Cargar selector de 32 categorías oficiales personalizadas
+                    renderizarCustomCatDropdown(data.categorias || []);
 
                     filtrarProductosPrecios();
                 } else {
@@ -7212,6 +7228,109 @@ ightarrow$ Ventas</p>
                 if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-red-400 font-bold">❌ Error al conectar con el servidor: ${e.message}</td></tr>`;
             }
         }
+
+        let categoriasOficialesCache = [];
+
+        function renderizarCustomCatDropdown(categorias) {
+            categoriasOficialesCache = categorias || [];
+            const catList = document.getElementById('custom-cat-list');
+            const label = document.getElementById('selected-cat-label');
+            if (label) {
+                label.innerText = `Todas las Categorías (${catalogoPreciosData.length})`;
+            }
+            if (!catList) return;
+
+            let html = `
+                <div onclick="seleccionarCategoriaPersonalizada('TODAS')" class="px-3.5 py-2.5 hover:bg-brand-yellow/20 cursor-pointer flex items-center justify-between gap-2 transition-colors border-b border-white/10" style="background-color: #0b1329 !important;">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-brand-yellow text-[18px]">folder_special</span>
+                        <span class="text-xs font-black text-brand-yellow">📂 Todas las Categorías (32)</span>
+                    </div>
+                    <span class="text-[10px] font-mono font-bold bg-brand-yellow/20 text-brand-yellow px-1.5 py-0.5 rounded">${catalogoPreciosData.length}</span>
+                </div>
+            `;
+
+            categoriasOficialesCache.forEach(c => {
+                const count = catalogoPreciosData.filter(p => p.category === c).length;
+                html += `
+                    <div onclick="seleccionarCategoriaPersonalizada('${c}')" data-cat-name="${c.toLowerCase()}" class="custom-cat-option px-3.5 py-2 hover:bg-brand-yellow/20 cursor-pointer flex items-center justify-between gap-2 transition-colors" style="background-color: #0b1329 !important;">
+                        <div class="flex items-center gap-2">
+                            <span class="material-symbols-outlined text-cyan-400 text-[16px]">folder</span>
+                            <span class="text-xs font-semibold text-white">${c}</span>
+                        </div>
+                        <span class="text-[10px] font-mono text-gray-300 bg-white/10 px-1.5 py-0.5 rounded font-bold">${count}</span>
+                    </div>
+                `;
+            });
+
+            catList.innerHTML = html;
+        }
+
+        function toggleCustomCatDropdown() {
+            const menu = document.getElementById('custom-cat-menu');
+            const arrow = document.getElementById('cat-dropdown-arrow');
+            if (!menu) return;
+            const isHidden = menu.classList.contains('hidden');
+            if (isHidden) {
+                menu.classList.remove('hidden');
+                if (arrow) arrow.style.transform = 'rotate(180deg)';
+                const search = document.getElementById('custom-cat-search');
+                if (search) {
+                    search.value = '';
+                    search.focus();
+                    filtrarListaCategoriasPersonalizada('');
+                }
+            } else {
+                menu.classList.add('hidden');
+                if (arrow) arrow.style.transform = 'rotate(0deg)';
+            }
+        }
+
+        function seleccionarCategoriaPersonalizada(catName) {
+            const hiddenInput = document.getElementById('precios-filter-cat');
+            const label = document.getElementById('selected-cat-label');
+            const menu = document.getElementById('custom-cat-menu');
+            const arrow = document.getElementById('cat-dropdown-arrow');
+
+            if (hiddenInput) hiddenInput.value = catName;
+            if (label) {
+                if (catName === 'TODAS') {
+                    label.innerText = `Todas las Categorías (${catalogoPreciosData.length})`;
+                } else {
+                    const count = catalogoPreciosData.filter(p => p.category === catName).length;
+                    label.innerText = `${catName} (${count})`;
+                }
+            }
+
+            if (menu) menu.classList.add('hidden');
+            if (arrow) arrow.style.transform = 'rotate(0deg)';
+
+            filtrarProductosPrecios();
+        }
+
+        function filtrarListaCategoriasPersonalizada(query) {
+            const q = (query || '').toLowerCase().trim();
+            const options = document.querySelectorAll('.custom-cat-option');
+            options.forEach(opt => {
+                const name = opt.getAttribute('data-cat-name') || '';
+                if (!q || name.includes(q)) {
+                    opt.classList.remove('hidden');
+                } else {
+                    opt.classList.add('hidden');
+                }
+            });
+        }
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#custom-cat-dropdown-container')) {
+                const menu = document.getElementById('custom-cat-menu');
+                const arrow = document.getElementById('cat-dropdown-arrow');
+                if (menu && !menu.classList.contains('hidden')) {
+                    menu.classList.add('hidden');
+                    if (arrow) arrow.style.transform = 'rotate(0deg)';
+                }
+            }
+        });
 
         function setOperacionPrecios(op) {
             operacionPreciosActual = op;
