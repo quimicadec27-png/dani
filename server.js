@@ -2367,11 +2367,55 @@ app.post('/api/products/bulk-excel', async (req, res) => {
         let skippedZeroCount = 0;
         const productsToSyncWC = [];
 
+        function normalizeWooCategory(rawCat) {
+            if (!rawCat) return 'General';
+            const c = String(rawCat).trim();
+            const clean = c.toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .replace(/[^a-z0-9]/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+
+            if (clean.includes('esponja') || clean.includes('fibra')) return 'ESPONJAS';
+            if (clean.includes('plastic') || clean.includes('bazar')) return 'PLASTICO';
+            if (clean.includes('textil') || clean.includes('trapo') || clean.includes('rejilla') || clean.includes('repasador')) return 'TEXTILES';
+            if (clean.includes('sahumerio') || clean.includes('aroma')) return 'SAHUMERIOS';
+            if (clean.includes('pasta') || clean.includes('concentrad') || clean.includes('diluir')) return 'PASTAS Y CONCENTRADOS';
+            if (clean.includes('liquido') || clean.includes('lavandina') || clean.includes('jabon liquid')) return 'PRODUCTOS LIQUIDOS';
+            if (clean.includes('papel') || clean.includes('higienic') || clean.includes('rollo')) return 'PAPELES';
+            if (clean.includes('kiosco') || clean.includes('vario')) return 'KIOSCO Y VARIOS';
+            if (clean.includes('envase') || clean.includes('bidon') || clean.includes('pulverizador')) return 'ENVASES';
+            if (clean.includes('bano') || clean.includes('sanitari') || clean.includes('inodoro')) return 'BAÑO';
+            if (clean.includes('cocina') || clean.includes('desengrasan') || clean.includes('vajilla')) return 'COCINA';
+            if (clean.includes('auto') || clean.includes('automotor') || clean.includes('lavadero')) return 'AUTOMOVIL';
+            if (clean.includes('cabo') || clean.includes('mango')) return 'CABOS';
+            if (clean.includes('jardin') || clean.includes('verde')) return 'JARDÍN';
+            if (clean.includes('pilet') || clean.includes('cloro') || clean.includes('alguicida')) return 'PILETA';
+            if (clean.includes('perfumeria') || clean.includes('difusor') || clean.includes('perfumina')) return 'PERFUMERIA';
+            if (clean.includes('higiene personal') || clean.includes('toallit') || clean.includes('dental') || clean.includes('afeitar')) return 'HIGIENE PERSONAL';
+            if (clean.includes('jabon tocador') || clean.includes('tocador')) return 'JABÓN DE TOCADOR';
+            if (clean.includes('jabon en polvo') || clean.includes('jabon polvo')) return 'JABON EN POLVO';
+            if (clean.includes('jabon en pan') || clean.includes('jabon pan')) return 'JABON EN PAN';
+            if (clean.includes('escobillon') || clean.includes('escoba')) return 'ESCOBILLONES';
+            if (clean.includes('cepillo')) return 'CEPILLOS';
+            if (clean.includes('secador')) return 'SECADORES';
+            if (clean.includes('insecticida') || clean.includes('espiral') || clean.includes('pum')) return 'INSECTICIDAS';
+            if (clean.includes('repelente') || clean.includes('off')) return 'REPELENTES';
+            if (clean.includes('burlete')) return 'BURLETES';
+            if (clean.includes('aplicador') || clean.includes('gatillo')) return 'APLICADORES';
+            if (clean.includes('oferta') || clean.includes('combo')) return 'OFERTAS SEMANALES';
+            if (clean.includes('primera marca') || clean.includes('ala') || clean.includes('skip') || clean.includes('raid')) return 'PRIMERAS MARCAS';
+
+            return c;
+        }
+
         for (const r of itemsToProcess) {
             const rawSku = (r.sku || r['SKU'] || r['Sku'] || r['ID'] || '').toString().trim();
             const rawName = (r.name || r['Nombre del Producto / Variación'] || r['Nombre del Producto / Variacin'] || r['Nombre'] || r['Producto'] || '').toString().trim();
             const price = parseArgentinePrice(r.price || r['Precio ($)'] || r['Precio']);
-            const cat = (r.cat || r.category || r['Categorías'] || r['Categoría'] || 'General').toString().trim();
+            const rawCat = (r.cat || r.category || r['Categorías'] || r['Categoría'] || 'General').toString().trim();
+            const cat = normalizeWooCategory(rawCat);
             const stockRaw = (r.stock || r.stock_status || r['Estado de Stock'] || 'instock').toString().toLowerCase();
             const stockStatus = (stockRaw.includes('agotado') || stockRaw.includes('out of stock') || stockRaw.includes('outofstock') || stockRaw === '0') ? 'outofstock' : 'instock';
             const statusRaw = (r.status || r['Estado'] || r['estado'] || 'ACTIVO').toString().toUpperCase();
