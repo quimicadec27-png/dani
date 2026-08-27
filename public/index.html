@@ -4389,11 +4389,11 @@ ightarrow$ Ventas</p>
                         <div class="flex-grow relative">
                             <div class="relative">
                                 <input type="text" placeholder="🔍 Escribí para buscar (ej: Cloro, Jabón, Papel New Pel)..." oninput="filtrarProductosModalRow('${filaId}', this.value)" class="item-prod-search w-full bg-white/10 border border-white/20 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-400 focus:border-brand-yellow focus:outline-none mb-1 font-bold">
-                                <div id="${filaId}-sugerencias" class="hidden absolute top-full left-0 w-[34rem] sm:w-[42rem] max-w-[95vw] z-50 bg-slate-900/98 border border-brand-yellow/60 rounded-2xl shadow-2xl overflow-hidden max-h-72 overflow-y-auto divide-y divide-white/10 mt-1.5 backdrop-blur-2xl"></div>
+                                <div id="${filaId}-sugerencias" class="hidden absolute top-full left-0 w-[34rem] sm:w-[42rem] max-w-[95vw] border-2 border-brand-yellow rounded-2xl overflow-hidden max-h-72 overflow-y-auto divide-y divide-white/10 mt-1.5" style="background-color: #0b1329 !important; box-shadow: 0 30px 80px rgba(0,0,0,0.98) !important; z-index: 99999 !important;"></div>
                             </div>
                             <select onchange="onProductoSeleccionadoPresupuesto('${filaId}', this.value)" class="item-prod-select w-full bg-slate-900 border border-white/10 rounded-lg px-2 py-1 text-[11px] text-gray-300 focus:border-brand-yellow focus:outline-none" style="background-color: #0f172a; color: #ffffff;">
                                 <option value="" style="background-color: #0f172a; color: #ffffff;">O elegí del menú desplegable...</option>
-                                ${(productosCatalogoCache || []).map(p => `
+                                ${(productosCatalogoCache || []).filter(p => !((p.name || '').toLowerCase().includes('no ofrecer') || (p.name || '').toLowerCase().includes('no vender') || p.status === 'trash' || p.status === 'private')).map(p => `
                                     <option value="${p.id}" data-name="${p.name}" data-price="${p.price}" data-sku="${p.sku}" data-image="${p.image_url || ''}" style="background-color: #0f172a; color: #ffffff;">
                                         ${p.name} — $${parseFloat(p.price || 0).toLocaleString('es-AR')}
                                     </option>
@@ -4448,7 +4448,16 @@ ightarrow$ Ventas</p>
             const normTerm = normalizeStr(searchText).trim();
             const terms = normTerm.split(/\s+/).filter(Boolean);
 
-            let scoredList = (productosCatalogoCache || []).map(p => {
+            // Filtrar productos válidos para venta (excluir "no ofrecer en ventas" y borradores)
+            const catalogoActivo = (productosCatalogoCache || []).filter(p => {
+                const rawName = (p.name || '').toLowerCase();
+                if (rawName.includes('no ofrecer') || rawName.includes('no vender') || p.status === 'trash' || p.status === 'private') {
+                    return false;
+                }
+                return true;
+            });
+
+            let scoredList = catalogoActivo.map(p => {
                 const name = normalizeStr(p.name);
                 const sku = normalizeStr(p.sku);
                 const cat = normalizeStr(p.category);
@@ -4487,7 +4496,7 @@ ightarrow$ Ventas</p>
                     </option>
                 `).join('');
 
-            // 2. Renderizar lista interactiva flotante de sugerencias con diseño amplio y completo
+            // 2. Renderizar lista interactiva flotante de sugerencias 100% opaca y visible
             if (sugBox) {
                 if (!normTerm || sortedProds.length === 0) {
                     sugBox.classList.add('hidden');
@@ -4495,16 +4504,16 @@ ightarrow$ Ventas</p>
                 } else {
                     sugBox.classList.remove('hidden');
                     sugBox.innerHTML = sortedProds.slice(0, 15).map(p => `
-                        <div onclick="seleccionarProductoDesdeSugerencia('${filaId}', '${p.id}')" class="p-3 hover:bg-brand-yellow/15 cursor-pointer flex items-center justify-between gap-3 transition-all hover:pl-4 border-b border-white/5 last:border-b-0">
+                        <div onclick="seleccionarProductoDesdeSugerencia('${filaId}', '${p.id}')" class="p-3 hover:bg-brand-yellow/20 cursor-pointer flex items-center justify-between gap-3 transition-all hover:pl-4 border-b border-white/10 last:border-b-0" style="background-color: #0b1329 !important;">
                             <div class="flex items-center gap-3 flex-1 min-w-0">
-                                <div class="w-11 h-11 rounded-lg bg-black/60 border border-white/15 flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
-                                    ${p.image_url ? `<img src="${p.image_url}" class="w-full h-full object-cover">` : `<span class="material-symbols-outlined text-gray-400 text-base">inventory_2</span>`}
+                                <div class="w-11 h-11 rounded-lg bg-black/80 border border-white/20 flex items-center justify-center overflow-hidden shrink-0 shadow-md">
+                                    ${p.image_url ? `<img src="${p.image_url}" class="w-full h-full object-cover">` : `<span class="material-symbols-outlined text-gray-400 text-lg">inventory_2</span>`}
                                 </div>
                                 <div class="flex-1 min-w-0">
                                     <div class="font-bold text-white text-xs sm:text-sm leading-snug whitespace-normal line-clamp-2">${p.name}</div>
-                                    <div class="flex items-center gap-1.5 mt-0.5 text-[11px] text-gray-400 font-mono">
-                                        <span class="bg-cyan-500/20 text-cyan-300 px-1.5 py-0.5 rounded text-[10px] font-bold border border-cyan-500/30">${p.sku || 'SIN SKU'}</span>
-                                        ${p.category ? `<span class="text-gray-400 truncate">• ${p.category}</span>` : ''}
+                                    <div class="flex items-center gap-1.5 mt-0.5 text-[11px] text-gray-300 font-mono">
+                                        <span class="bg-cyan-500/25 text-cyan-300 px-1.5 py-0.5 rounded text-[10px] font-bold border border-cyan-500/40">${p.sku || 'SIN SKU'}</span>
+                                        ${p.category ? `<span class="text-gray-300 truncate">• ${p.category}</span>` : ''}
                                     </div>
                                 </div>
                             </div>

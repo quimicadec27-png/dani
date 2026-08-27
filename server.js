@@ -2888,7 +2888,8 @@ app.get('/api/crm/catalogo-precios-lista', async (req, res) => {
 
         function inferirCategoriaPorNombre(name) {
             const n = (name || '').toUpperCase();
-            if (n.includes('SAHUMERIO') || n.includes('AMOGH') || n.includes('CONO') || n.includes('AROMANZA') || n.includes('ILUMINARTE') || n.includes('SAGRADA MADRE') || n.includes('TUK TUK') || n.includes('PORTA SAHUMERIO')) return 'Sahumerios & Aromas';
+            if (n.includes('CESTO') || n.includes('CANASTO') || n.includes('PLASTICO') || n.includes('PLÁSTICO') || n.includes('BROCHE') || n.includes('PALANGANA')) return 'Plásticos & Bazar';
+            if (n.includes('SAHUMERIO') || n.includes('AMOGH') || (/\bCONOS?\b/.test(n)) || n.includes('AROMANZA') || n.includes('ILUMINARTE') || n.includes('SAGRADA MADRE') || n.includes('TUK TUK') || n.includes('PORTA SAHUMERIO')) return 'Sahumerios & Aromas';
             if (n.includes('CLORO') || n.includes('BOYA') || n.includes('ALGUICIDA') || n.includes('CLARIFICANTE') || n.includes('PASTILLA')) return 'Cloro & Piletas';
             if (n.includes('DETERGENTE') || n.includes('DESENGRASANTE') || n.includes('LAVAVAJILLA') || n.includes('COCINA')) return 'Detergentes & Lavavajillas';
             if (n.includes('DESODORANTE') || n.includes('PISO') || n.includes('LISOFORM') || n.includes('LYSOFORM') || n.includes('POETT')) return 'Desodorantes de Piso & Multiuso';
@@ -2909,56 +2910,91 @@ app.get('/api/crm/catalogo-precios-lista', async (req, res) => {
             if (n.includes('ENVAS') || n.includes('BIDON') || n.includes('PULVERIZADOR') || n.includes('GATILLO')) return 'Envases, Bidones & Pulverizadores';
             if (n.includes('INSECTICIDA') || n.includes('ESPIRAL') || n.includes('REPELENTE') || n.includes('OFF') || n.includes('FUYI') || n.includes('BAYGON')) return 'Insecticidas, Espirales & Repelentes';
             if (n.includes('CERA') || n.includes('AUTOBRILLO')) return 'Ceras & Cuidado de Pisos';
-            if (n.includes('PERFUMINA') || n.includes('TEXTIL') || n.includes('DILUIR')) return 'Perfuminas & Textil';
+            if (n.includes('PERFUMINA') || n.includes('TEXTIL') || n.includes('DILUIR')) return 'Perfuminas & Textiles';
             if (n.includes('TRAPO') || n.includes('REJILLA') || n.includes('FRANELA') || n.includes('PANUELO')) return 'Trapos de Piso & Rejillas';
             return 'Química General';
         }
 
         const catMap = {
+            'AEROSOL': 'Aerosoles',
+            'AEROSOLES': 'Aerosoles',
             'SAHUMERIOS': 'Sahumerios & Aromas',
             'SAHUMERIOS - MINORISTA': 'Sahumerios & Aromas',
+            'SAHUMERIOS & AROMAS': 'Sahumerios & Aromas',
             'APLICADORES': 'Aplicadores & Gatillos',
+            'APLICADORES & GATILLOS': 'Aplicadores & Gatillos',
             'AUTOMOVIL': 'Automotor',
+            'AUTOMOTOR': 'Automotor',
             'BAÑO': 'Baño & Sanitarios',
+            'BAÑO & SANITARIOS': 'Baño & Sanitarios',
             'BOLSAS': 'Bolsas de Residuo & Consorcio',
+            'BOLSAS DE RESIDUO & CONSORCIO': 'Bolsas de Residuo & Consorcio',
             'BURLETE': 'Burletes & Aislantes',
             'BURLETES': 'Burletes & Aislantes',
+            'BURLETES & AISLANTES': 'Burletes & Aislantes',
             'CABOS': 'Cabos & Mangos',
+            'CABOS & MANGOS': 'Cabos & Mangos',
             'CABOS METALICOS': 'Cabos & Mangos',
-            'CEPILLOS': 'Cepillos & Escobas',
+            'CEPILLOS': 'Escobillones, Escobas & Cepillos',
+            'CEPILLOS & ESCOBAS': 'Escobillones, Escobas & Cepillos',
             'COCINA': 'Cocina & Desengrasantes',
+            'COCINA & DESENGRASANTES': 'Cocina & Desengrasantes',
             'CONCENTRADOS': 'Pastas & Concentrados',
             'PASTAS Y CONCENTRADOS': 'Pastas & Concentrados',
+            'PASTAS & CONCENTRADOS': 'Pastas & Concentrados',
             'DIFUSORES': 'Difusores & Aromatizadores',
+            'DIFUSORES & AROMATIZADORES': 'Difusores & Aromatizadores',
             'ENVASES': 'Envases & Bidones',
+            'ENVASES & BIDONES': 'Envases & Bidones',
             'ESCOBILLONES': 'Escobillones, Escobas & Cepillos',
             'ESCOBAS': 'Escobillones, Escobas & Cepillos',
+            'ESCOBAS & CEPILLOS': 'Escobillones, Escobas & Cepillos',
+            'ESCOBILLONES, ESCOBAS & CEPILLOS': 'Escobillones, Escobas & Cepillos',
             'ESPONJAS': 'Esponjas & Fibras',
+            'ESPONJAS & FIBRAS': 'Esponjas & Fibras',
             'FOCOS': 'Focos & Electricidad',
             'HIGIENE PERSONAL': 'Higiene Personal',
             'INSECTICIDAS': 'Insecticidas & Repelentes',
+            'INSECTICIDAS & REPELENTES': 'Insecticidas & Repelentes',
             'JABON EN PAN': 'Jabón en Pan',
+            'JABÓN EN PAN': 'Jabón en Pan',
             'JABON EN POLVO': 'Jabón en Polvo',
+            'JABÓN EN POLVO': 'Jabón en Polvo',
             'JABON TOCADOR': 'Higiene Personal',
             'JARDIN': 'Jardín & Espacios Verdes',
             'JARDÍN': 'Jardín & Espacios Verdes',
+            'JARDIN & ESPACIOS VERDES': 'Jardín & Espacios Verdes',
             'KIOSCO': 'Kiosco & Varios',
             'KIOSCO Y VARIOS': 'Kiosco & Varios',
+            'KIOSCO & VARIOS': 'Kiosco & Varios',
             'LIQUIDOS': 'Productos Líquidos (Limpieza & Ropa)',
             'LIQUIDOS MINORISTA': 'Productos Líquidos (Limpieza & Ropa)',
             'PRODUCTOS LIQUIDOS': 'Productos Líquidos (Limpieza & Ropa)',
+            'PRODUCTOS LÍQUIDOS (LIMPIEZA & ROPA)': 'Productos Líquidos (Limpieza & Ropa)',
             'PAPELES': 'Papeles & Higiene',
+            'PAPELES & HIGIENE': 'Papeles & Higiene',
             'PERFUMERIA': 'Perfumería & Fragancias',
             'PERFUMINAS': 'Perfuminas & Textiles',
+            'PERFUMINAS & TEXTILES': 'Perfuminas & Textiles',
             'TEXTILES': 'Perfuminas & Textiles',
             'PILETA': 'Cloro & Piletas',
+            'CLORO & PILETAS': 'Cloro & Piletas',
             'PLASTICO': 'Plásticos & Bazar',
+            'PLÁSTICOS & BAZAR': 'Plásticos & Bazar',
             'REPELENTES': 'Insecticidas & Repelentes',
             'SECADORES': 'Secadores de Piso',
+            'SECADORES DE PISO': 'Secadores de Piso',
+            'SUAVIZANTES': 'Suavizantes para Ropa',
+            'SUAVIZANTES PARA ROPA': 'Suavizantes para Ropa',
             'TOALLITAS': 'Toallitas Húmedas & Paños',
+            'TOALLITAS HÚMEDAS & PAÑOS': 'Toallitas Húmedas & Paños',
+            'TOALLITAS HUMEDAS Y PAÑOS': 'Toallitas Húmedas & Paños',
             'TRAPO DE PISO': 'Trapos de Piso & Rejillas',
+            'TRAPOS DE PISO & REJILLAS': 'Trapos de Piso & Rejillas',
             'CLORO': 'Cloro & Piletas',
-            'CERA': 'Ceras & Pisos'
+            'CERA': 'Ceras & Pisos',
+            'CERAS & PISOS': 'Ceras & Pisos',
+            'CERAS & CUIDADO DE PISOS': 'Ceras & Pisos'
         };
 
         const categoriasSet = new Set();
