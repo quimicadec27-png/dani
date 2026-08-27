@@ -2353,7 +2353,7 @@ app.post('/api/products/bulk-excel', async (req, res) => {
         }
 
         // 1. Obtener catálogo existente de dec_products para matching inteligente por SKU o Nombre
-        const existingProducts = await getAllDecProducts();
+        const existingProducts = await fetchAllProductsFromSupabase();
         const existingBySku = new Map();
         const existingByName = new Map();
 
