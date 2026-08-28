@@ -2410,26 +2410,27 @@ app.post('/api/products/bulk-excel', async (req, res) => {
             return c;
         }
 
+        const productsToUpdateSupa = [];
+        const productsToInsertSupa = [];
+
         for (const r of itemsToProcess) {
             const rawSku = (r.sku || r['SKU'] || r['Sku'] || r['ID'] || '').toString().trim();
             const rawName = (r.name || r['Nombre del Producto / Variación'] || r['Nombre del Producto / Variacin'] || r['Nombre'] || r['Producto'] || '').toString().trim();
-            const price = parseArgentinePrice(r.price || r['Precio ($)'] || r['Precio']);
-            const rawCat = (r.cat || r.category || r['Categorías'] || r['Categoría'] || 'General').toString().trim();
+            const price = parseArgentinePrice(r.price || r['Precio ($)'] || r['Precio'] || r['Precio Final (Mayorista)']);
+            const rawCat = (r.cat || r.category || r['Categorías'] || r['Categoría'] || r['Categoría Sugerida'] || 'General').toString().trim();
             const cat = normalizeWooCategory(rawCat);
-            const stockRaw = (r.stock || r.stock_status || r['Estado de Stock'] || 'instock').toString().toLowerCase();
+            const stockRaw = (r.stock || r.stock_status || r['Estado de Stock'] || r['Stock'] || 'instock').toString().toLowerCase();
             const stockStatus = (stockRaw.includes('agotado') || stockRaw.includes('out of stock') || stockRaw.includes('outofstock') || stockRaw === '0') ? 'outofstock' : 'instock';
             const statusRaw = (r.status || r['Estado'] || r['estado'] || 'ACTIVO').toString().toUpperCase();
             const status = (statusRaw.includes('INACTIVO') || statusRaw.includes('BORRADOR') || statusRaw.includes('DRAFT')) ? 'draft' : 'publish';
 
             if (!rawName) continue;
 
-            // Si el precio es 0 o vacío, no pisar precios válidos existentes
             if (price <= 0) {
                 skippedZeroCount++;
                 continue;
             }
 
-            // Matching inteligente: primero por SKU exacto (si empieza con QD-), luego por Nombre normalizado
             let matched = null;
             if (rawSku && rawSku.toUpperCase().startsWith('QD-') && existingBySku.has(rawSku.toLowerCase())) {
                 matched = existingBySku.get(rawSku.toLowerCase());
@@ -2438,78 +2439,100 @@ app.post('/api/products/bulk-excel', async (req, res) => {
             }
 
             if (matched) {
-                // Actualizar producto existente
-                const updatePayload = {
+                productsToUpdateSupa.push({
+                    id: matched.id,
+                    sku: matched.sku,
+                    name: matched.name,
                     price: price,
+                    category: (cat && cat !== 'General') ? cat : matched.category,
                     stock_status: stockStatus,
-                    status: status
-                };
-                if (cat && cat !== 'General' && cat !== 'SELECCIONA EL PRODUCTO PARA VER SU PRECIO') {
-                    updatePayload.category = cat;
-                }
-
-                await supabase.from('dec_products').update(updatePayload).eq('id', matched.id);
-                updatedCount++;
+                    status: status,
+                    updated_at: new Date().toISOString()
+                });
                 productsToSyncWC.push({
                     id: matched.id,
                     sku: matched.sku,
                     name: matched.name,
                     price: price,
-                    category: matched.category || cat,
-                    stock_status: stockStatus
+                    category: (cat && cat !== 'General') ? cat : matched.category,
+                    stock_status: stockStatus,
+                    status: status
                 });
             } else {
-                // Insertar nuevo producto
                 const finalSku = (rawSku && rawSku.toUpperCase().startsWith('QD-')) ? rawSku.toUpperCase() : `QD-IMP-${Date.now().toString(36).toUpperCase()}-${Math.floor(Math.random() * 1000)}`;
-                const insertPayload = {
+                productsToInsertSupa.push({
                     sku: finalSku,
                     name: rawName,
                     price: price,
                     category: cat,
                     stock_status: stockStatus,
                     status: status,
-                    type: 'simple'
-                };
-
-                const { data: newProd } = await supabase.from('dec_products').insert([insertPayload]).select('id, sku, name').single();
-                insertedCount++;
-                if (newProd) {
-                    productsToSyncWC.push({
-                        id: newProd.id,
-                        sku: newProd.sku,
-                        name: newProd.name,
-                        price: price,
-                        category: cat,
-                        stock_status: stockStatus
-                    });
-                }
+                    type: 'simple',
+                    updated_at: new Date().toISOString()
+                });
+                productsToSyncWC.push({
+                    sku: finalSku,
+                    name: rawName,
+                    price: price,
+                    category: cat,
+                    stock_status: stockStatus,
+                    status: status
+                });
             }
         }
 
-        // Purgar caché en memoria del servidor
-        lastCatalogFetch = 0;
+        // 1. Actualización ultrarrápida en Supabase en chunks paralelos
+        const supaChunkSize = 50;
+        for (let i = 0; i < productsToUpdateSupa.length; i += supaChunkSize) {
+            const chunk = productsToUpdateSupa.slice(i, i + supaChunkSize);
+            await Promise.all(chunk.map(p => 
+                supabase.from('dec_products')
+                    .update({ price: p.price, category: p.category, stock_status: p.stock_status, status: p.status, updated_at: p.updated_at })
+                    .eq('id', p.id)
+            ));
+            updatedCount += chunk.length;
+        }
 
-        // Intentar sincronización en lote con WooCommerce si está disponible
-        try {
-            if (productsToSyncWC.length > 0) {
-                await fetch('https://quimicadec.com/?qdec_api=upsert_products_bulk', {
+        // 2. Inserciones en Supabase
+        if (productsToInsertSupa.length > 0) {
+            const { error: insErr } = await supabase.from('dec_products').insert(productsToInsertSupa);
+            if (!insErr) insertedCount += productsToInsertSupa.length;
+        }
+
+        // 3. Sincronización en lotes seguros con WooCommerce (chunks de 40 para evitar timeouts de PHP)
+        let wcUpdatedCount = 0;
+        const wcChunkSize = 40;
+        for (let i = 0; i < productsToSyncWC.length; i += wcChunkSize) {
+            const chunk = productsToSyncWC.slice(i, i + wcChunkSize);
+            try {
+                const wcRes = await fetch('https://quimicadec.com/?qdec_api=upsert_products_bulk', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         secret_key: 'qdec_crm_sec_2026',
-                        products: productsToSyncWC.slice(0, 500)
+                        products: chunk
                     })
                 });
+                const wcData = await wcRes.json();
+                if (wcData && wcData.success) {
+                    wcUpdatedCount += (wcData.updated || 0) + (wcData.created || 0);
+                }
+            } catch (e) {
+                console.error(`[WC BULK SYNC ERROR chunk ${i}]:`, e.message);
             }
-        } catch (e) {}
+        }
+
+        // Purgar memoria caché de Dani
+        lastCatalogFetch = 0;
 
         res.json({
             success: true,
             updated: updatedCount,
             inserted: insertedCount,
+            wc_synced: wcUpdatedCount,
             skipped_zero: skippedZeroCount,
             processed: updatedCount + insertedCount,
-            mensaje: `🎉 ¡Carga Masiva completada! Se actualizaron precios en ${updatedCount} productos existentes y se registraron ${insertedCount} nuevos. (${skippedZeroCount} items con precio $0 fueron protegidos y omitidos).`
+            mensaje: `🎉 ¡Carga Masiva completada con éxito! Se actualizaron ${updatedCount} productos en Supabase y ${wcUpdatedCount} en la tienda WooCommerce en vivo. (${skippedZeroCount} items con precio $0 fueron protegidos).`
         });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
