@@ -2284,15 +2284,18 @@ app.post('/api/products/update-details', async (req, res) => {
 
         if (Object.keys(updateDb).length > 0) {
             const { error: sbErr } = await supabase.from('dec_products').update(updateDb).eq('sku', sku);
-            if (!sbErr) sbUpdated = true;
+            if (!sbErr) {
+                sbUpdated = true;
+                refreshProductCatalog();
+            }
         }
 
         const wcOk = wcData.success || verificado;
         res.json({
             success: true,
             mensaje: wcOk
-                ? `🎉 Nombre actualizado con éxito en WooCommerce y Supabase. Caché purgada automáticamente.`
-                : `⚠️ Supabase actualizado, pero WooCommerce no confirmó el cambio. Asegurate de que el snippet WPCode v3.0 esté activo (revisá ?qdec_api=ping).`,
+                ? `🎉 Producto actualizado con éxito en WooCommerce y Supabase. Caché purgada automáticamente.`
+                : `⚠️ Supabase actualizado, pero WooCommerce no confirmó el cambio. Asegurate de que el snippet WPCode esté activo.`,
             wc_response: wcData,
             wc_verificado: verificado,
             supabase_updated: sbUpdated
