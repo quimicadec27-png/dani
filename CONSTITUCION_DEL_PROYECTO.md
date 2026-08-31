@@ -29,9 +29,9 @@ El catálogo oficial de Química DEC (`quimicadec.com/catalogo`) cuenta con más
 1. **LIMPIEZA Y QUÍMICOS (9 Categorías):**
    * *Ofertas Semanales*
    * *Combos Emprendedores*
-   * *Productos Líquidos* (Jabones Skip/Ariel, Suavizantes Downy/Vivere/Mary Cher, Lavandina 1+2, Cloro líquido, Ceras, Siliconas, Desengrasantes en bidones de 5L a 200L).
+   * *Productos Líquidos Propios (Fabricación Directa):* Jabones Líquidos para Ropa propios (Línea Premium: Violeta, Azul, Verde, Ropa Blanca, Rojo | Línea Eco Plus: Azul, Verde), Suavizantes (Downy, Mary Cher, Confort, Vivere), Lavandina 1+2, Cloro líquido, Ceras, Siliconas, Desengrasantes en bidones de 5L a 200L. *(Nota estricta: NO se venden marcas de reventa como Skip ni Ariel)*.
    * *Productos para Diluir* (Desodorantes de piso concentrados 1+9, 1+20 y 1+50 para rendir 5L, 25L y 50L en packs de 3, 5 y 10 unidades).
-   * *Primeras Marcas* (Cif, Ala, Skip, Ariel, Glade, Blem, Magistral, etc.).
+   * *Primeras Marcas* (Cif, Ala en polvo, Glade, Blem, Magistral, etc.).
    * *Pastas y Concentrados* (Pastas base para fabricar jabón líquido, suavizante, detergente y ceras).
    * *Aerosoles* (Glade, Blem, Cif Desinfectante, Poett, Lysoform).
    * *Jabón en Polvo*
@@ -125,10 +125,25 @@ El catálogo oficial de Química DEC (`quimicadec.com/catalogo`) cuenta con más
 
 ---
 
-## 📂 8. MAPA DE ARCHIVOS CLAVE DEL PROYECTO
+## 🛠️ 8. GESTOR Y CREADOR MANUAL DE PRODUCTOS Y EXCEL (32 CATEGORÍAS)
+* **Ubicación en el CRM:** Pestaña `CATÁLOGO E IA` ➔ Herramienta `Buscar Producto / Imagen` (o `Carga Masiva Excel`).
+* **Creación Manual:**
+  * Botón directo **`+ Crear Nuevo Producto`**: abre un renglón con insignia *"Nuevo Producto"*, campo para Nombre, selector desplegable con las **32 Categorías Oficiales agrupadas por los 4 Macro-Sectores**, **SKU auto-generado dinámico** según la categoría (ej: `QD-LIQ-XXXX`, `QD-SAH-XXXX`, `QD-PST-XXXX`) y campo de Precio en Pesos.
+  * Botón **`Elegir Foto`**: sube la imagen y la asocia al producto tanto en la tienda WooCommerce como en Supabase.
+* **Edición de Existentes:**
+  * Buscador global con autocompletado en vivo por Nombre o SKU para modificar precios, nombres, categorías o fotos en lote.
+* **Carga Masiva Excel:**
+  * Incluye selector de **Categoría por Defecto** (de las 32 oficiales) para asignar automáticamente a todos los productos del Excel que no tengan definida una categoría.
+* **Sincronización Total (`/api/products/update-details` & `wpcode_upload_image_api.php`):**
+  * Si el producto no existe en WooCommerce, se auto-crea como producto simple, se le asigna el término de categoría `product_cat`, el SKU y el precio.
+  * Se sincroniza de inmediato con Supabase `dec_products` y se purga la memoria RAM del catálogo en tiempo real.
+
+---
+
+## 📂 9. MAPA DE ARCHIVOS CLAVE DEL PROYECTO
 * [`crm-backend/server.js`](file:///c:/Users/wilde.WIL/OneDrive/Escritorio/PROYECTOS%20IA/Qu%C3%ADmica%20DEC/quimica_dec/crm-backend/server.js): Servidor central Express, endpoints CRM, webhook WooCommerce, caché de catálogo y lógica de IA Dani.
-* [`crm-backend/public/index.html`](file:///c:/Users/wilde.WIL/OneDrive/Escritorio/PROYECTOS%20IA/Qu%C3%ADmica%20DEC/quimica_dec/crm-backend/public/index.html): Frontend del CRM DEC, Embudo de pedidos, Chat en vivo, Gestión de leads, modal de Corregir Pedido e Impresión Térmica 80mm.
+* [`crm-backend/public/index.html`](file:///c:/Users/wilde.WIL/OneDrive/Escritorio/PROYECTOS%20IA/Qu%C3%ADmica%20DEC/quimica_dec/crm-backend/public/index.html): Frontend del CRM DEC, Embudo de pedidos, Chat en vivo, Gestión de leads, modal de Corregir Pedido, Creador Manual de Productos (32 Categorías) e Impresión Térmica 80mm.
 * [`Quimica_DEC_Catalogo_WooCommerce_2026-07-29_22-10.csv`](file:///c:/Users/wilde.WIL/OneDrive/Escritorio/PROYECTOS%20IA/Qu%C3%ADmica%20DEC/quimica_dec/Quimica_DEC_Catalogo_WooCommerce_2026-07-29_22-10.csv): Catálogo oficial maestro con precios, atributos y variaciones.
 * [`crm-backend/catalogo_completo_3800.json`](file:///c:/Users/wilde.WIL/OneDrive/Escritorio/PROYECTOS%20IA/Qu%C3%ADmica%20DEC/quimica_dec/crm-backend/catalogo_completo_3800.json): Respaldo JSON de los 3.533+ productos con precios corregidos.
-* [`wpcode_popup_gracias_compra_whatsapp.php`](file:///c:/Users/wilde.WIL/OneDrive/Escritorio/PROYECTOS%20IA/Qu%C3%ADmica%20DEC/quimica_dec/wpcode_popup_gracias_compra_whatsapp.php): Hook de WooCommerce para el popup post-compra hacia WhatsApp.
+* [`wpcode_upload_image_api.php`](file:///c:/Users/wilde.WIL/OneDrive/Escritorio/PROYECTOS%20IA/Qu%C3%ADmica%20DEC/quimica_dec/wpcode_upload_image_api.php): Endpoint central de sincronización en WooCommerce (actualización y creación de productos, asignación de 32 categorías, subida de fotos y purga de caché).
 * [`CONSTITUCION_DEL_PROYECTO.md`](file:///c:/Users/wilde.WIL/OneDrive/Escritorio/PROYECTOS%20IA/Qu%C3%ADmica%20DEC/quimica_dec/CONSTITUCION_DEL_PROYECTO.md): Este documento maestro de reglas y arquitectura.
