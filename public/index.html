@@ -786,9 +786,9 @@ ightarrow$ Ventas</p>
                                 <span class="sidebar-label whitespace-nowrap overflow-hidden transition-all duration-200">Banners de Secciones</span>
                             </button>
 
-                            <button id="btn-subtab-single" onclick="switchCatSubTab('single')" title="Buscar Producto / Imagen" class="cat-sidebar-btn w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2.5 transition-all text-gray-400 hover:bg-white/5 hover:text-white cursor-pointer group">
-                                <span class="material-symbols-outlined text-[18px] text-blue-400 shrink-0">add_photo_alternate</span>
-                                <span class="sidebar-label whitespace-nowrap overflow-hidden transition-all duration-200">Buscar Producto / Imagen</span>
+                            <button id="btn-subtab-single" onclick="switchCatSubTab('single')" title="Crear / Buscar Producto e Imagen" class="cat-sidebar-btn w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2.5 transition-all text-gray-400 hover:bg-white/5 hover:text-white cursor-pointer group">
+                                <span class="material-symbols-outlined text-[18px] text-blue-400 shrink-0">add_box</span>
+                                <span class="sidebar-label whitespace-nowrap overflow-hidden transition-all duration-200">Crear / Buscar Producto e Imagen</span>
                             </button>
 
                             <button id="btn-subtab-excel" onclick="switchCatSubTab('excel')" title="Carga Masiva Excel" class="cat-sidebar-btn w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2.5 transition-all text-gray-400 hover:bg-white/5 hover:text-white cursor-pointer group">
@@ -1359,65 +1359,85 @@ ightarrow$ Ventas</p>
                                 <div id="banner-upload-res" class="hidden text-xs font-bold p-3 rounded-xl border"></div>
                             </div>
 
-                            <!-- SUB-TAB 4: BÚSQUEDA Y EDICIÓN MANUAL DE PRODUCTOS (1 O MÚLTIPLES ÍTEMS POR NOMBRE) -->
-                            <div id="subtab-content-single" class="hidden space-y-5 p-5 rounded-2xl bg-white/5 border border-blue-500/30">
-                                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-white/10 pb-3">
-                                    <div>
-                                        <h3 class="font-title text-xs font-bold uppercase text-blue-400 tracking-wider flex items-center gap-2">
-                                            <span class="material-symbols-outlined text-blue-400 text-xl">edit_square</span> <span>Editor y Creador Manual de Productos</span>
+                            <!-- SUB-TAB 4: CREACIÓN MANUAL Y BÚSQUEDA DE PRODUCTOS -->
+                            <div id="subtab-content-single" class="hidden space-y-6">
+                                <!-- BLOQUE 1: CREACIÓN MANUAL DE NUEVOS PRODUCTOS -->
+                                <div class="p-5 rounded-2xl bg-white/5 border border-blue-500/30 space-y-4">
+                                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-white/10 pb-3">
+                                        <div>
+                                            <h3 class="font-title text-xs font-bold uppercase text-blue-400 tracking-wider flex items-center gap-2">
+                                                <span class="material-symbols-outlined text-blue-400 text-xl">add_box</span> <span>Creación Manual de Nuevos Productos</span>
+                                            </h3>
+                                            <p class="text-[11px] text-gray-400 mt-0.5">Completá los datos del nuevo producto. El sistema le asignará un SKU oficial automáticamente según la categoría seleccionada.</p>
+                                        </div>
+                                        <button type="button" onclick="crearNuevoProductoManual()" class="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-lg shrink-0 cursor-pointer">
+                                            <span class="material-symbols-outlined text-sm">add_circle</span> Sumar Otro Producto
+                                        </button>
+                                    </div>
+
+                                    <!-- CONTENEDOR DE RENGLONES PARA NUEVOS PRODUCTOS -->
+                                    <div id="new-prod-editor-container" class="space-y-3 pt-1">
+                                        <!-- Renglones de nuevos productos -->
+                                    </div>
+
+                                    <!-- ACCIONES DE CREACIÓN -->
+                                    <div class="pt-3 border-t border-white/10 flex flex-wrap items-center justify-between gap-3">
+                                        <button type="button" onclick="crearNuevoProductoManual()" class="px-3.5 py-2 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/40 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer">
+                                            <span class="material-symbols-outlined text-sm">add</span> Sumar Otro Producto
+                                        </button>
+                                        <div class="flex items-center gap-2">
+                                            <button type="button" onclick="limpiarNuevosProductosLote()" class="px-4 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 font-bold text-xs transition-all cursor-pointer">
+                                                Limpiar
+                                            </button>
+                                            <button type="button" onclick="guardarNuevosProductosLote()" id="btn-guardar-nuevos-manual" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-title text-xs font-bold uppercase tracking-wider shadow-lg transition-all flex items-center gap-1.5 cursor-pointer">
+                                                <span class="material-symbols-outlined text-base">save</span> Guardar Nuevos Productos en Tienda y CRM
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div id="new-prod-res" class="hidden text-xs font-bold p-3 rounded-xl border"></div>
+                                </div>
+
+                                <!-- BLOQUE 2: BUSCAR Y MODIFICAR PRODUCTOS EXISTENTES -->
+                                <div class="p-5 rounded-2xl bg-white/5 border border-purple-500/30 space-y-4">
+                                    <div class="border-b border-white/10 pb-3">
+                                        <h3 class="font-title text-xs font-bold uppercase text-purple-400 tracking-wider flex items-center gap-2">
+                                            <span class="material-symbols-outlined text-purple-400 text-xl">manage_search</span> <span>Buscar y Modificar Productos Existentes</span>
                                         </h3>
-                                        <p class="text-[11px] text-gray-400 mt-0.5">Buscá productos existentes por <strong>Nombre/SKU</strong> para editarlos, o hacé clic en <strong>+ Crear Nuevo Producto</strong> para sumarlo con su categoría oficial de las 32 de la tienda.</p>
+                                        <p class="text-[11px] text-gray-400 mt-0.5">Buscá cualquier producto del catálogo por Nombre o SKU para actualizar su precio, nombre, categoría o foto.</p>
                                     </div>
-                                    <div class="flex items-center gap-2">
-                                        <button type="button" onclick="crearNuevoProductoManual()" class="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-lg shrink-0">
-                                            <span class="material-symbols-outlined text-sm">add_circle</span> + Crear Nuevo Producto
-                                        </button>
-                                        <button type="button" onclick="agregarRenglonEditorManual()" class="px-3.5 py-2 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/40 font-bold text-xs flex items-center gap-1.5 transition-all shadow shrink-0">
-                                            <span class="material-symbols-outlined text-sm">add</span> + Sumar Renglón
-                                        </button>
+
+                                    <!-- BUSCADOR CON AUTOCOMPLETADO -->
+                                    <div class="relative space-y-1.5">
+                                        <label class="text-[11px] font-bold text-gray-300 uppercase">Buscar Producto por Nombre o SKU...</label>
+                                        <input type="text" id="img-prod-search" oninput="buscarProductoImagen(this.value)" placeholder="Escribí el nombre del producto o SKU para editarlo..." class="w-full bg-slate-900 border border-purple-500/40 rounded-xl px-4 py-2.5 text-xs text-white placeholder-gray-400 focus:outline-none focus:border-purple-400 font-mono shadow-inner">
+                                        <div id="img-search-results" class="hidden absolute left-0 right-0 top-full mt-1 z-50 bg-slate-900 border border-purple-500/40 rounded-xl max-h-60 overflow-y-auto shadow-2xl divide-y divide-white/5 backdrop-blur-xl"></div>
                                     </div>
-                                </div>
 
-                                <!-- BUSCADOR GLOBAL CON AUTOCOMPLETADO POR NOMBRE -->
-                                <div class="relative space-y-1.5">
-                                    <label class="text-[11px] font-bold text-gray-300 uppercase">🔍 Buscar Producto Existente por Nombre o SKU...</label>
-                                    <input type="text" id="img-prod-search" oninput="buscarProductoImagen(this.value)" placeholder="Escribí el nombre del producto o SKU para editarlo..." class="w-full bg-slate-900 border border-blue-500/40 rounded-xl px-4 py-2.5 text-xs text-white placeholder-gray-400 focus:outline-none focus:border-blue-400 font-mono shadow-inner">
-                                    <div id="img-search-results" class="hidden absolute left-0 right-0 top-full mt-1 z-50 bg-slate-900 border border-blue-500/40 rounded-xl max-h-60 overflow-y-auto shadow-2xl divide-y divide-white/5 backdrop-blur-xl"></div>
-                                </div>
+                                    <!-- CONTENEDOR DE PRODUCTOS EXISTENTES A EDITAR -->
+                                    <div id="existing-prod-editor-container" class="space-y-3 pt-1">
+                                        <!-- Renglones de productos existentes cargados para edición -->
+                                    </div>
 
-                                <!-- CONTENEDOR DE RENGLONES DE PRODUCTOS A EDITAR / CREAR EN LOTE -->
-                                <div id="batch-prod-editor-container" class="space-y-3 pt-2">
-                                    <!-- Renglones de productos agregados dinámicamente -->
-                                </div>
-
-                                <!-- BOTONES GLOBALES DE ACCIÓN Y MENSAJE DE ESTADO -->
-                                <div class="pt-3 border-t border-white/10 space-y-3">
-                                    <div class="flex flex-wrap items-center justify-between gap-3">
+                                    <!-- ACCIONES DE EDICIÓN EXISTENTES -->
+                                    <div id="existing-prod-actions" class="hidden pt-3 border-t border-white/10 flex flex-wrap items-center justify-between gap-3">
+                                        <span class="text-[11px] text-gray-400">Productos seleccionados para modificar.</span>
                                         <div class="flex items-center gap-2">
-                                            <button type="button" onclick="crearNuevoProductoManual()" class="px-3.5 py-2.5 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/40 font-bold text-xs flex items-center gap-1.5 transition-all">
-                                                <span class="material-symbols-outlined text-sm">add_circle</span> + Crear Otro Producto
+                                            <button type="button" onclick="limpiarExistentesEditorLote()" class="px-4 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 font-bold text-xs transition-all cursor-pointer">
+                                                Cancelar
                                             </button>
-                                            <button type="button" onclick="agregarRenglonEditorManual()" class="px-3.5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 border border-white/10 font-bold text-xs flex items-center gap-1.5 transition-all">
-                                                <span class="material-symbols-outlined text-sm">add</span> + Renglón Vacío
-                                            </button>
-                                        </div>
-                                        <div class="flex items-center gap-2">
-                                            <button type="button" onclick="limpiarEditorManualLote()" class="px-4 py-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 font-bold text-xs transition-all">
-                                                <span class="material-symbols-outlined text-base">close</span> Cancelar Todo
-                                            </button>
-                                            <button type="button" onclick="guardarEditorManualLote()" id="btn-guardar-batch-manual" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-title text-xs font-bold uppercase tracking-wider shadow-lg transition-all flex items-center gap-1.5">
-                                                <span class="material-symbols-outlined text-base">save</span> Aplicar Cambios en Tienda Web y CRM
+                                            <button type="button" onclick="guardarEditorExistentesLote()" id="btn-guardar-existentes-manual" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-title text-xs font-bold uppercase tracking-wider shadow-lg transition-all flex items-center gap-1.5 cursor-pointer">
+                                                <span class="material-symbols-outlined text-base">save</span> Guardar Modificaciones en Tienda y CRM
                                             </button>
                                         </div>
                                     </div>
-                                    <div id="batch-manual-res" class="hidden text-xs font-bold p-3 rounded-xl border"></div>
+                                    <div id="existing-prod-res" class="hidden text-xs font-bold p-3 rounded-xl border"></div>
                                 </div>
 
-                                <!-- CARGA MASIVA LOTE -->
-                                <div class="pt-5 border-t border-white/10 space-y-4">
+                                <!-- BLOQUE 3: CARGA MASIVA DE IMÁGENES (POR LOTE) -->
+                                <div class="p-5 rounded-2xl bg-white/5 border border-amber-500/30 space-y-4">
                                     <div class="flex items-center justify-between">
                                         <h4 class="font-title text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
-                                            <span class="material-symbols-outlined text-cyan-400 text-xl">cloud_upload</span> <span>Carga Masiva de Imágenes (Por Lote)</span>
+                                            <span class="material-symbols-outlined text-amber-400 text-xl">cloud_upload</span> <span>Carga Masiva de Imágenes (Por Lote)</span>
                                         </h4>
                                     </div>
 
@@ -1432,7 +1452,7 @@ ightarrow$ Ventas</p>
                                             <button onclick="clearBulkQueue()" class="text-rose-400 hover:underline text-[11px]">Limpiar Lote</button>
                                         </div>
                                         <div id="bulk-img-queue-list" class="max-h-48 overflow-y-auto space-y-1.5 pr-2"></div>
-                                        <button onclick="uploadBulkImages()" id="btn-upload-bulk-imgs" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-black font-title text-xs font-bold uppercase tracking-wider shadow-lg transition-all flex items-center justify-center gap-1.5">
+                                        <button onclick="uploadBulkImages()" id="btn-upload-bulk-imgs" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-black font-title text-xs font-bold uppercase tracking-wider shadow-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer">
                                             <span class="material-symbols-outlined text-base">cloud_upload</span> Subir Todas las Fotos a la Tienda
                                         </button>
                                     </div>
@@ -1455,7 +1475,7 @@ ightarrow$ Ventas</p>
                                         <span class="material-symbols-outlined text-sm">category</span> Categoría por Defecto (para productos sin categoría en el Excel):
                                     </label>
                                     <select id="excel-default-cat" class="w-full bg-slate-900 border border-emerald-500/40 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-400 font-bold">
-                                        <optgroup label="🧪 LIMPIEZA Y QUÍMICOS">
+                                        <optgroup label="LIMPIEZA Y QUÍMICOS">
                                             <option value="PRODUCTOS LIQUIDOS" selected>Productos Líquidos</option>
                                             <option value="PRODUCTOS PARA DILUIR">Productos para Diluir</option>
                                             <option value="PRIMERAS MARCAS">Primeras Marcas</option>
@@ -1466,17 +1486,17 @@ ightarrow$ Ventas</p>
                                             <option value="OFERTAS SEMANALES">Ofertas Semanales</option>
                                             <option value="COMBOS EMPRENDEDORES">Combos Emprendedores</option>
                                         </optgroup>
-                                        <optgroup label="🧽 ACCESORIOS DE LIMPIEZA">
+                                        <optgroup label="ACCESORIOS DE LIMPIEZA">
                                             <option value="ESPONJAS">Esponjas</option>
                                             <option value="ESCOBILLONES">Escobillones</option>
                                             <option value="CEPILLOS">Cepillos</option>
                                             <option value="SECADORES">Secadores</option>
                                             <option value="CABOS">Cabos</option>
-                                            <option value="BURLETES">Burlete</option>
+                                            <option value="BURLETES">Burletes</option>
                                             <option value="BOLSAS">Bolsas</option>
                                             <option value="ENVASES">Envases</option>
                                         </optgroup>
-                                        <optgroup label="🏠 HOGAR Y AMBIENTES">
+                                        <optgroup label="HOGAR Y AMBIENTES">
                                             <option value="BAÑO">Baño</option>
                                             <option value="COCINA">Cocina</option>
                                             <option value="PERFUMERIA">Perfumería</option>
@@ -1486,7 +1506,7 @@ ightarrow$ Ventas</p>
                                             <option value="REPELENTES">Repelentes</option>
                                             <option value="INSECTICIDAS">Insecticidas</option>
                                         </optgroup>
-                                        <optgroup label="⭐ ESPECIALIDADES Y VARIOS">
+                                        <optgroup label="ESPECIALIDADES Y VARIOS">
                                             <option value="HIGIENE PERSONAL">Higiene Personal</option>
                                             <option value="JABON DE TOCADOR">Jabón Tocador</option>
                                             <option value="JARDÍN">Jardín</option>
@@ -6140,7 +6160,7 @@ ightarrow$ Ventas</p>
                 'atributos': 'Gestor de Atributos',
                 'ofertas': 'Ofertas Semanales',
                 'banners': 'Banners de Secciones',
-                'single': 'Buscar Producto / Imagen',
+                'single': 'Crear / Buscar Producto e Imagen',
                 'excel': 'Carga Masiva Excel',
                 'ia': 'Instrucción IA / Voz',
                 'sync': 'Sincronizar Web'
@@ -6183,6 +6203,7 @@ ightarrow$ Ventas</p>
             if (subtab === 'atributos') cargarTablaAtributos();
             if (subtab === 'ofertas') cargarVisorOfertas();
             if (subtab === 'banners') renderBannersGridUI();
+            if (subtab === 'single' && newProductRows.length === 0) crearNuevoProductoManual();
             
             setTimeout(initDragToScrollTables, 200);
         }
@@ -6922,10 +6943,18 @@ ightarrow$ Ventas</p>
             }
         }
 
-        // CONSTANTE DE LAS 32 CATEGORÍAS OFICIALES Y SUS PREFIJOS DE SKU
+        // =========================================================================
+        // SUB-TAB 4: CREACIÓN MANUAL Y BÚSQUEDA DE PRODUCTOS E IMÁGENES
+        // =========================================================================
+        let debounceBuscarProdImg = null;
+        let newProductRows = [];
+        let existingProductRows = [];
+        let bulkFilesQueue = [];
+
+        // CONSTANTE DE LAS 32 CATEGORÍAS OFICIALES Y SUS PREFIJOS DE SKU (SIN EMOJIS)
         const OFFICIAL_32_CATEGORIES = [
             {
-                group: "🧪 LIMPIEZA Y QUÍMICOS",
+                group: "LIMPIEZA Y QUÍMICOS",
                 items: [
                     { value: "PRODUCTOS LIQUIDOS", label: "Productos Líquidos", prefix: "QD-LIQ" },
                     { value: "PRODUCTOS PARA DILUIR", label: "Productos para Diluir", prefix: "QD-DIL" },
@@ -6939,20 +6968,20 @@ ightarrow$ Ventas</p>
                 ]
             },
             {
-                group: "🧽 ACCESORIOS DE LIMPIEZA",
+                group: "ACCESORIOS DE LIMPIEZA",
                 items: [
                     { value: "ESPONJAS", label: "Esponjas", prefix: "QD-ESP" },
                     { value: "ESCOBILLONES", label: "Escobillones", prefix: "QD-ESC" },
                     { value: "CEPILLOS", label: "Cepillos", prefix: "QD-CEP" },
                     { value: "SECADORES", label: "Secadores", prefix: "QD-SEC" },
                     { value: "CABOS", label: "Cabos", prefix: "QD-CAB" },
-                    { value: "BURLETES", label: "Burlete", prefix: "QD-BUR" },
+                    { value: "BURLETES", label: "Burletes", prefix: "QD-BUR" },
                     { value: "BOLSAS", label: "Bolsas", prefix: "QD-BLS" },
                     { value: "ENVASES", label: "Envases", prefix: "QD-ENV" }
                 ]
             },
             {
-                group: "🏠 HOGAR Y AMBIENTES",
+                group: "HOGAR Y AMBIENTES",
                 items: [
                     { value: "BAÑO", label: "Baño", prefix: "QD-BNO" },
                     { value: "COCINA", label: "Cocina", prefix: "QD-COC" },
@@ -6965,7 +6994,7 @@ ightarrow$ Ventas</p>
                 ]
             },
             {
-                group: "⭐ ESPECIALIDADES Y VARIOS",
+                group: "ESPECIALIDADES Y VARIOS",
                 items: [
                     { value: "HIGIENE PERSONAL", label: "Higiene Personal", prefix: "QD-HIG" },
                     { value: "JABON DE TOCADOR", label: "Jabón Tocador", prefix: "QD-TOC" },
@@ -7005,109 +7034,97 @@ ightarrow$ Ventas</p>
             return `${prefix}-${randNum}`;
         }
 
+        // -------------------------------------------------------------
+        // 1. BLOQUE: CREACIÓN MANUAL DE NUEVOS PRODUCTOS
+        // -------------------------------------------------------------
         function crearNuevoProductoManual() {
-            agregarRenglonEditorManual(null, true);
-        }
-
-        function actualizarSkuPorCategoria(rowId) {
-            const catSelect = document.getElementById(`cat_${rowId}`);
-            const skuInput = document.getElementById(`sku_${rowId}`);
-            const rowEl = document.getElementById(rowId);
-            if (!catSelect || !skuInput) return;
-
-            // Si es producto nuevo o tiene SKU auto-generado, actualizar prefijo
-            const isNew = rowEl && rowEl.dataset.isNew === 'true';
-            if (isNew || skuInput.value.startsWith('QD-')) {
-                const newSku = generarSkuPorCategoria(catSelect.value);
-                skuInput.value = newSku;
-            }
-        }
-
-        function agregarRenglonEditorManual(prod = null, isNew = false) {
-            const container = document.getElementById('batch-prod-editor-container');
+            const container = document.getElementById('new-prod-editor-container');
             if (!container) return;
 
-            const rowId = 'row_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
-            const defaultCat = prod ? (prod.category || 'PRODUCTOS LIQUIDOS') : 'PRODUCTOS LIQUIDOS';
-            const autoSku = isNew ? generarSkuPorCategoria(defaultCat) : '';
-            const sku = prod ? (prod.sku || '') : autoSku;
-            const name = prod ? (prod.name || '') : '';
-            const price = prod ? (prod.regular_price || prod.price || '') : '';
-            const imageUrl = prod ? (prod.image_url || '') : '';
+            const rowId = 'new_row_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+            const defaultCat = 'PRODUCTOS LIQUIDOS';
+            const autoSku = generarSkuPorCategoria(defaultCat);
 
             const rowHtml = `
-                <div id="${rowId}" data-is-new="${isNew ? 'true' : 'false'}" class="p-4 rounded-2xl bg-white/5 border ${isNew ? 'border-blue-500/50 bg-blue-950/20' : 'border-white/10'} space-y-3 relative group hover:border-blue-500/40 transition-all">
-                    ${isNew ? '<div class="absolute -top-2.5 left-4 px-2 py-0.5 rounded-full bg-blue-500 text-white font-black text-[9px] uppercase tracking-wider shadow">✨ Nuevo Producto</div>' : ''}
-                    
+                <div id="${rowId}" class="p-4 rounded-2xl bg-slate-900/80 border border-blue-500/40 space-y-3 relative group hover:border-blue-400 transition-all shadow-md">
                     <div class="flex flex-col md:flex-row items-start md:items-center gap-4">
-                        <!-- PREVIEW FOTO / UPLOAD -->
+                        <!-- FOTO / PREVIEW -->
                         <div class="flex items-center gap-3 shrink-0">
-                            <div class="relative w-16 h-16 rounded-xl overflow-hidden bg-slate-900 border border-white/20 flex items-center justify-center shrink-0">
-                                <img id="preview_${rowId}" src="${imageUrl || 'https://quimicadec.com/assets/img/categorias/productosparadiluir.jpeg'}" class="w-full h-full object-cover ${imageUrl ? '' : 'opacity-40'}">
-                                <span id="tag_${rowId}" class="absolute bottom-0 inset-x-0 bg-black/80 text-[8px] text-center text-gray-300 py-0.5">${imageUrl ? 'Foto Actual' : 'Sin Foto'}</span>
+                            <div class="relative w-16 h-16 rounded-xl overflow-hidden bg-slate-950 border border-white/20 flex items-center justify-center shrink-0">
+                                <img id="preview_${rowId}" src="https://quimicadec.com/assets/img/categorias/productosparadiluir.jpeg" class="w-full h-full object-cover opacity-40">
+                                <span id="tag_${rowId}" class="absolute bottom-0 inset-x-0 bg-black/80 text-[8px] text-center text-gray-300 py-0.5 font-bold">Sin Foto</span>
                             </div>
                             <div class="space-y-1">
                                 <label class="cursor-pointer px-2.5 py-1.5 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/40 text-[10px] font-bold flex items-center gap-1 transition-all">
                                     <span class="material-symbols-outlined text-[14px]">photo_camera</span> Elegir Foto
-                                    <input type="file" accept="image/*" class="hidden" onchange="handleRowImageSelected('${rowId}', event)">
+                                    <input type="file" accept="image/*" class="hidden" onchange="handleNewProductImageSelected('${rowId}', event)">
                                 </label>
                                 <input type="hidden" id="base64_${rowId}" value="">
                                 <input type="hidden" id="filename_${rowId}" value="">
                             </div>
                         </div>
 
-                        <!-- CAMPOS: NOMBRE, CATEGORÍA OFICIAL, SKU, PRECIO -->
+                        <!-- CAMPOS: NOMBRE, CATEGORÍA, PRECIO, SKU ASIGNADO -->
                         <div class="flex-1 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-12 gap-3 w-full">
                             <!-- Nombre -->
-                            <div class="md:col-span-4 space-y-1">
-                                <label class="text-[9px] font-bold text-gray-400 uppercase">Nombre del Producto</label>
-                                <input type="text" id="name_${rowId}" value="${name.replace(/"/g, '&quot;')}" placeholder="Ej: Jabón Líquido Premium..." class="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white font-bold focus:outline-none focus:border-blue-400">
+                            <div class="md:col-span-5 space-y-1">
+                                <label class="text-[9px] font-bold text-gray-300 uppercase">Nombre del Producto</label>
+                                <input type="text" id="name_${rowId}" placeholder="Ej: Jabón Líquido Premium 5L..." class="w-full bg-slate-950 border border-white/15 rounded-xl px-3 py-2 text-xs text-white font-bold focus:outline-none focus:border-blue-400">
                             </div>
 
                             <!-- Categoría (32 Oficiales) -->
-                            <div class="md:col-span-3 space-y-1">
+                            <div class="md:col-span-4 space-y-1">
                                 <label class="text-[9px] font-bold text-cyan-300 uppercase flex items-center gap-1">
                                     <span class="material-symbols-outlined text-[12px]">category</span> Categoría Oficial (32)
                                 </label>
-                                <select id="cat_${rowId}" onchange="actualizarSkuPorCategoria('${rowId}')" class="w-full bg-slate-900 border border-cyan-500/40 rounded-xl px-3 py-2 text-xs text-cyan-200 font-bold focus:outline-none focus:border-cyan-400">
+                                <select id="cat_${rowId}" onchange="actualizarSkuNuevoProducto('${rowId}')" class="w-full bg-slate-950 border border-cyan-500/40 rounded-xl px-3 py-2 text-xs text-cyan-200 font-bold focus:outline-none focus:border-cyan-400">
                                     ${renderCategoriasOptionsHtml(defaultCat)}
                                 </select>
                             </div>
 
-                            <!-- SKU -->
-                            <div class="md:col-span-3 space-y-1">
-                                <label class="text-[9px] font-bold text-amber-400 uppercase">SKU (Identificador)</label>
-                                <input type="text" id="sku_${rowId}" value="${sku.replace(/"/g, '&quot;')}" placeholder="Ej: QD-LIQ-1042" class="w-full bg-slate-950 border border-amber-500/30 rounded-xl px-3 py-2 text-xs text-amber-300 font-mono font-bold focus:outline-none focus:border-amber-400">
-                            </div>
-
                             <!-- Precio -->
-                            <div class="md:col-span-2 space-y-1">
+                            <div class="md:col-span-3 space-y-1">
                                 <label class="text-[9px] font-bold text-emerald-400 uppercase">Precio ($ ARS)</label>
-                                <input type="number" step="0.01" id="price_${rowId}" value="${price}" placeholder="0.00" class="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-emerald-300 font-mono font-bold focus:outline-none focus:border-emerald-400">
+                                <input type="number" step="0.01" id="price_${rowId}" placeholder="0.00" class="w-full bg-slate-950 border border-emerald-500/30 rounded-xl px-3 py-2 text-xs text-emerald-300 font-mono font-bold focus:outline-none focus:border-emerald-400">
                             </div>
                         </div>
 
-                        <!-- BOTÓN ELIMINAR RENGLÓN -->
-                        <button type="button" onclick="eliminarRenglonEditorManual('${rowId}')" title="Eliminar de la lista" class="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 transition-all shrink-0 self-end md:self-center">
-                            <span class="material-symbols-outlined text-[18px]">delete</span>
-                        </button>
+                        <!-- SKU ASIGNADO Y BOTÓN ELIMINAR -->
+                        <div class="flex items-center gap-2 self-end md:self-center shrink-0">
+                            <div class="text-right">
+                                <span class="block text-[8px] font-bold text-gray-400 uppercase">SKU Asignado</span>
+                                <span id="sku_pill_${rowId}" class="px-2 py-0.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 font-mono text-[11px] font-bold">${autoSku}</span>
+                                <input type="hidden" id="sku_${rowId}" value="${autoSku}">
+                            </div>
+                            <button type="button" onclick="eliminarRenglonNuevoProducto('${rowId}')" title="Quitar de la lista" class="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 transition-all">
+                                <span class="material-symbols-outlined text-[18px]">delete</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             `;
 
             container.insertAdjacentHTML('beforeend', rowHtml);
-            batchEditorRows.push(rowId);
+            newProductRows.push(rowId);
 
-            // Auto-focus en el nombre si es producto nuevo
-            if (isNew) {
-                setTimeout(() => {
-                    const nameInp = document.getElementById(`name_${rowId}`);
-                    if (nameInp) nameInp.focus();
-                }, 100);
-            }
+            setTimeout(() => {
+                const nameInp = document.getElementById(`name_${rowId}`);
+                if (nameInp) nameInp.focus();
+            }, 100);
         }
 
-        function handleRowImageSelected(rowId, event) {
+        function actualizarSkuNuevoProducto(rowId) {
+            const catSelect = document.getElementById(`cat_${rowId}`);
+            const skuInput = document.getElementById(`sku_${rowId}`);
+            const skuPill = document.getElementById(`sku_pill_${rowId}`);
+            if (!catSelect || !skuInput) return;
+
+            const newSku = generarSkuPorCategoria(catSelect.value);
+            skuInput.value = newSku;
+            if (skuPill) skuPill.innerText = newSku;
+        }
+
+        function handleNewProductImageSelected(rowId, event) {
             const file = event.target.files[0];
             if (!file) return;
 
@@ -7121,7 +7138,7 @@ ightarrow$ Ventas</p>
                 }
                 const tag = document.getElementById(`tag_${rowId}`);
                 if (tag) {
-                    tag.innerText = 'Nueva Foto ✅';
+                    tag.innerText = 'Foto Cargada';
                     tag.className = 'absolute bottom-0 inset-x-0 bg-emerald-600/90 text-[8px] text-center text-white py-0.5 font-bold';
                 }
                 const base64Input = document.getElementById(`base64_${rowId}`);
@@ -7132,28 +7149,32 @@ ightarrow$ Ventas</p>
             reader.readAsDataURL(file);
         }
 
-        function eliminarRenglonEditorManual(rowId) {
+        function eliminarRenglonNuevoProducto(rowId) {
             const el = document.getElementById(rowId);
             if (el) el.remove();
-            batchEditorRows = batchEditorRows.filter(id => id !== rowId);
+            newProductRows = newProductRows.filter(id => id !== rowId);
+            if (newProductRows.length === 0) {
+                crearNuevoProductoManual();
+            }
         }
 
-        function limpiarEditorManualLote() {
-            const container = document.getElementById('batch-prod-editor-container');
+        function limpiarNuevosProductosLote() {
+            const container = document.getElementById('new-prod-editor-container');
             if (container) container.innerHTML = '';
-            batchEditorRows = [];
-            const resDiv = document.getElementById('batch-manual-res');
+            newProductRows = [];
+            const resDiv = document.getElementById('new-prod-res');
             if (resDiv) resDiv.classList.add('hidden');
+            crearNuevoProductoManual();
         }
 
-        async function guardarEditorManualLote() {
-            const btn = document.getElementById('btn-guardar-batch-manual');
-            const resDiv = document.getElementById('batch-manual-res');
+        async function guardarNuevosProductosLote() {
+            const btn = document.getElementById('btn-guardar-nuevos-manual');
+            const resDiv = document.getElementById('new-prod-res');
 
-            if (batchEditorRows.length === 0) {
+            if (newProductRows.length === 0) {
                 if (resDiv) {
                     resDiv.className = 'text-xs font-bold p-3 rounded-xl border bg-amber-500/20 text-amber-300 border-amber-500/40';
-                    resDiv.innerText = '⚠️ No hay productos en la lista para actualizar. Buscá uno existente o hacé clic en "+ Crear Nuevo Producto".';
+                    resDiv.innerText = 'No hay productos nuevos para guardar.';
                     resDiv.classList.remove('hidden');
                 }
                 return;
@@ -7167,8 +7188,7 @@ ightarrow$ Ventas</p>
             let guardadosCount = 0;
             let errores = [];
 
-            for (const rowId of batchEditorRows) {
-                const rowEl = document.getElementById(rowId);
+            for (const rowId of newProductRows) {
                 const skuEl = document.getElementById(`sku_${rowId}`);
                 const nameEl = document.getElementById(`name_${rowId}`);
                 const catEl = document.getElementById(`cat_${rowId}`);
@@ -7179,12 +7199,261 @@ ightarrow$ Ventas</p>
                 const sku = skuEl ? skuEl.value.trim() : '';
                 const name = nameEl ? nameEl.value.trim() : '';
                 const category = catEl ? catEl.value : 'PRODUCTOS LIQUIDOS';
+                const price = priceEl ? parseFloat(priceEl.value) : 0;
+                const imageBase64 = base64El ? base64El.value : '';
+                const filename = filenameEl ? filenameEl.value : '';
+
+                if (!name) continue;
+
+                try {
+                    const resp = await fetch(`${API_URL}/products/update-details`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            sku: sku,
+                            name: name,
+                            regular_price: price,
+                            category: category,
+                            image_base64: imageBase64 || undefined,
+                            image_filename: filename || undefined,
+                            is_new: true
+                        })
+                    });
+                    const resJson = await resp.json();
+                    if (resJson && resJson.success) {
+                        guardadosCount++;
+                    } else {
+                        errores.push(`Producto "${name}": ${resJson.error || 'Error desconocido'}`);
+                    }
+                } catch (e) {
+                    errores.push(`Error en "${name}": ${e.message}`);
+                }
+            }
+
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<span class="material-symbols-outlined text-base">save</span> Guardar Nuevos Productos en Tienda y CRM';
+            }
+
+            if (resDiv) {
+                if (errores.length === 0 && guardadosCount > 0) {
+                    resDiv.className = 'text-xs font-bold p-3 rounded-xl border bg-emerald-500/20 text-emerald-300 border-emerald-500/40';
+                    resDiv.innerText = `Se crearon y guardaron correctamente ${guardadosCount} productos con sus categorías oficiales en WooCommerce y Supabase.`;
+                    limpiarNuevosProductosLote();
+                } else if (guardadosCount > 0) {
+                    resDiv.className = 'text-xs font-bold p-3 rounded-xl border bg-amber-500/20 text-amber-300 border-amber-500/40';
+                    resDiv.innerText = `Se procesaron ${guardadosCount} productos. Advertencias: ${errores.join(', ')}`;
+                } else {
+                    resDiv.className = 'text-xs font-bold p-3 rounded-xl border bg-rose-500/20 text-rose-300 border-rose-500/40';
+                    resDiv.innerText = `Por favor ingresá al menos el Nombre del Producto para guardarlo.`;
+                }
+                resDiv.classList.remove('hidden');
+            }
+
+            if (guardadosCount > 0) {
+                appendAuditLog('NEW_PRODUCT_CREATED', `Creó ${guardadosCount} nuevos productos desde la herramienta manual.`);
+            }
+        }
+
+        // -------------------------------------------------------------
+        // 2. BLOQUE: BUSCAR Y MODIFICAR PRODUCTOS EXISTENTES
+        // -------------------------------------------------------------
+        async function buscarProductoImagen(val) {
+            const resultsDiv = document.getElementById('img-search-results');
+            if (!resultsDiv) return;
+
+            if (!val || val.trim().length < 2) {
+                resultsDiv.classList.add('hidden');
+                resultsDiv.innerHTML = '';
+                return;
+            }
+
+            clearTimeout(debounceBuscarProdImg);
+            debounceBuscarProdImg = setTimeout(async () => {
+                resultsDiv.innerHTML = '<div class="p-3 text-xs text-purple-300 font-bold flex items-center gap-2"><span class="animate-spin">⏳</span> Buscando en catálogo en tiempo real...</div>';
+                resultsDiv.classList.remove('hidden');
+
+                try {
+                    const query = val.trim();
+                    const resp = await fetch(`${API_URL}/products/search?q=${encodeURIComponent(query)}`);
+                    const data = await resp.json();
+
+                    if (data && data.success && data.products && data.products.length > 0) {
+                        resultsDiv.innerHTML = data.products.map(p => {
+                            const imgThumb = p.image_url ? `<img src="${p.image_url}" class="w-10 h-10 object-cover rounded-lg border border-white/20 shrink-0">` : `<div class="w-10 h-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-[10px] text-gray-400 shrink-0">Sin foto</div>`;
+                            const priceText = p.regular_price ? `$ ${Number(p.regular_price).toLocaleString('es-AR')}` : 'Sin precio';
+                            const safeProdStr = encodeURIComponent(JSON.stringify(p));
+
+                            return `
+                                <div onclick="seleccionarProductoParaEditorManual('${safeProdStr}')" class="p-3 hover:bg-purple-500/20 cursor-pointer border-b border-white/5 transition-colors flex items-center justify-between gap-3">
+                                    <div class="flex items-center gap-3 min-w-0">
+                                        ${imgThumb}
+                                        <div class="min-w-0">
+                                            <p class="font-bold text-xs text-white truncate">${p.name}</p>
+                                            <p class="text-[10px] text-purple-300 font-mono">SKU: <span class="font-bold text-amber-400">${p.sku || 'N/A'}</span></p>
+                                        </div>
+                                    </div>
+                                    <div class="text-right shrink-0">
+                                        <span class="text-xs font-black text-amber-400 font-mono">${priceText}</span>
+                                        <span class="block text-[9px] text-emerald-400 font-bold">Clic para editar</span>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+                        resultsDiv.classList.remove('hidden');
+                    } else {
+                        resultsDiv.innerHTML = `<div class="p-3 text-xs text-gray-400 italic">No se encontraron productos para "${val}". Podés escribir otro nombre o SKU.</div>`;
+                        resultsDiv.classList.remove('hidden');
+                    }
+                } catch (err) {
+                    console.error('Error buscando productos:', err);
+                    resultsDiv.innerHTML = `<div class="p-3 text-xs text-red-400">Error al buscar productos: ${err.message}</div>`;
+                }
+            }, 300);
+        }
+
+        function seleccionarProductoParaEditorManual(encodedProdStr) {
+            try {
+                const prod = JSON.parse(decodeURIComponent(encodedProdStr));
+                agregarRenglonExistenteEditor(prod);
+                const searchInput = document.getElementById('img-prod-search');
+                if (searchInput) searchInput.value = '';
+                const resultsDiv = document.getElementById('img-search-results');
+                if (resultsDiv) {
+                    resultsDiv.classList.add('hidden');
+                    resultsDiv.innerHTML = '';
+                }
+            } catch (e) {
+                console.error('Error seleccionando producto:', e);
+            }
+        }
+
+        function agregarRenglonExistenteEditor(prod) {
+            const container = document.getElementById('existing-prod-editor-container');
+            const actions = document.getElementById('existing-prod-actions');
+            if (!container) return;
+
+            const rowId = 'exist_row_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+            const sku = prod.sku || '';
+            const name = prod.name || '';
+            const price = prod.regular_price || prod.price || '';
+            const cat = prod.category || 'PRODUCTOS LIQUIDOS';
+            const imageUrl = prod.image_url || '';
+
+            const rowHtml = `
+                <div id="${rowId}" class="p-4 rounded-2xl bg-slate-900/80 border border-purple-500/40 space-y-3 relative group hover:border-purple-400 transition-all shadow-md">
+                    <div class="flex flex-col md:flex-row items-start md:items-center gap-4">
+                        <!-- PREVIEW FOTO / UPLOAD -->
+                        <div class="flex items-center gap-3 shrink-0">
+                            <div class="relative w-16 h-16 rounded-xl overflow-hidden bg-slate-950 border border-white/20 flex items-center justify-center shrink-0">
+                                <img id="preview_${rowId}" src="${imageUrl || 'https://quimicadec.com/assets/img/categorias/productosparadiluir.jpeg'}" class="w-full h-full object-cover ${imageUrl ? '' : 'opacity-40'}">
+                                <span id="tag_${rowId}" class="absolute bottom-0 inset-x-0 bg-black/80 text-[8px] text-center text-gray-300 py-0.5 font-bold">${imageUrl ? 'Foto Actual' : 'Sin Foto'}</span>
+                            </div>
+                            <div class="space-y-1">
+                                <label class="cursor-pointer px-2.5 py-1.5 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/40 text-[10px] font-bold flex items-center gap-1 transition-all">
+                                    <span class="material-symbols-outlined text-[14px]">photo_camera</span> Cambiar Foto
+                                    <input type="file" accept="image/*" class="hidden" onchange="handleNewProductImageSelected('${rowId}', event)">
+                                </label>
+                                <input type="hidden" id="base64_${rowId}" value="">
+                                <input type="hidden" id="filename_${rowId}" value="">
+                            </div>
+                        </div>
+
+                        <!-- CAMPOS: NOMBRE, CATEGORÍA, PRECIO, SKU -->
+                        <div class="flex-1 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-12 gap-3 w-full">
+                            <!-- Nombre -->
+                            <div class="md:col-span-5 space-y-1">
+                                <label class="text-[9px] font-bold text-gray-300 uppercase">Nombre del Producto</label>
+                                <input type="text" id="name_${rowId}" value="${name.replace(/"/g, '&quot;')}" class="w-full bg-slate-950 border border-white/15 rounded-xl px-3 py-2 text-xs text-white font-bold focus:outline-none focus:border-purple-400">
+                            </div>
+
+                            <!-- Categoría -->
+                            <div class="md:col-span-4 space-y-1">
+                                <label class="text-[9px] font-bold text-purple-300 uppercase flex items-center gap-1">
+                                    <span class="material-symbols-outlined text-[12px]">category</span> Categoría Oficial (32)
+                                </label>
+                                <select id="cat_${rowId}" class="w-full bg-slate-950 border border-purple-500/40 rounded-xl px-3 py-2 text-xs text-purple-200 font-bold focus:outline-none focus:border-purple-400">
+                                    ${renderCategoriasOptionsHtml(cat)}
+                                </select>
+                            </div>
+
+                            <!-- Precio -->
+                            <div class="md:col-span-3 space-y-1">
+                                <label class="text-[9px] font-bold text-emerald-400 uppercase">Precio ($ ARS)</label>
+                                <input type="number" step="0.01" id="price_${rowId}" value="${price}" placeholder="0.00" class="w-full bg-slate-950 border border-emerald-500/30 rounded-xl px-3 py-2 text-xs text-emerald-300 font-mono font-bold focus:outline-none focus:border-emerald-400">
+                            </div>
+                        </div>
+
+                        <!-- SKU Y BOTÓN QUITAR -->
+                        <div class="flex items-center gap-2 self-end md:self-center shrink-0">
+                            <div class="text-right">
+                                <span class="block text-[8px] font-bold text-gray-400 uppercase">SKU</span>
+                                <span class="px-2 py-0.5 rounded-lg bg-slate-950 border border-white/20 text-gray-300 font-mono text-[11px] font-bold">${sku}</span>
+                                <input type="hidden" id="sku_${rowId}" value="${sku}">
+                            </div>
+                            <button type="button" onclick="eliminarRenglonExistente('${rowId}')" title="Quitar de la lista" class="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 transition-all">
+                                <span class="material-symbols-outlined text-[18px]">close</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            container.insertAdjacentHTML('beforeend', rowHtml);
+            existingProductRows.push(rowId);
+            if (actions) actions.classList.remove('hidden');
+        }
+
+        function eliminarRenglonExistente(rowId) {
+            const el = document.getElementById(rowId);
+            if (el) el.remove();
+            existingProductRows = existingProductRows.filter(id => id !== rowId);
+            if (existingProductRows.length === 0) {
+                const actions = document.getElementById('existing-prod-actions');
+                if (actions) actions.classList.add('hidden');
+            }
+        }
+
+        function limpiarExistentesEditorLote() {
+            const container = document.getElementById('existing-prod-editor-container');
+            if (container) container.innerHTML = '';
+            existingProductRows = [];
+            const actions = document.getElementById('existing-prod-actions');
+            if (actions) actions.classList.add('hidden');
+            const resDiv = document.getElementById('existing-prod-res');
+            if (resDiv) resDiv.classList.add('hidden');
+        }
+
+        async function guardarEditorExistentesLote() {
+            const btn = document.getElementById('btn-guardar-existentes-manual');
+            const resDiv = document.getElementById('existing-prod-res');
+
+            if (existingProductRows.length === 0) return;
+
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="animate-spin">⏳</span> Guardando modificaciones en WooCommerce y Supabase...';
+            }
+
+            let guardadosCount = 0;
+            let errores = [];
+
+            for (const rowId of existingProductRows) {
+                const skuEl = document.getElementById(`sku_${rowId}`);
+                const nameEl = document.getElementById(`name_${rowId}`);
+                const catEl = document.getElementById(`cat_${rowId}`);
+                const priceEl = document.getElementById(`price_${rowId}`);
+                const base64El = document.getElementById(`base64_${rowId}`);
+                const filenameEl = document.getElementById(`filename_${rowId}`);
+
+                const sku = skuEl ? skuEl.value.trim() : '';
+                const name = nameEl ? nameEl.value.trim() : '';
+                const category = catEl ? catEl.value : '';
                 const price = priceEl ? parseFloat(priceEl.value) : null;
                 const imageBase64 = base64El ? base64El.value : '';
                 const filename = filenameEl ? filenameEl.value : '';
-                const isNew = rowEl ? (rowEl.dataset.isNew === 'true') : false;
 
-                if (!sku && !name) continue;
+                if (!sku) continue;
 
                 try {
                     const resp = await fetch(`${API_URL}/products/update-details`, {
@@ -7194,10 +7463,10 @@ ightarrow$ Ventas</p>
                             sku: sku,
                             name: name || undefined,
                             regular_price: price !== null ? price : undefined,
-                            category: category,
+                            category: category || undefined,
                             image_base64: imageBase64 || undefined,
                             image_filename: filename || undefined,
-                            is_new: isNew
+                            is_new: false
                         })
                     });
                     const resJson = await resp.json();
@@ -7213,21 +7482,22 @@ ightarrow$ Ventas</p>
 
             if (btn) {
                 btn.disabled = false;
-                btn.innerHTML = '<span class="material-symbols-outlined text-base">save</span> Aplicar Cambios en Tienda Web y CRM';
+                btn.innerHTML = '<span class="material-symbols-outlined text-base">save</span> Guardar Modificaciones en Tienda y CRM';
             }
 
             if (resDiv) {
                 if (errores.length === 0) {
                     resDiv.className = 'text-xs font-bold p-3 rounded-xl border bg-emerald-500/20 text-emerald-300 border-emerald-500/40';
-                    resDiv.innerText = `🎉 ¡Éxito! Se guardaron correctamente ${guardadosCount} productos con sus categorías oficiales en WooCommerce y Supabase.`;
+                    resDiv.innerText = `Se actualizaron correctamente ${guardadosCount} productos en WooCommerce y Supabase.`;
+                    limpiarExistentesEditorLote();
                 } else {
                     resDiv.className = 'text-xs font-bold p-3 rounded-xl border bg-amber-500/20 text-amber-300 border-amber-500/40';
-                    resDiv.innerText = `⚠️ Se procesaron ${guardadosCount} productos. Advertencias: ${errores.join(', ')}`;
+                    resDiv.innerText = `Se procesaron ${guardadosCount} productos. Advertencias: ${errores.join(', ')}`;
                 }
                 resDiv.classList.remove('hidden');
             }
 
-            appendAuditLog('BATCH_PRODUCT_UPDATE', `Guardó ${guardadosCount} productos con categoría asignada desde el Editor Manual.`);
+            appendAuditLog('EXISTING_PRODUCT_UPDATED', `Actualizó ${guardadosCount} productos desde el Editor de Existentes.`);
         }
 
         // =========================================================================
@@ -8403,14 +8673,14 @@ ightarrow$ Ventas</p>
                     </div>
                 </button>
 
-                <!-- 6. Buscar Producto / Imagen -->
-                <button onclick="seleccionarHerramientaCatalogo('single', 'Buscar Producto / Imagen')" class="w-full box-border p-2.5 sm:p-3 rounded-2xl bg-white/[0.04] border border-white/10 hover:border-blue-500/50 hover:bg-blue-500/10 flex items-center gap-3 transition-all text-left group overflow-hidden cursor-pointer">
+                <!-- 6. Crear / Buscar Producto e Imagen -->
+                <button onclick="seleccionarHerramientaCatalogo('single', 'Crear / Buscar Producto e Imagen')" class="w-full box-border p-2.5 sm:p-3 rounded-2xl bg-white/[0.04] border border-white/10 hover:border-blue-500/50 hover:bg-blue-500/10 flex items-center gap-3 transition-all text-left group overflow-hidden cursor-pointer">
                     <div class="w-9 h-9 rounded-xl bg-blue-500/20 text-blue-300 flex items-center justify-center shrink-0">
-                        <span class="material-symbols-outlined text-lg">add_photo_alternate</span>
+                        <span class="material-symbols-outlined text-lg">add_box</span>
                     </div>
                     <div class="min-w-0 flex-1">
-                        <h5 class="text-xs font-bold text-white group-hover:text-blue-300 truncate">Buscar Producto / Imagen</h5>
-                        <p class="text-[10px] text-gray-400 truncate">Edición individual y fotos por producto</p>
+                        <h5 class="text-xs font-bold text-white group-hover:text-blue-300 truncate">Crear / Buscar Producto e Imagen</h5>
+                        <p class="text-[10px] text-gray-400 truncate">Carga manual, edición y fotos</p>
                     </div>
                 </button>
 
