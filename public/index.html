@@ -1433,25 +1433,97 @@ ightarrow$ Ventas</p>
                                     <div id="existing-prod-res" class="hidden text-xs font-bold p-3 rounded-xl border"></div>
                                 </div>
 
-                                <!-- BLOQUE 3: GESTOR DE BORRADORES Y PRODUCTOS PAUSADOS -->
-                                <div class="p-5 rounded-2xl bg-amber-950/20 border border-amber-500/40 space-y-4">
-                                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-amber-500/20 pb-3">
+                                <!-- BLOQUE 3: GESTOR DE ESTADO: PUBLICADOS (EN TIENDA) vs BORRADORES (PAUSADOS) -->
+                                <div class="p-5 rounded-2xl bg-white/5 border border-amber-500/40 space-y-4">
+                                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-white/10 pb-3">
                                         <div>
                                             <h3 class="font-title text-xs font-bold uppercase text-amber-300 tracking-wider flex items-center gap-2">
-                                                <span class="material-symbols-outlined text-amber-400 text-xl">pause_circle</span> <span>Gestor de Borradores / Productos Pausados</span>
+                                                <span class="material-symbols-outlined text-amber-400 text-xl">swap_horiz</span> <span>Gestor de Estado: Publicados (En Tienda) vs Borradores (Pausados)</span>
                                             </h3>
-                                            <p class="text-[11px] text-gray-300 mt-0.5">Control visual de productos que están actualmente en borrador (fuera de línea / ocultos de la tienda) sin haber sido borrados. Podés reactivarlos con 1 clic o eliminarlos definitivamente.</p>
+                                            <p class="text-[11px] text-gray-300 mt-0.5">Cambiá fácilmente productos de <strong>Publicado a Borrador (Pausar)</strong> o de <strong>Borrador a Publicado (Reactivar)</strong> con 1 solo clic.</p>
                                         </div>
-                                        <button type="button" onclick="cargarGestorBorradores()" id="btn-refresh-drafts" class="px-4 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 font-bold text-xs flex items-center gap-1.5 transition-all shadow shrink-0 cursor-pointer">
-                                            <span class="material-symbols-outlined text-sm">refresh</span> Ver / Actualizar Borradores
-                                        </button>
+
+                                        <!-- SELECTOR DE PESTAÑAS DENTRO DEL GESTOR -->
+                                        <div class="flex items-center p-1 bg-black/40 border border-white/10 rounded-xl shrink-0">
+                                            <button type="button" id="tab-btn-published" onclick="switchDraftsTab('published')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 flex items-center gap-1.5 cursor-pointer">
+                                                <span class="material-symbols-outlined text-sm">check_circle</span> <span>🟢 Publicados (En Tienda)</span>
+                                            </button>
+                                            <button type="button" id="tab-btn-drafts" onclick="switchDraftsTab('drafts')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all text-gray-400 hover:text-white flex items-center gap-1.5 cursor-pointer">
+                                                <span class="material-symbols-outlined text-sm">pause_circle</span> <span>🟡 Borradores (Pausados)</span>
+                                            </button>
+                                        </div>
                                     </div>
 
-                                    <div id="drafts-list-container" class="space-y-2.5">
-                                        <div class="p-4 rounded-xl bg-slate-900/60 border border-white/5 text-center text-xs text-gray-400">
-                                            Hacé clic en <span class="text-amber-300 font-bold">"Ver / Actualizar Borradores"</span> para consultar los productos que están fuera de línea.
+                                    <!-- VISTA 1: PRODUCTOS PUBLICADOS (PARA PASAR A BORRADOR) -->
+                                    <div id="view-published-container" class="space-y-3">
+                                        <div class="flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-900/60 p-3 rounded-xl border border-emerald-500/30">
+                                            <div class="flex-1 w-full flex items-center gap-2">
+                                                <input type="text" id="filter-published-search" oninput="filtrarProductosPublicadosUI()" placeholder="Filtrar por nombre o SKU en productos publicados..." class="w-full bg-slate-950 border border-emerald-500/30 rounded-xl px-3 py-1.5 text-xs text-white placeholder-gray-400 focus:outline-none focus:border-emerald-400 font-mono">
+                                                <select id="filter-published-cat" onchange="cargarProductosPublicados()" class="bg-slate-950 border border-emerald-500/30 rounded-xl px-2.5 py-1.5 text-xs text-emerald-300 font-bold focus:outline-none">
+                                                    <option value="TODAS">Todas las Categorías</option>
+                                                    <option value="PRODUCTOS LIQUIDOS">Productos Líquidos</option>
+                                                    <option value="PRODUCTOS PARA DILUIR">Productos para Diluir</option>
+                                                    <option value="PRIMERAS MARCAS">Primeras Marcas</option>
+                                                    <option value="PASTAS Y CONCENTRADOS">Pastas y Concentrados</option>
+                                                    <option value="AEROSOLES">Aerosoles</option>
+                                                    <option value="JABON EN POLVO">Jabón en Polvo</option>
+                                                    <option value="JABON EN PAN">Jabón en Pan</option>
+                                                    <option value="OFERTAS SEMANALES">Ofertas Semanales</option>
+                                                    <option value="COMBOS EMPRENDEDORES">Combos Emprendedores</option>
+                                                    <option value="ESPONJAS">Esponjas</option>
+                                                    <option value="ESCOBILLONES">Escobillones</option>
+                                                    <option value="CEPILLOS">Cepillos</option>
+                                                    <option value="SECADORES">Secadores</option>
+                                                    <option value="CABOS">Cabos</option>
+                                                    <option value="BURLETES">Burletes</option>
+                                                    <option value="BOLSAS">Bolsas</option>
+                                                    <option value="ENVASES">Envases</option>
+                                                    <option value="BAÑO">Baño</option>
+                                                    <option value="COCINA">Cocina</option>
+                                                    <option value="PERFUMERIA">Perfumería</option>
+                                                    <option value="SAHUMERIOS">Sahumerios</option>
+                                                    <option value="TEXTILES">Textiles</option>
+                                                    <option value="PAPELES">Papeles</option>
+                                                    <option value="REPELENTES">Repelentes</option>
+                                                    <option value="INSECTICIDAS">Insecticidas</option>
+                                                    <option value="HIGIENE PERSONAL">Higiene Personal</option>
+                                                    <option value="JABON DE TOCADOR">Jabón Tocador</option>
+                                                    <option value="JARDÍN">Jardín</option>
+                                                    <option value="PILETA">Pileta</option>
+                                                    <option value="AUTOMOVIL">Automóvil</option>
+                                                    <option value="KIOSCO Y VARIOS">Kiosco y Varios</option>
+                                                    <option value="PLASTICOS">Plásticos</option>
+                                                    <option value="LIMPIEZA HOGAR">Limpieza Hogar</option>
+                                                </select>
+                                            </div>
+                                            <button type="button" onclick="cargarProductosPublicados()" class="px-3 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 font-bold text-xs flex items-center gap-1 shrink-0 cursor-pointer">
+                                                <span class="material-symbols-outlined text-sm">refresh</span> Actualizar
+                                            </button>
+                                        </div>
+
+                                        <div id="published-list-container" class="space-y-2.5">
+                                            <div class="p-4 rounded-xl bg-slate-900/60 border border-white/5 text-center text-xs text-gray-400">
+                                                Hacé clic en <span class="text-emerald-300 font-bold">"Actualizar"</span> para cargar la lista de productos publicados.
+                                            </div>
                                         </div>
                                     </div>
+
+                                    <!-- VISTA 2: GESTOR DE BORRADORES (PARA REACTIVAR O BORRAR) -->
+                                    <div id="view-drafts-container" class="hidden space-y-3">
+                                        <div class="flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-900/60 p-3 rounded-xl border border-amber-500/30">
+                                            <input type="text" id="filter-drafts-search" oninput="filtrarBorradoresUI()" placeholder="Filtrar por nombre o SKU en borradores..." class="w-full bg-slate-950 border border-amber-500/30 rounded-xl px-3 py-1.5 text-xs text-white placeholder-gray-400 focus:outline-none focus:border-amber-400 font-mono">
+                                            <button type="button" onclick="cargarGestorBorradores()" class="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 font-bold text-xs flex items-center gap-1 shrink-0 cursor-pointer">
+                                                <span class="material-symbols-outlined text-sm">refresh</span> Actualizar
+                                            </button>
+                                        </div>
+
+                                        <div id="drafts-list-container" class="space-y-2.5">
+                                            <div class="p-4 rounded-xl bg-slate-900/60 border border-white/5 text-center text-xs text-gray-400">
+                                                Hacé clic en <span class="text-amber-300 font-bold">"Ver / Actualizar Borradores"</span> para consultar los productos que están fuera de línea.
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     <div id="drafts-action-res" class="hidden text-xs font-bold p-3 rounded-xl border"></div>
                                 </div>
 
@@ -6227,6 +6299,7 @@ ightarrow$ Ventas</p>
             if (subtab === 'banners') renderBannersGridUI();
             if (subtab === 'single') {
                 if (newProductRows.length === 0) crearNuevoProductoManual();
+                cargarProductosPublicados();
                 cargarGestorBorradores();
             }
             
@@ -7228,21 +7301,41 @@ ightarrow$ Ventas</p>
                     if (data && data.success && data.products && data.products.length > 0) {
                         resultsDiv.innerHTML = data.products.map(p => {
                             const imgThumb = p.image_url ? `<img src="${p.image_url}" class="w-10 h-10 object-cover rounded-lg border border-white/20 shrink-0">` : `<div class="w-10 h-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-[10px] text-gray-400 shrink-0">Sin foto</div>`;
-                            const priceText = p.regular_price ? `$ ${Number(p.regular_price).toLocaleString('es-AR')}` : 'Sin precio';
+                            const priceText = (p.regular_price || p.price) ? `$ ${Number(p.regular_price || p.price).toLocaleString('es-AR')}` : 'Sin precio';
+                            const isDraft = (p.status === 'draft' || p.status === 'borrador');
                             const safeProdStr = encodeURIComponent(JSON.stringify(p));
+                            const safeName = (p.name || '').replace(/'/g, "\\'");
 
                             return `
-                                <div onclick="seleccionarProductoParaEditorManual('${safeProdStr}')" class="p-3 hover:bg-purple-500/20 cursor-pointer border-b border-white/5 transition-colors flex items-center justify-between gap-3">
-                                    <div class="flex items-center gap-3 min-w-0">
+                                <div class="p-3 hover:bg-purple-500/10 border-b border-white/5 transition-colors flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                                    <div onclick="seleccionarProductoParaEditorManual('${safeProdStr}')" class="flex items-center gap-3 min-w-0 flex-1 cursor-pointer">
                                         ${imgThumb}
                                         <div class="min-w-0">
-                                            <p class="font-bold text-xs text-white truncate">${p.name}</p>
-                                            <p class="text-[10px] text-purple-300 font-mono">SKU: <span class="font-bold text-amber-400">${p.sku || 'N/A'}</span></p>
+                                            <div class="flex items-center gap-2">
+                                                <p class="font-bold text-xs text-white truncate">${p.name}</p>
+                                                <span class="px-1.5 py-0.2 rounded ${isDraft ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'} text-[9px] font-bold shrink-0">
+                                                    ${isDraft ? 'Borrador' : 'Publicado'}
+                                                </span>
+                                            </div>
+                                            <p class="text-[10px] text-purple-300 font-mono">SKU: <span class="font-bold text-amber-400">${p.sku || 'N/A'}</span> | <span class="font-black text-emerald-400">${priceText}</span></p>
                                         </div>
                                     </div>
-                                    <div class="text-right shrink-0">
-                                        <span class="text-xs font-black text-amber-400 font-mono">${priceText}</span>
-                                        <span class="block text-[9px] text-emerald-400 font-bold">Clic para editar</span>
+                                    <div class="flex items-center gap-1.5 self-end sm:self-center shrink-0">
+                                        ${isDraft ? `
+                                            <button type="button" onclick="event.stopPropagation(); cambiarEstadoProducto('${p.sku}', 'publish')" title="Publicar y activar en tienda" class="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer">
+                                                <span class="material-symbols-outlined text-[13px]">play_circle</span> Publicar
+                                            </button>
+                                        ` : `
+                                            <button type="button" onclick="event.stopPropagation(); cambiarEstadoProducto('${p.sku}', 'draft')" title="Pausar producto de la tienda (pasar a borrador)" class="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer">
+                                                <span class="material-symbols-outlined text-[13px]">pause_circle</span> Pasar a Borrador
+                                            </button>
+                                        `}
+                                        <button type="button" onclick="event.stopPropagation(); seleccionarProductoParaEditorManual('${safeProdStr}')" title="Cargar en editor para modificar" class="px-2.5 py-1 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/40 text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer">
+                                            <span class="material-symbols-outlined text-[13px]">edit</span> Modificar
+                                        </button>
+                                        <button type="button" onclick="event.stopPropagation(); eliminarProductoDefinitivo('${p.sku}', '${safeName}')" title="Eliminar definitivamente" class="p-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 transition-all cursor-pointer">
+                                            <span class="material-symbols-outlined text-[13px]">delete</span>
+                                        </button>
                                     </div>
                                 </div>
                             `;
@@ -7476,8 +7569,252 @@ ightarrow$ Ventas</p>
         }
 
         // =========================================================================
-        // GESTIÓN DE BORRADORES Y BORRADO DE PRODUCTOS
+        // GESTIÓN DE ESTADO: PUBLICADOS (EN TIENDA) vs BORRADORES (PAUSADOS)
         // =========================================================================
+        let cachedPublishedProducts = [];
+        let cachedDraftProducts = [];
+
+        function switchDraftsTab(tab) {
+            const btnPub = document.getElementById('tab-btn-published');
+            const btnDraft = document.getElementById('tab-btn-drafts');
+            const viewPub = document.getElementById('view-published-container');
+            const viewDraft = document.getElementById('view-drafts-container');
+
+            if (tab === 'published') {
+                if (btnPub) {
+                    btnPub.className = 'px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 flex items-center gap-1.5 cursor-pointer';
+                }
+                if (btnDraft) {
+                    btnDraft.className = 'px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all text-gray-400 hover:text-white flex items-center gap-1.5 cursor-pointer';
+                }
+                if (viewPub) viewPub.classList.remove('hidden');
+                if (viewDraft) viewDraft.classList.add('hidden');
+                if (cachedPublishedProducts.length === 0) cargarProductosPublicados();
+            } else {
+                if (btnDraft) {
+                    btnDraft.className = 'px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-amber-500/30 text-amber-300 border border-amber-500/40 flex items-center gap-1.5 cursor-pointer';
+                }
+                if (btnPub) {
+                    btnPub.className = 'px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all text-gray-400 hover:text-white flex items-center gap-1.5 cursor-pointer';
+                }
+                if (viewDraft) viewDraft.classList.remove('hidden');
+                if (viewPub) viewPub.classList.add('hidden');
+                cargarGestorBorradores();
+            }
+        }
+
+        async function cargarProductosPublicados() {
+            const container = document.getElementById('published-list-container');
+            const searchInput = document.getElementById('filter-published-search');
+            const catSelect = document.getElementById('filter-published-cat');
+            if (!container) return;
+
+            container.innerHTML = '<div class="p-4 text-center text-xs text-emerald-300 font-bold flex items-center justify-center gap-2"><span class="animate-spin">⏳</span> Consultando productos publicados en tiempo real...</div>';
+
+            try {
+                const query = searchInput ? encodeURIComponent(searchInput.value.trim()) : '';
+                const category = catSelect ? encodeURIComponent(catSelect.value) : 'TODAS';
+                const resp = await fetch(`${API_URL}/products/published?q=${query}&category=${category}&limit=120`);
+                const data = await resp.json();
+
+                if (data && data.success && data.products) {
+                    cachedPublishedProducts = data.products;
+                    renderProductosPublicadosList(cachedPublishedProducts);
+                } else {
+                    container.innerHTML = '<div class="p-3 text-xs text-rose-400">No se pudieron cargar los productos publicados.</div>';
+                }
+            } catch (e) {
+                container.innerHTML = `<div class="p-3 text-xs text-rose-400">Error: ${e.message}</div>`;
+            }
+        }
+
+        function renderProductosPublicadosList(products) {
+            const container = document.getElementById('published-list-container');
+            if (!container) return;
+
+            if (!products || products.length === 0) {
+                container.innerHTML = `
+                    <div class="p-4 rounded-xl bg-slate-900/60 border border-white/10 text-center text-xs text-gray-400">
+                        No se encontraron productos publicados con los filtros actuales.
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="mb-2 text-xs font-bold text-emerald-300 flex items-center justify-between">
+                    <span class="flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-sm">check_circle</span> Hay <span class="font-mono text-white">${products.length}</span> producto(s) Publicados (Activos en Tienda):
+                    </span>
+                    <span class="text-[10px] text-gray-400">Hacé clic en "Pasar a Borrador" para pausar cualquier producto de la venta.</span>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-96 overflow-y-auto pr-1">
+                    ${products.map(p => {
+                        const imgUrl = p.image_url || 'https://quimicadec.com/assets/img/categorias/productosparadiluir.jpeg';
+                        const priceFmt = p.price ? `$ ${Number(p.price).toLocaleString('es-AR')}` : 'Sin precio';
+                        const safeProd = {
+                            id: p.id,
+                            sku: p.sku,
+                            name: p.name,
+                            price: p.price,
+                            regular_price: p.price,
+                            category: p.category,
+                            image_url: p.image_url,
+                            status: 'publish'
+                        };
+                        const safeProdStr = encodeURIComponent(JSON.stringify(safeProd));
+                        const safeName = (p.name || '').replace(/'/g, "\\'");
+
+                        return `
+                            <div class="p-3 rounded-xl bg-slate-900/90 border border-emerald-500/30 flex items-center justify-between gap-3 shadow hover:border-emerald-400 transition-all">
+                                <div class="flex items-center gap-2.5 min-w-0">
+                                    <img src="${imgUrl}" class="w-11 h-11 rounded-lg object-cover bg-black border border-white/10 shrink-0">
+                                    <div class="min-w-0">
+                                        <h5 class="text-xs font-bold text-white truncate" title="${p.name}">${p.name || p.sku}</h5>
+                                        <p class="text-[10px] text-emerald-300 font-mono">SKU: <span class="text-amber-300">${p.sku}</span> | <span class="font-bold text-white">${priceFmt}</span></p>
+                                        <span class="text-[9px] text-gray-400 uppercase font-bold">${p.category || 'Sin categoría'}</span>
+                                    </div>
+                                </div>
+                                <div class="flex flex-col gap-1.5 shrink-0">
+                                    <button type="button" onclick="cambiarEstadoProducto('${p.sku}', 'draft')" title="Pausar producto de la tienda (pasar a borrador)" class="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer">
+                                        <span class="material-symbols-outlined text-[13px]">pause_circle</span> Pasar a Borrador
+                                    </button>
+                                    <div class="flex items-center gap-1">
+                                        <button type="button" onclick="seleccionarProductoParaEditorManual('${safeProdStr}')" title="Cargar en editor para modificar" class="flex-1 px-2 py-0.5 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/40 text-[9px] font-bold flex items-center justify-center gap-0.5 transition-all cursor-pointer">
+                                            <span class="material-symbols-outlined text-[11px]">edit</span> Editar
+                                        </button>
+                                        <button type="button" onclick="eliminarProductoDefinitivo('${p.sku}', '${safeName}')" title="Eliminar definitivamente" class="px-2 py-0.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 text-[9px] font-bold flex items-center justify-center transition-all cursor-pointer">
+                                            <span class="material-symbols-outlined text-[11px]">delete</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }
+
+        function filtrarProductosPublicadosUI() {
+            const input = document.getElementById('filter-published-search');
+            if (!input) return;
+            const q = input.value.trim().toLowerCase();
+            if (!q) {
+                renderProductosPublicadosList(cachedPublishedProducts);
+                return;
+            }
+            const filtered = cachedPublishedProducts.filter(p => 
+                (p.name && p.name.toLowerCase().includes(q)) || 
+                (p.sku && p.sku.toLowerCase().includes(q)) || 
+                (p.category && p.category.toLowerCase().includes(q))
+            );
+            renderProductosPublicadosList(filtered);
+        }
+
+        async function cargarGestorBorradores() {
+            const container = document.getElementById('drafts-list-container');
+            if (!container) return;
+
+            container.innerHTML = '<div class="p-4 text-center text-xs text-amber-300 font-bold flex items-center justify-center gap-2"><span class="animate-spin">⏳</span> Consultando lista de borradores en tiempo real...</div>';
+
+            try {
+                const resp = await fetch(`${API_URL}/products/drafts`);
+                const data = await resp.json();
+
+                if (data && data.success && data.drafts) {
+                    cachedDraftProducts = data.drafts;
+                    renderBorradoresList(cachedDraftProducts);
+                } else {
+                    container.innerHTML = '<div class="p-3 text-xs text-rose-400">No se pudieron cargar los borradores.</div>';
+                }
+            } catch (e) {
+                container.innerHTML = `<div class="p-3 text-xs text-rose-400">Error al cargar borradores: ${e.message}</div>`;
+            }
+        }
+
+        function renderBorradoresList(drafts) {
+            const container = document.getElementById('drafts-list-container');
+            if (!container) return;
+
+            if (!drafts || drafts.length === 0) {
+                container.innerHTML = `
+                    <div class="p-4 rounded-xl bg-slate-900/60 border border-emerald-500/30 text-center text-xs text-emerald-300 font-bold flex items-center justify-center gap-1.5">
+                        <span class="material-symbols-outlined text-sm">check_circle</span> No hay ningún producto en borrador. Todos los productos del catálogo están actualmente publicados y activos en la tienda.
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="mb-2 text-xs font-bold text-amber-300 flex items-center justify-between">
+                    <span class="flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-sm">info</span> Hay <span class="font-mono text-white">${drafts.length}</span> producto(s) en Borrador / Pausados:
+                    </span>
+                    <span class="text-[10px] text-gray-400">Hacé clic en "Reactivar" para publicar en tienda o "Editar" para modificar.</span>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-96 overflow-y-auto pr-1">
+                    ${drafts.map(p => {
+                        const imgUrl = p.image_url || 'https://quimicadec.com/assets/img/categorias/productosparadiluir.jpeg';
+                        const priceFmt = p.price ? `$ ${Number(p.price).toLocaleString('es-AR')}` : 'Sin precio';
+                        const safeProd = {
+                            id: p.id,
+                            sku: p.sku,
+                            name: p.name,
+                            price: p.price,
+                            regular_price: p.price,
+                            category: p.category,
+                            image_url: p.image_url,
+                            status: 'draft'
+                        };
+                        const safeProdStr = encodeURIComponent(JSON.stringify(safeProd));
+                        const safePName = (p.name || 'Sin nombre').replace(/'/g, "\\'");
+
+                        return `
+                            <div class="p-3 rounded-xl bg-slate-900/90 border border-amber-500/30 flex items-center justify-between gap-3 shadow hover:border-amber-400 transition-all">
+                                <div class="flex items-center gap-2.5 min-w-0">
+                                    <img src="${imgUrl}" class="w-11 h-11 rounded-lg object-cover bg-black border border-white/10 shrink-0">
+                                    <div class="min-w-0">
+                                        <h5 class="text-xs font-bold text-white truncate" title="${p.name}">${p.name || p.sku}</h5>
+                                        <p class="text-[10px] text-amber-300 font-mono">SKU: <span class="text-white">${p.sku}</span> | <span class="text-emerald-400 font-bold">${priceFmt}</span></p>
+                                        <span class="text-[9px] text-gray-400 uppercase font-bold">${p.category || 'Sin categoría'}</span>
+                                    </div>
+                                </div>
+                                <div class="flex flex-col gap-1.5 shrink-0">
+                                    <button type="button" onclick="cambiarEstadoProducto('${p.sku}', 'publish')" title="Publicar y reactivar en tienda" class="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer">
+                                        <span class="material-symbols-outlined text-[13px]">play_circle</span> Reactivar
+                                    </button>
+                                    <div class="flex items-center gap-1">
+                                        <button type="button" onclick="seleccionarProductoParaEditorManual('${safeProdStr}')" title="Cargar en editor para modificar" class="flex-1 px-2 py-0.5 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/40 text-[9px] font-bold flex items-center justify-center gap-0.5 transition-all cursor-pointer">
+                                            <span class="material-symbols-outlined text-[11px]">edit</span> Editar
+                                        </button>
+                                        <button type="button" onclick="eliminarProductoDefinitivo('${p.sku}', '${safePName}')" title="Eliminar definitivamente" class="px-2 py-0.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 text-[9px] font-bold flex items-center justify-center transition-all cursor-pointer">
+                                            <span class="material-symbols-outlined text-[11px]">delete</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }
+
+        function filtrarBorradoresUI() {
+            const input = document.getElementById('filter-drafts-search');
+            if (!input) return;
+            const q = input.value.trim().toLowerCase();
+            if (!q) {
+                renderBorradoresList(cachedDraftProducts);
+                return;
+            }
+            const filtered = cachedDraftProducts.filter(p => 
+                (p.name && p.name.toLowerCase().includes(q)) || 
+                (p.sku && p.sku.toLowerCase().includes(q)) || 
+                (p.category && p.category.toLowerCase().includes(q))
+            );
+            renderBorradoresList(filtered);
+        }
+
         async function cambiarEstadoProducto(sku, newStatus, rowId = null) {
             const resDiv = document.getElementById('existing-prod-res') || document.getElementById('drafts-action-res');
             try {
@@ -7498,6 +7835,7 @@ ightarrow$ Ventas</p>
                         resDiv.innerText = data.mensaje || `Estado de ${sku} actualizado a ${newStatus}.`;
                         resDiv.classList.remove('hidden');
                     }
+                    cargarProductosPublicados();
                     cargarGestorBorradores();
                     appendAuditLog('PRODUCT_STATUS_CHANGE', `Cambió estado de ${sku} a ${newStatus}`);
                 } else {
@@ -7531,6 +7869,7 @@ ightarrow$ Ventas</p>
                         resDiv.innerText = data.mensaje || `Producto ${sku} eliminado correctamente.`;
                         resDiv.classList.remove('hidden');
                     }
+                    cargarProductosPublicados();
                     cargarGestorBorradores();
                     appendAuditLog('PRODUCT_DELETED', `Eliminó el producto ${sku}`);
                 } else {
@@ -7538,61 +7877,6 @@ ightarrow$ Ventas</p>
                 }
             } catch (err) {
                 alert(`Error de red al eliminar producto: ${err.message}`);
-            }
-        }
-
-        async function cargarGestorBorradores() {
-            const container = document.getElementById('drafts-list-container');
-            if (!container) return;
-
-            container.innerHTML = '<div class="p-4 text-center text-xs text-amber-300 font-bold flex items-center justify-center gap-2"><span class="animate-spin">⏳</span> Consultando lista de borradores en tiempo real...</div>';
-
-            try {
-                const resp = await fetch(`${API_URL}/products/drafts`);
-                const data = await resp.json();
-
-                if (data && data.success && data.drafts && data.drafts.length > 0) {
-                    container.innerHTML = `
-                        <div class="mb-2 text-xs font-bold text-amber-300 flex items-center gap-1.5">
-                            <span class="material-symbols-outlined text-sm">info</span> Hay <span class="font-mono text-white">${data.drafts.length}</span> producto(s) en Borrador / Pausados:
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-80 overflow-y-auto pr-1">
-                            ${data.drafts.map(p => {
-                                const imgUrl = p.image_url || 'https://quimicadec.com/assets/img/categorias/productosparadiluir.jpeg';
-                                const priceFmt = p.price ? `$ ${Number(p.price).toLocaleString('es-AR')}` : 'Sin precio';
-                                const safePName = (p.name || 'Sin nombre').replace(/'/g, "\\'");
-                                return `
-                                    <div class="p-3 rounded-xl bg-slate-900/90 border border-amber-500/30 flex items-center justify-between gap-3 shadow">
-                                        <div class="flex items-center gap-2.5 min-w-0">
-                                            <img src="${imgUrl}" class="w-11 h-11 rounded-lg object-cover bg-black border border-white/10 shrink-0">
-                                            <div class="min-w-0">
-                                                <h5 class="text-xs font-bold text-white truncate">${p.name || p.sku}</h5>
-                                                <p class="text-[10px] text-amber-300 font-mono">SKU: ${p.sku} | <span class="text-emerald-400 font-bold">${priceFmt}</span></p>
-                                                <span class="text-[9px] text-gray-400 uppercase font-bold">${p.category || 'Sin categoría'}</span>
-                                            </div>
-                                        </div>
-                                        <div class="flex flex-col gap-1.5 shrink-0">
-                                            <button type="button" onclick="cambiarEstadoProducto('${p.sku}', 'publish')" title="Publicar y reactivar en tienda" class="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer">
-                                                <span class="material-symbols-outlined text-[13px]">play_circle</span> Reactivar
-                                            </button>
-                                            <button type="button" onclick="eliminarProductoDefinitivo('${p.sku}', '${safePName}')" title="Eliminar definitivamente" class="px-2.5 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer">
-                                                <span class="material-symbols-outlined text-[13px]">delete_forever</span> Borrar
-                                            </button>
-                                        </div>
-                                    </div>
-                                `;
-                            }).join('')}
-                        </div>
-                    `;
-                } else {
-                    container.innerHTML = `
-                        <div class="p-4 rounded-xl bg-slate-900/60 border border-emerald-500/30 text-center text-xs text-emerald-300 font-bold flex items-center justify-center gap-1.5">
-                            <span class="material-symbols-outlined text-sm">check_circle</span> No hay ningún producto en borrador. Todos los productos del catálogo están actualmente publicados y activos en la tienda.
-                        </div>
-                    `;
-                }
-            } catch (e) {
-                container.innerHTML = `<div class="p-3 text-xs text-rose-400">Error al cargar borradores: ${e.message}</div>`;
             }
         }
 

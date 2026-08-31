@@ -2196,7 +2196,7 @@ app.get('/api/products/search', async (req, res) => {
         // 2. Fallback Supabase dec_products (EXCLUYENDO borradores y SKUs obsoletos _ID)
         let { data, error } = await supabase
             .from('dec_products')
-            .select('id, name, sku, price, stock, image_url, stock_status')
+            .select('id, name, sku, price, stock, image_url, stock_status, status, category')
             .not('sku', 'ilike', '%_ID%')
             .gt('price', 0)
             .or(`name.ilike.%${query}%,sku.ilike.%${query}%`)
@@ -2215,7 +2215,9 @@ app.get('/api/products/search', async (req, res) => {
             regular_price: parseFloat(p.price || 0),
             stock: p.stock,
             image_url: p.image_url,
-            stock_status: p.stock_status
+            stock_status: p.stock_status,
+            status: p.status || 'publish',
+            category: p.category || ''
         }));
 
         return res.json({ success: true, count: formatted.length, products: formatted });
@@ -2447,6 +2449,42 @@ app.get('/api/products/drafts', async (req, res) => {
             success: true,
             count: (data || []).length,
             drafts: data || []
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Endpoint para Listar Productos Publicados (Activos en Tienda)
+app.get('/api/products/published', async (req, res) => {
+    try {
+        const query = (req.query.q || '').trim();
+        const category = (req.query.category || '').trim();
+        const limit = parseInt(req.query.limit || '100');
+
+        let dbQuery = supabase
+            .from('dec_products')
+            .select('*')
+            .neq('status', 'draft')
+            .not('sku', 'ilike', '%_ID%')
+            .gt('price', 0)
+            .order('name', { ascending: true })
+            .limit(limit);
+
+        if (query) {
+            dbQuery = dbQuery.or(`name.ilike.%${query}%,sku.ilike.%${query}%`);
+        }
+        if (category && category !== 'TODAS') {
+            dbQuery = dbQuery.eq('category', category);
+        }
+
+        const { data, error } = await dbQuery;
+        if (error) throw error;
+
+        res.json({
+            success: true,
+            count: (data || []).length,
+            products: data || []
         });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
