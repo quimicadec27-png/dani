@@ -2342,6 +2342,116 @@ app.post('/api/products/update-details', async (req, res) => {
     }
 });
 
+// Endpoint para Cambiar Estado de Producto (Publicado <-> Borrador / Pausado)
+app.post('/api/products/toggle-status', async (req, res) => {
+    try {
+        const { sku, status } = req.body;
+        if (!sku) {
+            return res.status(400).json({ success: false, error: 'SKU es requerido.' });
+        }
+
+        const newStatus = (status === 'draft' || status === 'borrador') ? 'draft' : 'publish';
+
+        // 1. Actualizar en WooCommerce
+        let wcData = { success: false };
+        try {
+            const wcRes = await fetch('https://quimicadec.com/?qdec_api=update_product_details', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    secret_key: 'qdec_crm_sec_2026',
+                    sku: sku,
+                    status: newStatus
+                })
+            });
+            wcData = await wcRes.json();
+        } catch (e) {
+            console.error('Error actualizando estado en WC:', e.message);
+        }
+
+        // 2. Actualizar en Supabase
+        const { error: sbErr } = await supabase
+            .from('dec_products')
+            .update({ status: newStatus, updated_at: new Date().toISOString() })
+            .eq('sku', sku);
+
+        refreshProductCatalog();
+
+        res.json({
+            success: true,
+            sku,
+            status: newStatus,
+            mensaje: newStatus === 'draft' ? `🟡 Producto ${sku} cambiado a Borrador (Pausado en Tienda).` : `🟢 Producto ${sku} publicado (Activo en Tienda).`,
+            wc_response: wcData
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Endpoint para Eliminar Producto (WooCommerce y Supabase)
+app.post('/api/products/delete', async (req, res) => {
+    try {
+        const { sku } = req.body;
+        if (!sku) {
+            return res.status(400).json({ success: false, error: 'SKU es requerido.' });
+        }
+
+        // 1. Eliminar en WooCommerce
+        let wcData = { success: false };
+        try {
+            const wcRes = await fetch('https://quimicadec.com/?qdec_api=delete_product', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    secret_key: 'qdec_crm_sec_2026',
+                    sku: sku
+                })
+            });
+            wcData = await wcRes.json();
+        } catch (e) {
+            console.error('Error eliminando en WC:', e.message);
+        }
+
+        // 2. Eliminar en Supabase
+        const { error: sbErr } = await supabase
+            .from('dec_products')
+            .delete()
+            .eq('sku', sku);
+
+        refreshProductCatalog();
+
+        res.json({
+            success: true,
+            sku,
+            mensaje: `🗑️ Producto ${sku} eliminado correctamente de la base de datos y WooCommerce.`,
+            wc_response: wcData
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Endpoint para Listar Todos los Borradores / Productos Pausados
+app.get('/api/products/drafts', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('dec_products')
+            .select('*')
+            .eq('status', 'draft')
+            .order('updated_at', { ascending: false });
+
+        if (error) throw error;
+
+        res.json({
+            success: true,
+            count: (data || []).length,
+            drafts: data || []
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
 
 // Endpoint para Carga Masiva de Productos y Variaciones vía Excel / CSV
 app.post('/api/products/bulk-excel', async (req, res) => {

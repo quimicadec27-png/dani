@@ -266,3 +266,17 @@ El catálogo oficial de Química DEC (`quimicadec.com/catalogo`) cuenta con más
 * [`crm-backend/catalogo_completo_3800.json`](file:///c:/Users/wilde.WIL/OneDrive/Escritorio/PROYECTOS%20IA/Qu%C3%ADmica%20DEC/quimica_dec/crm-backend/catalogo_completo_3800.json): Respaldo JSON de los 3.533+ productos con precios corregidos.
 * [`wpcode_upload_image_api.php`](file:///c:/Users/wilde.WIL/OneDrive/Escritorio/PROYECTOS%20IA/Qu%C3%ADmica%20DEC/quimica_dec/wpcode_upload_image_api.php): Endpoint central de sincronización en WooCommerce (actualización y creación de productos, asignación de 32 categorías, subida de fotos y purga de caché).
 * [`CONSTITUCION_DEL_PROYECTO.md`](file:///c:/Users/wilde.WIL/OneDrive/Escritorio/PROYECTOS%20IA/Qu%C3%ADmica%20DEC/quimica_dec/CONSTITUCION_DEL_PROYECTO.md): Este documento maestro de reglas y arquitectura.
+
+
+### 4.7 Módulo "Crear, Borrar, Buscar Producto e Imagen" y Gestor de Borradores
+- **Ubicación:** Barra lateral del Catálogo Web y Selector Móvil.
+- **Estructura en 4 Bloques:**
+  1. **Bloque 1 (Creación Manual de Nuevos Productos):** Permite dar de alta uno o varios productos nuevos en simultáneo. Asigna prefijo y correlativo de SKU automáticamente según la categoría oficial de las 32 elegida. Guarda en WooCommerce (creando el post de tipo producto simple) y en Supabase (`dec_products`).
+  2. **Bloque 2 (Buscar, Modificar, Borrador y Borrado de Productos):** Buscador reactivo por nombre o SKU. Permite editar campos, cambiar estado a `draft` (pausado/borrador) o `publish` (activo), o eliminar permanentemente el producto con confirmación de seguridad.
+  3. **Bloque 3 (Tarjeta Visual - Gestor de Borradores / Productos Pausados):** Permite listar en tiempo real todos los productos en estado `draft` (fuera de línea) con botones directos para reactivar (`Publicar`) o eliminar (`Borrar`).
+  4. **Bloque 4 (Carga Masiva de Fotos por Lote):** Permite seleccionar múltiples imágenes para subida concurrente.
+- **Endpoints:**
+  - `POST /api/products/update-details`: Actualiza campos, fotos, o crea productos nuevos con categoría.
+  - `POST /api/products/toggle-status`: Alterna entre `draft` y `publish`.
+  - `POST /api/products/delete`: Elimina de WooCommerce y Supabase.
+  - `GET /api/products/drafts`: Lista productos pausados/borradores.

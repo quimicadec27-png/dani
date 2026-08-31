@@ -191,6 +191,10 @@ if ( ! function_exists( 'qdec_api_router_v3' ) ) {
                 qdec_handle_upload_hero_video();
                 break;
 
+            case 'delete_product':
+                qdec_handle_delete_product();
+                break;
+
             case 'get_ofertas':
                 qdec_handle_get_ofertas();
                 break;
@@ -1203,5 +1207,45 @@ if ( ! function_exists( 'qdec_handle_upload_hero_video' ) ) {
 
         qdec_purge_caches();
         qdec_json_exit( array( 'success' => true, 'video_url' => $upload['url'], 'bytes' => strlen( $raw ) ) );
+    }
+}
+
+/* ─── ENDPOINT: DELETE PRODUCT ─── */
+if ( ! function_exists( 'qdec_handle_delete_product' ) ) {
+    function qdec_handle_delete_product() {
+        if ( $_SERVER['REQUEST_METHOD'] !== 'POST' ) {
+            status_header( 405 );
+            qdec_json_exit( array( 'success' => false, 'error' => 'Usar POST.' ) );
+        }
+
+        $secret = qdec_get_param( 'secret_key' );
+        if ( $secret !== 'qdec_crm_sec_2026' ) {
+            status_header( 403 );
+            qdec_json_exit( array( 'success' => false, 'error' => 'Clave inválida.' ) );
+        }
+
+        $sku = qdec_get_param( 'sku' );
+        $sku = trim( preg_replace( '/^sku:\s*/i', '', $sku ) );
+        if ( ! $sku ) {
+            status_header( 400 );
+            qdec_json_exit( array( 'success' => false, 'error' => 'SKU es requerido.' ) );
+        }
+
+        $pid = wc_get_product_id_by_sku( $sku );
+        if ( ! $pid && preg_match( '/_ID(\d+)$/i', $sku, $m ) ) {
+            $pid = intval( $m[1] );
+        }
+
+        if ( $pid ) {
+            wp_delete_post( $pid, true ); // Borrado permanente
+            qdec_purge_caches( $pid );
+        }
+
+        qdec_json_exit( array(
+            'success' => true,
+            'message' => "Producto {$sku} eliminado correctamente de WooCommerce.",
+            'pid'     => $pid,
+            'sku'     => $sku
+        ) );
     }
 }

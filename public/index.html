@@ -786,9 +786,9 @@ ightarrow$ Ventas</p>
                                 <span class="sidebar-label whitespace-nowrap overflow-hidden transition-all duration-200">Banners de Secciones</span>
                             </button>
 
-                            <button id="btn-subtab-single" onclick="switchCatSubTab('single')" title="Crear / Buscar Producto e Imagen" class="cat-sidebar-btn w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2.5 transition-all text-gray-400 hover:bg-white/5 hover:text-white cursor-pointer group">
-                                <span class="material-symbols-outlined text-[18px] text-blue-400 shrink-0">add_box</span>
-                                <span class="sidebar-label whitespace-nowrap overflow-hidden transition-all duration-200">Crear / Buscar Producto e Imagen</span>
+                            <button id="btn-subtab-single" onclick="switchCatSubTab('single')" title="Crear, Borrar, Buscar Producto e Imagen" class="cat-sidebar-btn w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2.5 transition-all text-gray-400 hover:bg-white/5 hover:text-white cursor-pointer group">
+                                <span class="material-symbols-outlined text-[18px] text-blue-400 shrink-0">edit_note</span>
+                                <span class="sidebar-label whitespace-nowrap overflow-hidden transition-all duration-200">Crear, Borrar, Buscar Producto e Imagen</span>
                             </button>
 
                             <button id="btn-subtab-excel" onclick="switchCatSubTab('excel')" title="Carga Masiva Excel" class="cat-sidebar-btn w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2.5 transition-all text-gray-400 hover:bg-white/5 hover:text-white cursor-pointer group">
@@ -1359,7 +1359,7 @@ ightarrow$ Ventas</p>
                                 <div id="banner-upload-res" class="hidden text-xs font-bold p-3 rounded-xl border"></div>
                             </div>
 
-                            <!-- SUB-TAB 4: CREACIÓN MANUAL Y BÚSQUEDA DE PRODUCTOS -->
+                            <!-- SUB-TAB 4: CREACIÓN MANUAL, BORRADOR, BORRADO Y BÚSQUEDA DE PRODUCTOS -->
                             <div id="subtab-content-single" class="hidden space-y-6">
                                 <!-- BLOQUE 1: CREACIÓN MANUAL DE NUEVOS PRODUCTOS -->
                                 <div class="p-5 rounded-2xl bg-white/5 border border-blue-500/30 space-y-4">
@@ -1397,13 +1397,13 @@ ightarrow$ Ventas</p>
                                     <div id="new-prod-res" class="hidden text-xs font-bold p-3 rounded-xl border"></div>
                                 </div>
 
-                                <!-- BLOQUE 2: BUSCAR Y MODIFICAR PRODUCTOS EXISTENTES -->
+                                <!-- BLOQUE 2: BUSCAR, MODIFICAR, BORRADOR Y BORRADO DE PRODUCTOS -->
                                 <div class="p-5 rounded-2xl bg-white/5 border border-purple-500/30 space-y-4">
                                     <div class="border-b border-white/10 pb-3">
                                         <h3 class="font-title text-xs font-bold uppercase text-purple-400 tracking-wider flex items-center gap-2">
-                                            <span class="material-symbols-outlined text-purple-400 text-xl">manage_search</span> <span>Buscar y Modificar Productos Existentes</span>
+                                            <span class="material-symbols-outlined text-purple-400 text-xl">manage_search</span> <span>Buscar, Modificar, Borrador y Borrado de Productos</span>
                                         </h3>
-                                        <p class="text-[11px] text-gray-400 mt-0.5">Buscá cualquier producto del catálogo por Nombre o SKU para actualizar su precio, nombre, categoría o foto.</p>
+                                        <p class="text-[11px] text-gray-400 mt-0.5">Buscá cualquier producto del catálogo por Nombre o SKU para actualizar sus datos, cambiarlo a borrador (pausarlo) o eliminarlo de la tienda.</p>
                                     </div>
 
                                     <!-- BUSCADOR CON AUTOCOMPLETADO -->
@@ -1433,26 +1433,48 @@ ightarrow$ Ventas</p>
                                     <div id="existing-prod-res" class="hidden text-xs font-bold p-3 rounded-xl border"></div>
                                 </div>
 
-                                <!-- BLOQUE 3: CARGA MASIVA DE IMÁGENES (POR LOTE) -->
-                                <div class="p-5 rounded-2xl bg-white/5 border border-amber-500/30 space-y-4">
+                                <!-- BLOQUE 3: GESTOR DE BORRADORES Y PRODUCTOS PAUSADOS -->
+                                <div class="p-5 rounded-2xl bg-amber-950/20 border border-amber-500/40 space-y-4">
+                                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-amber-500/20 pb-3">
+                                        <div>
+                                            <h3 class="font-title text-xs font-bold uppercase text-amber-300 tracking-wider flex items-center gap-2">
+                                                <span class="material-symbols-outlined text-amber-400 text-xl">pause_circle</span> <span>Gestor de Borradores / Productos Pausados</span>
+                                            </h3>
+                                            <p class="text-[11px] text-gray-300 mt-0.5">Control visual de productos que están actualmente en borrador (fuera de línea / ocultos de la tienda) sin haber sido borrados. Podés reactivarlos con 1 clic o eliminarlos definitivamente.</p>
+                                        </div>
+                                        <button type="button" onclick="cargarGestorBorradores()" id="btn-refresh-drafts" class="px-4 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 font-bold text-xs flex items-center gap-1.5 transition-all shadow shrink-0 cursor-pointer">
+                                            <span class="material-symbols-outlined text-sm">refresh</span> Ver / Actualizar Borradores
+                                        </button>
+                                    </div>
+
+                                    <div id="drafts-list-container" class="space-y-2.5">
+                                        <div class="p-4 rounded-xl bg-slate-900/60 border border-white/5 text-center text-xs text-gray-400">
+                                            Hacé clic en <span class="text-amber-300 font-bold">"Ver / Actualizar Borradores"</span> para consultar los productos que están fuera de línea.
+                                        </div>
+                                    </div>
+                                    <div id="drafts-action-res" class="hidden text-xs font-bold p-3 rounded-xl border"></div>
+                                </div>
+
+                                <!-- BLOQUE 4: CARGA MASIVA DE IMÁGENES (POR LOTE) -->
+                                <div class="p-5 rounded-2xl bg-white/5 border border-cyan-500/30 space-y-4">
                                     <div class="flex items-center justify-between">
-                                        <h4 class="font-title text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
-                                            <span class="material-symbols-outlined text-amber-400 text-xl">cloud_upload</span> <span>Carga Masiva de Imágenes (Por Lote)</span>
+                                        <h4 class="font-title text-xs font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
+                                            <span class="material-symbols-outlined text-cyan-400 text-xl">cloud_upload</span> <span>Carga Masiva de Imágenes (Por Lote)</span>
                                         </h4>
                                     </div>
 
-                                    <div class="p-4 bg-white/5 border border-dashed border-amber-500/40 rounded-xl space-y-2">
-                                        <label class="text-[11px] font-bold text-amber-300 uppercase block">Seleccionar Múltiples Archivos de Fotos (Elegí 10 o más):</label>
-                                        <input type="file" id="bulk-img-input" multiple accept="image/*" onchange="handleBulkFilesSelected(event)" class="w-full text-xs text-gray-400 file:mr-3 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-amber-500/20 file:text-amber-300 hover:file:bg-amber-500/30 cursor-pointer">
+                                    <div class="p-4 bg-white/5 border border-dashed border-cyan-500/40 rounded-xl space-y-2">
+                                        <label class="text-[11px] font-bold text-cyan-300 uppercase block">Seleccionar Múltiples Archivos de Fotos (Elegí 10 o más):</label>
+                                        <input type="file" id="bulk-img-input" multiple accept="image/*" onchange="handleBulkFilesSelected(event)" class="w-full text-xs text-gray-400 file:mr-3 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-cyan-500/20 file:text-cyan-300 hover:file:bg-cyan-500/30 cursor-pointer">
                                     </div>
 
-                                    <div id="bulk-img-queue-container" class="hidden space-y-3 p-4 bg-black/30 border border-amber-500/30 rounded-xl">
+                                    <div id="bulk-img-queue-container" class="hidden space-y-3 p-4 bg-black/30 border border-cyan-500/30 rounded-xl">
                                         <div class="flex items-center justify-between text-xs font-bold text-gray-200">
-                                            <span>Fotos preparadas (<span id="bulk-img-count" class="text-amber-400">0</span>):</span>
+                                            <span>Fotos preparadas (<span id="bulk-img-count" class="text-cyan-400">0</span>):</span>
                                             <button onclick="clearBulkQueue()" class="text-rose-400 hover:underline text-[11px]">Limpiar Lote</button>
                                         </div>
                                         <div id="bulk-img-queue-list" class="max-h-48 overflow-y-auto space-y-1.5 pr-2"></div>
-                                        <button onclick="uploadBulkImages()" id="btn-upload-bulk-imgs" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-black font-title text-xs font-bold uppercase tracking-wider shadow-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer">
+                                        <button onclick="uploadBulkImages()" id="btn-upload-bulk-imgs" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-title text-xs font-bold uppercase tracking-wider shadow-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer">
                                             <span class="material-symbols-outlined text-base">cloud_upload</span> Subir Todas las Fotos a la Tienda
                                         </button>
                                     </div>
@@ -6160,7 +6182,7 @@ ightarrow$ Ventas</p>
                 'atributos': 'Gestor de Atributos',
                 'ofertas': 'Ofertas Semanales',
                 'banners': 'Banners de Secciones',
-                'single': 'Crear / Buscar Producto e Imagen',
+                'single': 'Crear, Borrar, Buscar Producto e Imagen',
                 'excel': 'Carga Masiva Excel',
                 'ia': 'Instrucción IA / Voz',
                 'sync': 'Sincronizar Web'
@@ -6203,7 +6225,10 @@ ightarrow$ Ventas</p>
             if (subtab === 'atributos') cargarTablaAtributos();
             if (subtab === 'ofertas') cargarVisorOfertas();
             if (subtab === 'banners') renderBannersGridUI();
-            if (subtab === 'single' && newProductRows.length === 0) crearNuevoProductoManual();
+            if (subtab === 'single') {
+                if (newProductRows.length === 0) crearNuevoProductoManual();
+                cargarGestorBorradores();
+            }
             
             setTimeout(initDragToScrollTables, 200);
         }
@@ -7261,9 +7286,11 @@ ightarrow$ Ventas</p>
             const price = prod.regular_price || prod.price || '';
             const cat = prod.category || 'PRODUCTOS LIQUIDOS';
             const imageUrl = prod.image_url || '';
+            const isDraft = (prod.status === 'draft' || prod.status === 'borrador');
+            const safeName = name.replace(/'/g, "\\'");
 
             const rowHtml = `
-                <div id="${rowId}" class="p-4 rounded-2xl bg-slate-900/80 border border-purple-500/40 space-y-3 relative group hover:border-purple-400 transition-all shadow-md">
+                <div id="${rowId}" class="p-4 rounded-2xl bg-slate-900/80 border ${isDraft ? 'border-amber-500/50' : 'border-purple-500/40'} space-y-3 relative group hover:border-purple-400 transition-all shadow-md">
                     <div class="flex flex-col md:flex-row items-start md:items-center gap-4">
                         <!-- PREVIEW FOTO / UPLOAD -->
                         <div class="flex items-center gap-3 shrink-0">
@@ -7285,7 +7312,13 @@ ightarrow$ Ventas</p>
                         <div class="flex-1 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-12 gap-3 w-full">
                             <!-- Nombre -->
                             <div class="md:col-span-5 space-y-1">
-                                <label class="text-[9px] font-bold text-gray-300 uppercase">Nombre del Producto</label>
+                                <div class="flex items-center justify-between">
+                                    <label class="text-[9px] font-bold text-gray-300 uppercase">Nombre del Producto</label>
+                                    <span class="px-2 py-0.5 rounded-md ${isDraft ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'} text-[9px] font-bold flex items-center gap-1">
+                                        <span class="material-symbols-outlined text-[11px]">${isDraft ? 'pause_circle' : 'check_circle'}</span>
+                                        ${isDraft ? 'Borrador' : 'Publicado'}
+                                    </span>
+                                </div>
                                 <input type="text" id="name_${rowId}" value="${name.replace(/"/g, '&quot;')}" class="w-full bg-slate-950 border border-white/15 rounded-xl px-3 py-2 text-xs text-white font-bold focus:outline-none focus:border-purple-400">
                             </div>
 
@@ -7313,10 +7346,29 @@ ightarrow$ Ventas</p>
                                 <span class="px-2 py-0.5 rounded-lg bg-slate-950 border border-white/20 text-gray-300 font-mono text-[11px] font-bold">${sku}</span>
                                 <input type="hidden" id="sku_${rowId}" value="${sku}">
                             </div>
-                            <button type="button" onclick="eliminarRenglonExistente('${rowId}')" title="Quitar de la lista" class="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 transition-all">
+                            <button type="button" onclick="eliminarRenglonExistente('${rowId}')" title="Quitar del panel" class="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 border border-white/10 transition-all">
                                 <span class="material-symbols-outlined text-[18px]">close</span>
                             </button>
                         </div>
+                    </div>
+
+                    <!-- BOTONES DE ACCIÓN RÁPIDA: BORRADOR Y BORRADO PERMANENTE -->
+                    <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-white/5">
+                        <div class="flex items-center gap-2">
+                            ${isDraft ? `
+                                <button type="button" onclick="cambiarEstadoProducto('${sku}', 'publish', '${rowId}')" title="Publicar y activar en la tienda" class="px-3 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer">
+                                    <span class="material-symbols-outlined text-sm">play_circle</span> Publicar en Tienda (Activar)
+                                </button>
+                            ` : `
+                                <button type="button" onclick="cambiarEstadoProducto('${sku}', 'draft', '${rowId}')" title="Poner en borrador (ocultar de la tienda)" class="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer">
+                                    <span class="material-symbols-outlined text-sm">pause_circle</span> Pasar a Borrador (Pausar)
+                                </button>
+                            `}
+                            <button type="button" onclick="eliminarProductoDefinitivo('${sku}', '${safeName}', '${rowId}')" title="Eliminar permanentemente de la tienda y base de datos" class="px-3 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer">
+                                <span class="material-symbols-outlined text-sm">delete_forever</span> Eliminar Producto
+                            </button>
+                        </div>
+                        <span class="text-[10px] text-gray-400">Podés editar los campos y presionar "Guardar Modificaciones" o usar las acciones rápidas.</span>
                     </div>
                 </div>
             `;
@@ -7419,7 +7471,129 @@ ightarrow$ Ventas</p>
                 resDiv.classList.remove('hidden');
             }
 
+            cargarGestorBorradores();
             appendAuditLog('EXISTING_PRODUCT_UPDATED', `Actualizó ${guardadosCount} productos desde el Editor de Existentes.`);
+        }
+
+        // =========================================================================
+        // GESTIÓN DE BORRADORES Y BORRADO DE PRODUCTOS
+        // =========================================================================
+        async function cambiarEstadoProducto(sku, newStatus, rowId = null) {
+            const resDiv = document.getElementById('existing-prod-res') || document.getElementById('drafts-action-res');
+            try {
+                const resp = await fetch(`${API_URL}/products/toggle-status`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sku, status: newStatus })
+                });
+                const data = await resp.json();
+                if (data && data.success) {
+                    if (rowId) {
+                        const el = document.getElementById(rowId);
+                        if (el) el.remove();
+                        existingProductRows = existingProductRows.filter(id => id !== rowId);
+                    }
+                    if (resDiv) {
+                        resDiv.className = 'text-xs font-bold p-3 rounded-xl border bg-emerald-500/20 text-emerald-300 border-emerald-500/40';
+                        resDiv.innerText = data.mensaje || `Estado de ${sku} actualizado a ${newStatus}.`;
+                        resDiv.classList.remove('hidden');
+                    }
+                    cargarGestorBorradores();
+                    appendAuditLog('PRODUCT_STATUS_CHANGE', `Cambió estado de ${sku} a ${newStatus}`);
+                } else {
+                    alert(`Error: ${data.error || 'No se pudo cambiar el estado del producto.'}`);
+                }
+            } catch (err) {
+                alert(`Error al actualizar estado: ${err.message}`);
+            }
+        }
+
+        async function eliminarProductoDefinitivo(sku, name = '', rowId = null) {
+            const confirmMsg = `⚠️ ¿Estás seguro de ELIMINAR DEFINITIVAMENTE el producto?\n\nSKU: ${sku}\nNombre: ${name || sku}\n\nEsta acción lo borrará de WooCommerce y de la base de datos Supabase.`;
+            if (!confirm(confirmMsg)) return;
+
+            const resDiv = document.getElementById('existing-prod-res') || document.getElementById('drafts-action-res');
+            try {
+                const resp = await fetch(`${API_URL}/products/delete`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sku })
+                });
+                const data = await resp.json();
+                if (data && data.success) {
+                    if (rowId) {
+                        const el = document.getElementById(rowId);
+                        if (el) el.remove();
+                        existingProductRows = existingProductRows.filter(id => id !== rowId);
+                    }
+                    if (resDiv) {
+                        resDiv.className = 'text-xs font-bold p-3 rounded-xl border bg-rose-500/20 text-rose-300 border-rose-500/40';
+                        resDiv.innerText = data.mensaje || `Producto ${sku} eliminado correctamente.`;
+                        resDiv.classList.remove('hidden');
+                    }
+                    cargarGestorBorradores();
+                    appendAuditLog('PRODUCT_DELETED', `Eliminó el producto ${sku}`);
+                } else {
+                    alert(`Error al eliminar: ${data.error || 'No se pudo eliminar el producto'}`);
+                }
+            } catch (err) {
+                alert(`Error de red al eliminar producto: ${err.message}`);
+            }
+        }
+
+        async function cargarGestorBorradores() {
+            const container = document.getElementById('drafts-list-container');
+            if (!container) return;
+
+            container.innerHTML = '<div class="p-4 text-center text-xs text-amber-300 font-bold flex items-center justify-center gap-2"><span class="animate-spin">⏳</span> Consultando lista de borradores en tiempo real...</div>';
+
+            try {
+                const resp = await fetch(`${API_URL}/products/drafts`);
+                const data = await resp.json();
+
+                if (data && data.success && data.drafts && data.drafts.length > 0) {
+                    container.innerHTML = `
+                        <div class="mb-2 text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-sm">info</span> Hay <span class="font-mono text-white">${data.drafts.length}</span> producto(s) en Borrador / Pausados:
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-80 overflow-y-auto pr-1">
+                            ${data.drafts.map(p => {
+                                const imgUrl = p.image_url || 'https://quimicadec.com/assets/img/categorias/productosparadiluir.jpeg';
+                                const priceFmt = p.price ? `$ ${Number(p.price).toLocaleString('es-AR')}` : 'Sin precio';
+                                const safePName = (p.name || 'Sin nombre').replace(/'/g, "\\'");
+                                return `
+                                    <div class="p-3 rounded-xl bg-slate-900/90 border border-amber-500/30 flex items-center justify-between gap-3 shadow">
+                                        <div class="flex items-center gap-2.5 min-w-0">
+                                            <img src="${imgUrl}" class="w-11 h-11 rounded-lg object-cover bg-black border border-white/10 shrink-0">
+                                            <div class="min-w-0">
+                                                <h5 class="text-xs font-bold text-white truncate">${p.name || p.sku}</h5>
+                                                <p class="text-[10px] text-amber-300 font-mono">SKU: ${p.sku} | <span class="text-emerald-400 font-bold">${priceFmt}</span></p>
+                                                <span class="text-[9px] text-gray-400 uppercase font-bold">${p.category || 'Sin categoría'}</span>
+                                            </div>
+                                        </div>
+                                        <div class="flex flex-col gap-1.5 shrink-0">
+                                            <button type="button" onclick="cambiarEstadoProducto('${p.sku}', 'publish')" title="Publicar y reactivar en tienda" class="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer">
+                                                <span class="material-symbols-outlined text-[13px]">play_circle</span> Reactivar
+                                            </button>
+                                            <button type="button" onclick="eliminarProductoDefinitivo('${p.sku}', '${safePName}')" title="Eliminar definitivamente" class="px-2.5 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer">
+                                                <span class="material-symbols-outlined text-[13px]">delete_forever</span> Borrar
+                                            </button>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML = `
+                        <div class="p-4 rounded-xl bg-slate-900/60 border border-emerald-500/30 text-center text-xs text-emerald-300 font-bold flex items-center justify-center gap-1.5">
+                            <span class="material-symbols-outlined text-sm">check_circle</span> No hay ningún producto en borrador. Todos los productos del catálogo están actualmente publicados y activos en la tienda.
+                        </div>
+                    `;
+                }
+            } catch (e) {
+                container.innerHTML = `<div class="p-3 text-xs text-rose-400">Error al cargar borradores: ${e.message}</div>`;
+            }
         }
 
         // =========================================================================
@@ -8595,14 +8769,14 @@ ightarrow$ Ventas</p>
                     </div>
                 </button>
 
-                <!-- 6. Crear / Buscar Producto e Imagen -->
-                <button onclick="seleccionarHerramientaCatalogo('single', 'Crear / Buscar Producto e Imagen')" class="w-full box-border p-2.5 sm:p-3 rounded-2xl bg-white/[0.04] border border-white/10 hover:border-blue-500/50 hover:bg-blue-500/10 flex items-center gap-3 transition-all text-left group overflow-hidden cursor-pointer">
+                <!-- 6. Crear, Borrar, Buscar Producto e Imagen -->
+                <button onclick="seleccionarHerramientaCatalogo('single', 'Crear, Borrar, Buscar Producto e Imagen')" class="w-full box-border p-2.5 sm:p-3 rounded-2xl bg-white/[0.04] border border-white/10 hover:border-blue-500/50 hover:bg-blue-500/10 flex items-center gap-3 transition-all text-left group overflow-hidden cursor-pointer">
                     <div class="w-9 h-9 rounded-xl bg-blue-500/20 text-blue-300 flex items-center justify-center shrink-0">
-                        <span class="material-symbols-outlined text-lg">add_box</span>
+                        <span class="material-symbols-outlined text-lg">edit_note</span>
                     </div>
                     <div class="min-w-0 flex-1">
-                        <h5 class="text-xs font-bold text-white group-hover:text-blue-300 truncate">Crear / Buscar Producto e Imagen</h5>
-                        <p class="text-[10px] text-gray-400 truncate">Carga manual, edición y fotos</p>
+                        <h5 class="text-xs font-bold text-white group-hover:text-blue-300 truncate">Crear, Borrar, Buscar Producto e Imagen</h5>
+                        <p class="text-[10px] text-gray-400 truncate">Carga manual, borradores, borrado y fotos</p>
                     </div>
                 </button>
 
