@@ -2158,17 +2158,91 @@ app.get('/api/products/all', async (req, res) => {
     }
 });
 
-// Endpoint de búsqueda de productos por SKU o Nombre (WooCommerce Live Search Primero + Fallback Supabase Limpio)
+
+function getCategorySearchPatterns(cat) {
+    if (!cat || cat === 'TODAS') return [];
+    const c = cat.toUpperCase().trim();
+    const map = {
+        'CABOS': ['%CABO%', '%MANGO%'],
+        'SECADORES': ['%SECADOR%'],
+        'PAPELES': ['%PAPEL%'],
+        'ESPONJAS': ['%ESPONJ%', '%FIBRA%'],
+        'ESCOBILLONES': ['%ESCOB%', '%CEPILL%'],
+        'CEPILLOS': ['%CEPILL%', '%ESCOB%'],
+        'BAÑO': ['%BAÑO%', '%BANO%', '%SANITAR%'],
+        'COCINA': ['%COCIN%', '%DESENG%'],
+        'PILETA': ['%PILET%', '%CLORO%'],
+        'AUTOMOVIL': ['%AUTO%'],
+        'BOLSAS': ['%BOLSA%', '%RESIDUO%', '%CONSORCIO%'],
+        'ENVASES': ['%ENVAS%', '%BIDON%'],
+        'SAHUMERIOS': ['%SAHUM%', '%AROMA%'],
+        'PERFUMERIA': ['%PERFUM%', '%FRAGANC%'],
+        'TEXTILES': ['%TEXTIL%', '%PERFUMIN%', '%TRAPO%'],
+        'JARDÍN': ['%JARDIN%', '%JARDÍN%', '%VERDE%'],
+        'JARDIN': ['%JARDIN%', '%JARDÍN%', '%VERDE%'],
+        'PLASTICOS': ['%PLAST%', '%BAZAR%'],
+        'AEROSOLES': ['%AEROSOL%'],
+        'PASTAS Y CONCENTRADOS': ['%PASTA%', '%CONCENTR%'],
+        'PRODUCTOS LIQUIDOS': ['%LIQUID%', '%QUIMICA GENERAL%'],
+        'PRIMERAS MARCAS': ['%PRIMERAS MARCAS%', '%MARCAS%'],
+        'OFERTAS SEMANALES': ['%OFERTA%'],
+        'COMBOS EMPRENDEDORES': ['%COMBO%'],
+        'HIGIENE PERSONAL': ['%HIGIENE%', '%TOCADOR%'],
+        'JABON EN POLVO': ['%JABON EN POLVO%', '%POLVO%'],
+        'JABON EN PAN': ['%JABON EN PAN%', '%PAN%'],
+        'JABON DE TOCADOR': ['%TOCADOR%'],
+        'BURLETES': ['%BURLETE%'],
+        'REPELENTES': ['%REPELENT%', '%INSECTICID%'],
+        'INSECTICIDAS': ['%INSECTICID%', '%REPELENT%'],
+        'LIMPIEZA HOGAR': ['%LIMPIEZA%'],
+        'KIOSCO Y VARIOS': ['%KIOSCO%', '%VARIOS%']
+    };
+    return map[c] || [`%${c}%`];
+}
+
+// Endpoint de búsqueda de productos por SKU o Nombre (Búsqueda exhaustiva en Supabase dec_products con soporte multi-palabra y WooCommerce)
 app.get('/api/products/search', async (req, res) => {
     try {
-        let query = (req.query.q || '').trim();
-        query = query.replace(/^sku:\s*/i, '').replace(/^sku\s+/i, '').trim();
+        let rawQuery = (req.query.q || '').trim();
+        let query = rawQuery.replace(/^sku:\s*/i, '').replace(/^sku\s+/i, '').trim();
 
         if (!query || query.length < 2) {
             return res.json({ success: true, count: 0, products: [] });
         }
 
-        // 1. WooCommerce Live Search PRIMERO (Garantiza productos 100% publicados y vigentes)
+        // 1. Búsqueda directa en Supabase dec_products (Multi-palabra, sin límite restrictivo)
+        const words = query.split(/\s+/).filter(w => w.length > 0);
+        let dbQuery = supabase
+            .from('dec_products')
+            .select('id, name, sku, price, stock, image_url, stock_status, status, category')
+            .not('sku', 'ilike', '%_ID%')
+            .gt('price', 0);
+
+        words.forEach(w => {
+            dbQuery = dbQuery.or(`name.ilike.%${w}%,sku.ilike.%${w}%,category.ilike.%${w}%`);
+        });
+
+        dbQuery = dbQuery.order('name', { ascending: true }).limit(500);
+
+        let { data, error } = await dbQuery;
+
+        if (data && data.length > 0) {
+            const formatted = data.map(p => ({
+                id: p.id,
+                name: p.name,
+                sku: p.sku,
+                price: parseFloat(p.price || 0),
+                regular_price: parseFloat(p.price || 0),
+                stock: p.stock,
+                image_url: p.image_url,
+                stock_status: p.stock_status,
+                status: p.status || 'publish',
+                category: p.category || ''
+            }));
+            return res.json({ success: true, count: formatted.length, products: formatted });
+        }
+
+        // 2. Fallback live WooCommerce search si en Supabase no hubo resultados
         try {
             const wcUrl = `https://quimicadec.com/?qdec_api=search_product&secret_key=qdec_crm_sec_2026&q=${encodeURIComponent(query)}`;
             const wcRes = await fetch(wcUrl);
@@ -2193,34 +2267,7 @@ app.get('/api/products/search', async (req, res) => {
             console.error('Error live WooCommerce search:', wcErr.message);
         }
 
-        // 2. Fallback Supabase dec_products (EXCLUYENDO borradores y SKUs obsoletos _ID)
-        let { data, error } = await supabase
-            .from('dec_products')
-            .select('id, name, sku, price, stock, image_url, stock_status, status, category')
-            .not('sku', 'ilike', '%_ID%')
-            .gt('price', 0)
-            .or(`name.ilike.%${query}%,sku.ilike.%${query}%`)
-            .limit(30);
-
-        if (error) {
-            console.error('Error buscando en Supabase:', error.message);
-            data = [];
-        }
-
-        const formatted = (data || []).map(p => ({
-            id: p.id,
-            name: p.name,
-            sku: p.sku,
-            price: parseFloat(p.price || 0),
-            regular_price: parseFloat(p.price || 0),
-            stock: p.stock,
-            image_url: p.image_url,
-            stock_status: p.stock_status,
-            status: p.status || 'publish',
-            category: p.category || ''
-        }));
-
-        return res.json({ success: true, count: formatted.length, products: formatted });
+        return res.json({ success: true, count: 0, products: [] });
 
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
@@ -2455,28 +2502,36 @@ app.get('/api/products/drafts', async (req, res) => {
     }
 });
 
-// Endpoint para Listar Productos Publicados (Activos en Tienda)
+// Endpoint para Listar Productos Publicados (Activos en Tienda con Filtro Inteligente de Categorías)
 app.get('/api/products/published', async (req, res) => {
     try {
         const query = (req.query.q || '').trim();
         const category = (req.query.category || '').trim();
-        const limit = parseInt(req.query.limit || '100');
+        const limit = parseInt(req.query.limit || '500');
 
         let dbQuery = supabase
             .from('dec_products')
             .select('*')
             .neq('status', 'draft')
             .not('sku', 'ilike', '%_ID%')
-            .gt('price', 0)
-            .order('name', { ascending: true })
-            .limit(limit);
+            .gt('price', 0);
+
+        if (category && category !== 'TODAS') {
+            const patterns = getCategorySearchPatterns(category);
+            if (patterns.length > 0) {
+                const orClause = patterns.map(p => `category.ilike.${p}`).join(',');
+                dbQuery = dbQuery.or(orClause);
+            }
+        }
 
         if (query) {
-            dbQuery = dbQuery.or(`name.ilike.%${query}%,sku.ilike.%${query}%`);
+            const words = query.split(/\s+/).filter(w => w.length > 0);
+            words.forEach(w => {
+                dbQuery = dbQuery.or(`name.ilike.%${w}%,sku.ilike.%${w}%,category.ilike.%${w}%`);
+            });
         }
-        if (category && category !== 'TODAS') {
-            dbQuery = dbQuery.eq('category', category);
-        }
+
+        dbQuery = dbQuery.order('name', { ascending: true }).limit(limit);
 
         const { data, error } = await dbQuery;
         if (error) throw error;

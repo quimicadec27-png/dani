@@ -1458,7 +1458,7 @@ ightarrow$ Ventas</p>
                                     <div id="view-published-container" class="space-y-3">
                                         <div class="flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-900/60 p-3 rounded-xl border border-emerald-500/30">
                                             <div class="flex-1 w-full flex items-center gap-2">
-                                                <input type="text" id="filter-published-search" oninput="filtrarProductosPublicadosUI()" placeholder="Filtrar por nombre o SKU en productos publicados..." class="w-full bg-slate-950 border border-emerald-500/30 rounded-xl px-3 py-1.5 text-xs text-white placeholder-gray-400 focus:outline-none focus:border-emerald-400 font-mono">
+                                                <input type="text" id="filter-published-search" oninput="filtrarProductosPublicadosUI()" onkeydown="if(event.key==='Enter') cargarProductosPublicados()" placeholder="Filtrar por nombre o SKU en productos publicados..." class="w-full bg-slate-950 border border-emerald-500/30 rounded-xl px-3 py-1.5 text-xs text-white placeholder-gray-400 focus:outline-none focus:border-emerald-400 font-mono">
                                                 <select id="filter-published-cat" onchange="cargarProductosPublicados()" class="bg-slate-950 border border-emerald-500/30 rounded-xl px-2.5 py-1.5 text-xs text-emerald-300 font-bold focus:outline-none">
                                                     <option value="TODAS">Todas las Categorías</option>
                                                     <option value="PRODUCTOS LIQUIDOS">Productos Líquidos</option>
@@ -1511,7 +1511,7 @@ ightarrow$ Ventas</p>
                                     <!-- VISTA 2: GESTOR DE BORRADORES (PARA REACTIVAR O BORRAR) -->
                                     <div id="view-drafts-container" class="hidden space-y-3">
                                         <div class="flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-900/60 p-3 rounded-xl border border-amber-500/30">
-                                            <input type="text" id="filter-drafts-search" oninput="filtrarBorradoresUI()" placeholder="Filtrar por nombre o SKU en borradores..." class="w-full bg-slate-950 border border-amber-500/30 rounded-xl px-3 py-1.5 text-xs text-white placeholder-gray-400 focus:outline-none focus:border-amber-400 font-mono">
+                                            <input type="text" id="filter-drafts-search" oninput="filtrarBorradoresUI()" onkeydown="if(event.key==='Enter') cargarGestorBorradores()" placeholder="Filtrar por nombre o SKU en borradores..." class="w-full bg-slate-950 border border-amber-500/30 rounded-xl px-3 py-1.5 text-xs text-white placeholder-gray-400 focus:outline-none focus:border-amber-400 font-mono">
                                             <button type="button" onclick="cargarGestorBorradores()" class="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 font-bold text-xs flex items-center gap-1 shrink-0 cursor-pointer">
                                                 <span class="material-symbols-outlined text-sm">refresh</span> Actualizar
                                             </button>
@@ -7695,19 +7695,25 @@ ightarrow$ Ventas</p>
             `;
         }
 
+        function normalizeSearchStr(str) {
+            return (str || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+        }
+
         function filtrarProductosPublicadosUI() {
             const input = document.getElementById('filter-published-search');
             if (!input) return;
-            const q = input.value.trim().toLowerCase();
-            if (!q) {
+            const rawQ = input.value.trim();
+            if (!rawQ) {
                 renderProductosPublicadosList(cachedPublishedProducts);
                 return;
             }
-            const filtered = cachedPublishedProducts.filter(p => 
-                (p.name && p.name.toLowerCase().includes(q)) || 
-                (p.sku && p.sku.toLowerCase().includes(q)) || 
-                (p.category && p.category.toLowerCase().includes(q))
-            );
+            const words = normalizeSearchStr(rawQ).split(/\s+/).filter(w => w.length > 0);
+            const filtered = cachedPublishedProducts.filter(p => {
+                const pName = normalizeSearchStr(p.name);
+                const pSku = normalizeSearchStr(p.sku);
+                const pCat = normalizeSearchStr(p.category);
+                return words.every(w => pName.includes(w) || pSku.includes(w) || pCat.includes(w));
+            });
             renderProductosPublicadosList(filtered);
         }
 
@@ -7802,16 +7808,18 @@ ightarrow$ Ventas</p>
         function filtrarBorradoresUI() {
             const input = document.getElementById('filter-drafts-search');
             if (!input) return;
-            const q = input.value.trim().toLowerCase();
-            if (!q) {
+            const rawQ = input.value.trim();
+            if (!rawQ) {
                 renderBorradoresList(cachedDraftProducts);
                 return;
             }
-            const filtered = cachedDraftProducts.filter(p => 
-                (p.name && p.name.toLowerCase().includes(q)) || 
-                (p.sku && p.sku.toLowerCase().includes(q)) || 
-                (p.category && p.category.toLowerCase().includes(q))
-            );
+            const words = normalizeSearchStr(rawQ).split(/\s+/).filter(w => w.length > 0);
+            const filtered = cachedDraftProducts.filter(p => {
+                const pName = normalizeSearchStr(p.name);
+                const pSku = normalizeSearchStr(p.sku);
+                const pCat = normalizeSearchStr(p.category);
+                return words.every(w => pName.includes(w) || pSku.includes(w) || pCat.includes(w));
+            });
             renderBorradoresList(filtered);
         }
 
