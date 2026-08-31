@@ -2167,8 +2167,8 @@ function getCategorySearchPatterns(cat) {
         'SECADORES': ['%SECADOR%'],
         'PAPELES': ['%PAPEL%'],
         'ESPONJAS': ['%ESPONJ%', '%FIBRA%'],
-        'ESCOBILLONES': ['%ESCOB%', '%CEPILL%'],
-        'CEPILLOS': ['%CEPILL%', '%ESCOB%'],
+        'ESCOBILLONES': ['%ESCOB%'],
+        'CEPILLOS': ['%CEPILL%'],
         'BAÑO': ['%BAÑO%', '%BANO%', '%SANITAR%'],
         'COCINA': ['%COCIN%', '%DESENG%'],
         'PILETA': ['%PILET%', '%CLORO%'],
@@ -2210,7 +2210,7 @@ app.get('/api/products/search', async (req, res) => {
             return res.json({ success: true, count: 0, products: [] });
         }
 
-        // 1. Búsqueda directa en Supabase dec_products (Multi-palabra, sin límite restrictivo)
+        // 1. Búsqueda directa en Supabase dec_products (Multi-palabra en Nombre y SKU, sin límite restrictivo)
         const words = query.split(/\s+/).filter(w => w.length > 0);
         let dbQuery = supabase
             .from('dec_products')
@@ -2219,7 +2219,7 @@ app.get('/api/products/search', async (req, res) => {
             .gt('price', 0);
 
         words.forEach(w => {
-            dbQuery = dbQuery.or(`name.ilike.%${w}%,sku.ilike.%${w}%,category.ilike.%${w}%`);
+            dbQuery = dbQuery.or(`name.ilike.%${w}%,sku.ilike.%${w}%`);
         });
 
         dbQuery = dbQuery.order('name', { ascending: true }).limit(500);
@@ -2517,17 +2517,23 @@ app.get('/api/products/published', async (req, res) => {
             .gt('price', 0);
 
         if (category && category !== 'TODAS') {
-            const patterns = getCategorySearchPatterns(category);
-            if (patterns.length > 0) {
-                const orClause = patterns.map(p => `category.ilike.${p}`).join(',');
-                dbQuery = dbQuery.or(orClause);
+            if (category === 'ESCOBILLONES') {
+                dbQuery = dbQuery.or('name.ilike.%ESCOB%,category.ilike.%ESCOBILLON%');
+            } else if (category === 'CEPILLOS') {
+                dbQuery = dbQuery.or('name.ilike.%CEPILL%,category.ilike.%CEPILLO%');
+            } else {
+                const patterns = getCategorySearchPatterns(category);
+                if (patterns.length > 0) {
+                    const orClause = patterns.map(p => `category.ilike.${p}`).join(',');
+                    dbQuery = dbQuery.or(orClause);
+                }
             }
         }
 
         if (query) {
             const words = query.split(/\s+/).filter(w => w.length > 0);
             words.forEach(w => {
-                dbQuery = dbQuery.or(`name.ilike.%${w}%,sku.ilike.%${w}%,category.ilike.%${w}%`);
+                dbQuery = dbQuery.or(`name.ilike.%${w}%,sku.ilike.%${w}%`);
             });
         }
 

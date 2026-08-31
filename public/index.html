@@ -7711,8 +7711,7 @@ ightarrow$ Ventas</p>
             const filtered = cachedPublishedProducts.filter(p => {
                 const pName = normalizeSearchStr(p.name);
                 const pSku = normalizeSearchStr(p.sku);
-                const pCat = normalizeSearchStr(p.category);
-                return words.every(w => pName.includes(w) || pSku.includes(w) || pCat.includes(w));
+                return words.every(w => pName.includes(w) || pSku.includes(w));
             });
             renderProductosPublicadosList(filtered);
         }
@@ -7817,8 +7816,7 @@ ightarrow$ Ventas</p>
             const filtered = cachedDraftProducts.filter(p => {
                 const pName = normalizeSearchStr(p.name);
                 const pSku = normalizeSearchStr(p.sku);
-                const pCat = normalizeSearchStr(p.category);
-                return words.every(w => pName.includes(w) || pSku.includes(w) || pCat.includes(w));
+                return words.every(w => pName.includes(w) || pSku.includes(w));
             });
             renderBorradoresList(filtered);
         }
