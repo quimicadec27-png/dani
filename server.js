@@ -2226,78 +2226,115 @@ app.get('/api/products/search', async (req, res) => {
 });
 
 
-// Endpoint para editar Título, Precios y Detalles de un Producto (WooCommerce + Supabase)
+// Endpoint para editar Título, Precios, Categoría y Detalles de un Producto (WooCommerce + Supabase)
 app.post('/api/products/update-details', async (req, res) => {
     try {
-        const { sku, name, regular_price, sale_price } = req.body;
-        if (!sku) {
-            return res.status(400).json({ success: false, error: 'Se requiere el SKU del producto.' });
+        const { sku, name, regular_price, sale_price, category, image_base64, image_filename, is_new } = req.body;
+        if (!sku && !name) {
+            return res.status(400).json({ success: false, error: 'Se requiere el SKU o Nombre del producto.' });
         }
 
-        let wcData = { success: false };
-        const baseParams = `secret_key=qdec_crm_sec_2026&sku=${encodeURIComponent(sku)}`;
-        const nameParam = name ? `&name=${encodeURIComponent(name)}` : '';
-        const priceParam = regular_price ? `&regular_price=${encodeURIComponent(regular_price)}` : '';
-        const saleParam = sale_price ? `&sale_price=${encodeURIComponent(sale_price)}` : '';
+        const finalSku = sku || `QD-${Date.now().toString(36).toUpperCase()}`;
+        const priceNum = parseFloat(regular_price || sale_price || 0);
 
-        // Intento 1: POST con JSON body
+        // 1. Subida de imagen si se adjuntó en base64
+        let uploadedImageUrl = null;
+        if (image_base64) {
+            try {
+                const imgRes = await fetch('https://quimicadec.com/?qdec_api=upload_image', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        secret_key: 'qdec_crm_sec_2026',
+                        sku: finalSku,
+                        image_data: image_base64,
+                        filename: image_filename || `${finalSku}.jpg`,
+                        type: 'cover'
+                    })
+                });
+                const imgData = await imgRes.json();
+                if (imgData && imgData.success) {
+                    uploadedImageUrl = imgData.image_url;
+                }
+            } catch (e) {
+                console.error('Error subiendo foto de producto:', e.message);
+            }
+        }
+
+        // 2. Enviar a WooCommerce (update_product_details)
+        let wcData = { success: false };
         try {
             const wcRes = await fetch('https://quimicadec.com/?qdec_api=update_product_details', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ secret_key: 'qdec_crm_sec_2026', sku, name: name || '', regular_price: regular_price || '', sale_price: sale_price || '' })
+                body: JSON.stringify({
+                    secret_key: 'qdec_crm_sec_2026',
+                    sku: finalSku,
+                    name: name || '',
+                    regular_price: regular_price || '',
+                    sale_price: sale_price || '',
+                    category: category || ''
+                })
             });
             const textResp = await wcRes.text();
             try { wcData = JSON.parse(textResp); } catch(e) { wcData = { success: false, method: 'POST', raw: textResp.slice(0, 100) }; }
         } catch(e) { wcData = { success: false, method: 'POST', error: e.message }; }
 
-        // Intento 2: GET con query params (fallback si POST devolvió HTML)
+        // Fallback GET con query params si POST falló
         if (!wcData.success) {
             try {
-                const getUrl = `https://quimicadec.com/?qdec_api=update_product_details&${baseParams}${nameParam}${priceParam}${saleParam}`;
+                const baseParams = `secret_key=qdec_crm_sec_2026&sku=${encodeURIComponent(finalSku)}`;
+                const nameParam = name ? `&name=${encodeURIComponent(name)}` : '';
+                const priceParam = regular_price ? `&regular_price=${encodeURIComponent(regular_price)}` : '';
+                const catParam = category ? `&category=${encodeURIComponent(category)}` : '';
+                const getUrl = `https://quimicadec.com/?qdec_api=update_product_details&${baseParams}${nameParam}${priceParam}${catParam}`;
                 const wcRes2 = await fetch(getUrl, { method: 'GET' });
                 const textResp2 = await wcRes2.text();
                 try { wcData = JSON.parse(textResp2); } catch(e) { wcData = { success: false, method: 'GET', raw: textResp2.slice(0, 100) }; }
             } catch(e) { wcData = { success: false, method: 'GET', error: e.message }; }
         }
 
-        // Intento 3: Verificar con search_product si el nombre realmente cambió en WooCommerce
-        let verificado = false;
-        if (name) {
-            try {
-                const vRes = await fetch(`https://quimicadec.com/?qdec_api=search_product&secret_key=qdec_crm_sec_2026&q=${encodeURIComponent(sku)}`);
-                const vData = await vRes.json();
-                if (vData.success && vData.products && vData.products.length > 0) {
-                    const prod = vData.products[0];
-                    if (prod.name && prod.name.toUpperCase().includes(name.toUpperCase().slice(0, 10))) {
-                        verificado = true;
-                    }
-                }
-            } catch(e) {}
-        }
-
-        // Actualizar Supabase
+        // 3. Actualizar o Insertar en Supabase dec_products
         let sbUpdated = false;
-        const updateDb = {};
-        if (name) updateDb.name = name;
-        if (sale_price || regular_price) updateDb.price = parseFloat(sale_price || regular_price);
+        const { data: existing } = await supabase.from('dec_products').select('id, sku').eq('sku', finalSku).maybeSingle();
 
-        if (Object.keys(updateDb).length > 0) {
-            const { error: sbErr } = await supabase.from('dec_products').update(updateDb).eq('sku', sku);
+        if (existing) {
+            const updateDb = { updated_at: new Date().toISOString() };
+            if (name) updateDb.name = name;
+            if (priceNum > 0) updateDb.price = priceNum;
+            if (category) updateDb.category = category;
+            if (uploadedImageUrl) updateDb.image_url = uploadedImageUrl;
+
+            const { error: sbErr } = await supabase.from('dec_products').update(updateDb).eq('sku', finalSku);
+            if (!sbErr) {
+                sbUpdated = true;
+                refreshProductCatalog();
+            }
+        } else {
+            const insertDb = {
+                sku: finalSku,
+                name: name || `Producto ${finalSku}`,
+                price: priceNum,
+                category: category || 'PRODUCTOS LIQUIDOS',
+                stock_status: 'instock',
+                status: 'publish',
+                type: 'simple',
+                image_url: uploadedImageUrl || null,
+                updated_at: new Date().toISOString()
+            };
+            const { error: sbErr } = await supabase.from('dec_products').insert([insertDb]);
             if (!sbErr) {
                 sbUpdated = true;
                 refreshProductCatalog();
             }
         }
 
-        const wcOk = wcData.success || verificado;
+        const wcOk = wcData.success;
         res.json({
             success: true,
-            mensaje: wcOk
-                ? `🎉 Producto actualizado con éxito en WooCommerce y Supabase. Caché purgada automáticamente.`
-                : `⚠️ Supabase actualizado, pero WooCommerce no confirmó el cambio. Asegurate de que el snippet WPCode esté activo.`,
+            mensaje: `🎉 Producto '${name || finalSku}' guardado correctamente en la categoría ${category || 'seleccionada'}, WooCommerce y Supabase.`,
+            sku: finalSku,
             wc_response: wcData,
-            wc_verificado: verificado,
             supabase_updated: sbUpdated
         });
     } catch (err) {

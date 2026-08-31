@@ -1364,23 +1364,28 @@ ightarrow$ Ventas</p>
                                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-white/10 pb-3">
                                     <div>
                                         <h3 class="font-title text-xs font-bold uppercase text-blue-400 tracking-wider flex items-center gap-2">
-                                            <span class="material-symbols-outlined text-blue-400 text-xl">edit_square</span> <span>Editor Manual de Productos</span>
+                                            <span class="material-symbols-outlined text-blue-400 text-xl">edit_square</span> <span>Editor y Creador Manual de Productos</span>
                                         </h3>
-                                        <p class="text-[11px] text-gray-400 mt-0.5">Buscá productos por su <strong>Nombre</strong> o SKU, agregá la cantidad de renglones que desees, modificá nombres, precios o fotos, y guardá los cambios en lote.</p>
+                                        <p class="text-[11px] text-gray-400 mt-0.5">Buscá productos existentes por <strong>Nombre/SKU</strong> para editarlos, o hacé clic en <strong>+ Crear Nuevo Producto</strong> para sumarlo con su categoría oficial de las 32 de la tienda.</p>
                                     </div>
-                                    <button type="button" onclick="agregarRenglonEditorManual()" class="px-3.5 py-2 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/40 font-bold text-xs flex items-center gap-1.5 transition-all shadow shrink-0">
-                                        <span class="material-symbols-outlined text-sm">add_circle</span> + Sumar Otro Producto
-                                    </button>
+                                    <div class="flex items-center gap-2">
+                                        <button type="button" onclick="crearNuevoProductoManual()" class="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-lg shrink-0">
+                                            <span class="material-symbols-outlined text-sm">add_circle</span> + Crear Nuevo Producto
+                                        </button>
+                                        <button type="button" onclick="agregarRenglonEditorManual()" class="px-3.5 py-2 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/40 font-bold text-xs flex items-center gap-1.5 transition-all shadow shrink-0">
+                                            <span class="material-symbols-outlined text-sm">add</span> + Sumar Renglón
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <!-- BUSCADOR GLOBAL CON AUTOCOMPLETADO POR NOMBRE -->
                                 <div class="relative space-y-1.5">
-                                    <label class="text-[11px] font-bold text-gray-300 uppercase">🔍 Buscar Producto por Nombre (ej: Alcohol, Desodorante, Lavandina)...</label>
-                                    <input type="text" id="img-prod-search" oninput="buscarProductoImagen(this.value)" placeholder="Escribí el nombre del producto o SKU..." class="w-full bg-slate-900 border border-blue-500/40 rounded-xl px-4 py-2.5 text-xs text-white placeholder-gray-400 focus:outline-none focus:border-blue-400 font-mono shadow-inner">
+                                    <label class="text-[11px] font-bold text-gray-300 uppercase">🔍 Buscar Producto Existente por Nombre o SKU...</label>
+                                    <input type="text" id="img-prod-search" oninput="buscarProductoImagen(this.value)" placeholder="Escribí el nombre del producto o SKU para editarlo..." class="w-full bg-slate-900 border border-blue-500/40 rounded-xl px-4 py-2.5 text-xs text-white placeholder-gray-400 focus:outline-none focus:border-blue-400 font-mono shadow-inner">
                                     <div id="img-search-results" class="hidden absolute left-0 right-0 top-full mt-1 z-50 bg-slate-900 border border-blue-500/40 rounded-xl max-h-60 overflow-y-auto shadow-2xl divide-y divide-white/5 backdrop-blur-xl"></div>
                                 </div>
 
-                                <!-- CONTENEDOR DE RENGLONES DE PRODUCTOS A EDITAR EN LOTE -->
+                                <!-- CONTENEDOR DE RENGLONES DE PRODUCTOS A EDITAR / CREAR EN LOTE -->
                                 <div id="batch-prod-editor-container" class="space-y-3 pt-2">
                                     <!-- Renglones de productos agregados dinámicamente -->
                                 </div>
@@ -1388,9 +1393,14 @@ ightarrow$ Ventas</p>
                                 <!-- BOTONES GLOBALES DE ACCIÓN Y MENSAJE DE ESTADO -->
                                 <div class="pt-3 border-t border-white/10 space-y-3">
                                     <div class="flex flex-wrap items-center justify-between gap-3">
-                                        <button type="button" onclick="agregarRenglonEditorManual()" class="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 border border-white/10 font-bold text-xs flex items-center gap-1.5 transition-all">
-                                            <span class="material-symbols-outlined text-sm">add</span> + Sumar Otro Producto a la Lista
-                                        </button>
+                                        <div class="flex items-center gap-2">
+                                            <button type="button" onclick="crearNuevoProductoManual()" class="px-3.5 py-2.5 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/40 font-bold text-xs flex items-center gap-1.5 transition-all">
+                                                <span class="material-symbols-outlined text-sm">add_circle</span> + Crear Otro Producto
+                                            </button>
+                                            <button type="button" onclick="agregarRenglonEditorManual()" class="px-3.5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 border border-white/10 font-bold text-xs flex items-center gap-1.5 transition-all">
+                                                <span class="material-symbols-outlined text-sm">add</span> + Renglón Vacío
+                                            </button>
+                                        </div>
                                         <div class="flex items-center gap-2">
                                             <button type="button" onclick="limpiarEditorManualLote()" class="px-4 py-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 font-bold text-xs transition-all">
                                                 <span class="material-symbols-outlined text-base">close</span> Cancelar Todo
@@ -1421,26 +1431,12 @@ ightarrow$ Ventas</p>
                                             <span>Fotos preparadas (<span id="bulk-img-count" class="text-amber-400">0</span>):</span>
                                             <button onclick="clearBulkQueue()" class="text-rose-400 hover:underline text-[11px]">Limpiar Lote</button>
                                         </div>
-
-                                        <!-- 📌 LISTA DE FOTOS EN COLA -->
-                                        <div id="bulk-img-queue-list" class="max-h-80 overflow-y-auto space-y-2 border border-white/10 rounded-xl p-2 bg-black/40"></div>
-
-                                        <!-- 📊 BARRA DE PROGRESO DE CARGA -->
-                                        <div id="bulk-upload-progress" class="hidden space-y-2 p-3 bg-amber-950/40 border border-amber-500/30 rounded-xl">
-                                            <div class="flex items-center justify-between text-xs font-bold text-amber-300">
-                                                <span id="bulk-progress-text">Subiendo imágenes...</span>
-                                                <span id="bulk-progress-percent">0%</span>
-                                            </div>
-                                            <div class="w-full bg-slate-900 rounded-full h-2 overflow-hidden border border-amber-500/30">
-                                                <div id="bulk-progress-bar" class="bg-amber-400 h-full w-0 transition-all duration-300"></div>
-                                            </div>
-                                        </div>
-
-                                        <button id="bulk-upload-btn" onclick="startBulkImageUpload()" class="w-full py-3.5 rounded-xl bg-amber-500 text-primary-dark font-title text-xs font-bold uppercase tracking-wider hover:bg-amber-400 shadow-xl transition-all flex items-center justify-center gap-2">
-                                            <span class="material-symbols-outlined text-[18px]">publish</span> Subir Lote Completo y Purgar Caché
+                                        <div id="bulk-img-queue-list" class="max-h-48 overflow-y-auto space-y-1.5 pr-2"></div>
+                                        <button onclick="uploadBulkImages()" id="btn-upload-bulk-imgs" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-black font-title text-xs font-bold uppercase tracking-wider shadow-lg transition-all flex items-center justify-center gap-1.5">
+                                            <span class="material-symbols-outlined text-base">cloud_upload</span> Subir Todas las Fotos a la Tienda
                                         </button>
-                                        <div id="bulk-upload-res" class="hidden text-xs font-bold p-3 rounded-xl border"></div>
                                     </div>
+                                    <div id="bulk-upload-res" class="hidden text-xs font-bold p-3 rounded-xl border"></div>
                                 </div>
                             </div>
 
@@ -1450,7 +1446,57 @@ ightarrow$ Ventas</p>
                                     <h4 class="font-title text-xs font-bold uppercase text-emerald-400 tracking-wider flex items-center gap-1.5">
                                         <span class="material-symbols-outlined text-emerald-400 text-xl">description</span> <span>Carga Masiva desde Archivo Excel o CSV</span>
                                     </h4>
-                                    <p class="text-xs text-gray-300 mt-1">Seleccioná directamente el archivo Excel de tu computadora (por ejemplo, <code>SAHUMERIOS_para_WooCommerce_2026-07-30.xlsx</code>). El sistema detectará automáticamente los SKUs, Nombres, Precios, Stock y Categorías para actualizar la tienda y la base de datos.</p>
+                                    <p class="text-xs text-gray-300 mt-1">Seleccioná directamente el archivo Excel de tu computadora. El sistema detectará automáticamente los SKUs, Nombres, Precios, Stock y Categorías para actualizar la tienda y la base de datos.</p>
+                                </div>
+
+                                <!-- SELECTOR DE CATEGORÍA POR DEFECTO -->
+                                <div class="p-3 bg-white/5 border border-emerald-500/30 rounded-xl space-y-1.5">
+                                    <label class="text-[11px] font-bold text-emerald-300 uppercase block flex items-center gap-1.5">
+                                        <span class="material-symbols-outlined text-sm">category</span> Categoría por Defecto (para productos sin categoría en el Excel):
+                                    </label>
+                                    <select id="excel-default-cat" class="w-full bg-slate-900 border border-emerald-500/40 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-400 font-bold">
+                                        <optgroup label="🧪 LIMPIEZA Y QUÍMICOS">
+                                            <option value="PRODUCTOS LIQUIDOS" selected>Productos Líquidos</option>
+                                            <option value="PRODUCTOS PARA DILUIR">Productos para Diluir</option>
+                                            <option value="PRIMERAS MARCAS">Primeras Marcas</option>
+                                            <option value="PASTAS Y CONCENTRADOS">Pastas y Concentrados</option>
+                                            <option value="AEROSOLES">Aerosoles</option>
+                                            <option value="JABON EN POLVO">Jabón en Polvo</option>
+                                            <option value="JABON EN PAN">Jabón en Pan</option>
+                                            <option value="OFERTAS SEMANALES">Ofertas Semanales</option>
+                                            <option value="COMBOS EMPRENDEDORES">Combos Emprendedores</option>
+                                        </optgroup>
+                                        <optgroup label="🧽 ACCESORIOS DE LIMPIEZA">
+                                            <option value="ESPONJAS">Esponjas</option>
+                                            <option value="ESCOBILLONES">Escobillones</option>
+                                            <option value="CEPILLOS">Cepillos</option>
+                                            <option value="SECADORES">Secadores</option>
+                                            <option value="CABOS">Cabos</option>
+                                            <option value="BURLETES">Burlete</option>
+                                            <option value="BOLSAS">Bolsas</option>
+                                            <option value="ENVASES">Envases</option>
+                                        </optgroup>
+                                        <optgroup label="🏠 HOGAR Y AMBIENTES">
+                                            <option value="BAÑO">Baño</option>
+                                            <option value="COCINA">Cocina</option>
+                                            <option value="PERFUMERIA">Perfumería</option>
+                                            <option value="SAHUMERIOS">Sahumerios</option>
+                                            <option value="TEXTILES">Textiles</option>
+                                            <option value="PAPELES">Papeles</option>
+                                            <option value="REPELENTES">Repelentes</option>
+                                            <option value="INSECTICIDAS">Insecticidas</option>
+                                        </optgroup>
+                                        <optgroup label="⭐ ESPECIALIDADES Y VARIOS">
+                                            <option value="HIGIENE PERSONAL">Higiene Personal</option>
+                                            <option value="JABON DE TOCADOR">Jabón Tocador</option>
+                                            <option value="JARDÍN">Jardín</option>
+                                            <option value="PILETA">Pileta</option>
+                                            <option value="AUTOMOVIL">Automóvil</option>
+                                            <option value="KIOSCO Y VARIOS">Kiosco y Varios</option>
+                                            <option value="PLASTICOS">Plásticos</option>
+                                            <option value="LIMPIEZA HOGAR">Limpieza Hogar</option>
+                                        </optgroup>
+                                    </select>
                                 </div>
 
                                 <!-- OPCIÓN A: SUBIR ARCHIVO EXCEL DE LA COMPUTADORA -->
@@ -5944,13 +5990,16 @@ ightarrow$ Ventas</p>
                         jsonRows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
                     }
 
+                    const defaultCatEl = document.getElementById('excel-default-cat');
+                    const defaultCat = defaultCatEl ? defaultCatEl.value : 'PRODUCTOS LIQUIDOS';
+
                     excelRowsData = jsonRows.map(row => {
                         const sku = row['SKU'] || row['sku'] || row['Sku'] || row['ID'] || '';
                         const name = row['Nombre del Producto / Variación'] || row['Nombre del Producto / Variacin'] || row['Nombre'] || row['Producto'] || row['name'] || '';
                         const rawPrice = row['Precio ($)'] || row['Precio'] || row['price'] || row['Precio Regular'] || 0;
                         const price = parseArgentinePriceClient(rawPrice);
                         const stock = row['Estado de Stock'] || row['Stock'] || row['stock_status'] || 'En Stock';
-                        const cat = row['Categorías'] || row['Categoras'] || row['Categoría'] || row['category'] || '';
+                        const cat = row['Categorías'] || row['Categoras'] || row['Categoría'] || row['category'] || defaultCat;
                         const estado = row['Estado'] || row['estado'] || 'ACTIVO';
                         return { sku, name, price, stock, cat, estado };
                     }).filter(r => r.sku || r.name);
@@ -5982,7 +6031,7 @@ ightarrow$ Ventas</p>
                     <td class="py-1.5 px-3 text-center">
                         <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${String(r.stock).toLowerCase().includes('agotado') ? 'bg-red-500/20 text-red-300' : 'bg-emerald-500/20 text-emerald-300'}">${r.stock}</span>
                     </td>
-                    <td class="py-1.5 px-3 text-gray-400">${r.cat || '-'}</td>
+                    <td class="py-1.5 px-3 text-cyan-300 font-bold">${r.cat || '-'}</td>
                 </tr>
             `).join('');
 
@@ -5999,6 +6048,16 @@ ightarrow$ Ventas</p>
         async function subirListaExcel() {
             const resDiv = document.getElementById('excel-res-msg');
             const pasteText = document.getElementById('excel-paste-input').value.trim();
+            const defaultCatEl = document.getElementById('excel-default-cat');
+            const defaultCat = defaultCatEl ? defaultCatEl.value : 'PRODUCTOS LIQUIDOS';
+
+            if (excelRowsData.length > 0) {
+                excelRowsData.forEach(r => {
+                    if (!r.cat || r.cat === '-' || r.cat === 'General') {
+                        r.cat = defaultCat;
+                    }
+                });
+            }
 
             if (excelRowsData.length === 0 && !pasteText) {
                 resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-amber-500/40 bg-amber-500/10 text-amber-300';
@@ -6863,18 +6922,123 @@ ightarrow$ Ventas</p>
             }
         }
 
-        function agregarRenglonEditorManual(prod = null) {
+        // CONSTANTE DE LAS 32 CATEGORÍAS OFICIALES Y SUS PREFIJOS DE SKU
+        const OFFICIAL_32_CATEGORIES = [
+            {
+                group: "🧪 LIMPIEZA Y QUÍMICOS",
+                items: [
+                    { value: "PRODUCTOS LIQUIDOS", label: "Productos Líquidos", prefix: "QD-LIQ" },
+                    { value: "PRODUCTOS PARA DILUIR", label: "Productos para Diluir", prefix: "QD-DIL" },
+                    { value: "PRIMERAS MARCAS", label: "Primeras Marcas", prefix: "QD-MAR" },
+                    { value: "PASTAS Y CONCENTRADOS", label: "Pastas y Concentrados", prefix: "QD-PST" },
+                    { value: "AEROSOLES", label: "Aerosoles", prefix: "QD-AER" },
+                    { value: "JABON EN POLVO", label: "Jabón en Polvo", prefix: "QD-JBP" },
+                    { value: "JABON EN PAN", label: "Jabón en Pan", prefix: "QD-JBN" },
+                    { value: "OFERTAS SEMANALES", label: "Ofertas Semanales", prefix: "QD-OFR" },
+                    { value: "COMBOS EMPRENDEDORES", label: "Combos Emprendedores", prefix: "QD-CMB" }
+                ]
+            },
+            {
+                group: "🧽 ACCESORIOS DE LIMPIEZA",
+                items: [
+                    { value: "ESPONJAS", label: "Esponjas", prefix: "QD-ESP" },
+                    { value: "ESCOBILLONES", label: "Escobillones", prefix: "QD-ESC" },
+                    { value: "CEPILLOS", label: "Cepillos", prefix: "QD-CEP" },
+                    { value: "SECADORES", label: "Secadores", prefix: "QD-SEC" },
+                    { value: "CABOS", label: "Cabos", prefix: "QD-CAB" },
+                    { value: "BURLETES", label: "Burlete", prefix: "QD-BUR" },
+                    { value: "BOLSAS", label: "Bolsas", prefix: "QD-BLS" },
+                    { value: "ENVASES", label: "Envases", prefix: "QD-ENV" }
+                ]
+            },
+            {
+                group: "🏠 HOGAR Y AMBIENTES",
+                items: [
+                    { value: "BAÑO", label: "Baño", prefix: "QD-BNO" },
+                    { value: "COCINA", label: "Cocina", prefix: "QD-COC" },
+                    { value: "PERFUMERIA", label: "Perfumería", prefix: "QD-PRF" },
+                    { value: "SAHUMERIOS", label: "Sahumerios", prefix: "QD-SAH" },
+                    { value: "TEXTILES", label: "Textiles", prefix: "QD-TXT" },
+                    { value: "PAPELES", label: "Papeles", prefix: "QD-PAP" },
+                    { value: "REPELENTES", label: "Repelentes", prefix: "QD-REP" },
+                    { value: "INSECTICIDAS", label: "Insecticidas", prefix: "QD-INS" }
+                ]
+            },
+            {
+                group: "⭐ ESPECIALIDADES Y VARIOS",
+                items: [
+                    { value: "HIGIENE PERSONAL", label: "Higiene Personal", prefix: "QD-HIG" },
+                    { value: "JABON DE TOCADOR", label: "Jabón Tocador", prefix: "QD-TOC" },
+                    { value: "JARDÍN", label: "Jardín", prefix: "QD-JRD" },
+                    { value: "PILETA", label: "Pileta", prefix: "QD-PLT" },
+                    { value: "AUTOMOVIL", label: "Automóvil", prefix: "QD-AUT" },
+                    { value: "KIOSCO Y VARIOS", label: "Kiosco y Varios", prefix: "QD-VAR" },
+                    { value: "PLASTICOS", label: "Plásticos", prefix: "QD-PLS" },
+                    { value: "LIMPIEZA HOGAR", label: "Limpieza Hogar", prefix: "QD-HGR" }
+                ]
+            }
+        ];
+
+        function renderCategoriasOptionsHtml(selectedVal = '') {
+            let html = '';
+            OFFICIAL_32_CATEGORIES.forEach(g => {
+                html += `<optgroup label="${g.group}">`;
+                g.items.forEach(it => {
+                    const sel = (selectedVal && selectedVal.toUpperCase().trim() === it.value) ? 'selected' : '';
+                    html += `<option value="${it.value}" data-prefix="${it.prefix}" ${sel}>${it.label}</option>`;
+                });
+                html += `</optgroup>`;
+            });
+            return html;
+        }
+
+        function generarSkuPorCategoria(catVal) {
+            let prefix = 'QD-PROD';
+            for (const g of OFFICIAL_32_CATEGORIES) {
+                const found = g.items.find(it => it.value === catVal);
+                if (found) {
+                    prefix = found.prefix;
+                    break;
+                }
+            }
+            const randNum = Math.floor(1000 + Math.random() * 9000);
+            return `${prefix}-${randNum}`;
+        }
+
+        function crearNuevoProductoManual() {
+            agregarRenglonEditorManual(null, true);
+        }
+
+        function actualizarSkuPorCategoria(rowId) {
+            const catSelect = document.getElementById(`cat_${rowId}`);
+            const skuInput = document.getElementById(`sku_${rowId}`);
+            const rowEl = document.getElementById(rowId);
+            if (!catSelect || !skuInput) return;
+
+            // Si es producto nuevo o tiene SKU auto-generado, actualizar prefijo
+            const isNew = rowEl && rowEl.dataset.isNew === 'true';
+            if (isNew || skuInput.value.startsWith('QD-')) {
+                const newSku = generarSkuPorCategoria(catSelect.value);
+                skuInput.value = newSku;
+            }
+        }
+
+        function agregarRenglonEditorManual(prod = null, isNew = false) {
             const container = document.getElementById('batch-prod-editor-container');
             if (!container) return;
 
             const rowId = 'row_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
-            const sku = prod ? (prod.sku || '') : '';
+            const defaultCat = prod ? (prod.category || 'PRODUCTOS LIQUIDOS') : 'PRODUCTOS LIQUIDOS';
+            const autoSku = isNew ? generarSkuPorCategoria(defaultCat) : '';
+            const sku = prod ? (prod.sku || '') : autoSku;
             const name = prod ? (prod.name || '') : '';
             const price = prod ? (prod.regular_price || prod.price || '') : '';
             const imageUrl = prod ? (prod.image_url || '') : '';
 
             const rowHtml = `
-                <div id="${rowId}" class="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-3 relative group hover:border-blue-500/40 transition-all">
+                <div id="${rowId}" data-is-new="${isNew ? 'true' : 'false'}" class="p-4 rounded-2xl bg-white/5 border ${isNew ? 'border-blue-500/50 bg-blue-950/20' : 'border-white/10'} space-y-3 relative group hover:border-blue-500/40 transition-all">
+                    ${isNew ? '<div class="absolute -top-2.5 left-4 px-2 py-0.5 rounded-full bg-blue-500 text-white font-black text-[9px] uppercase tracking-wider shadow">✨ Nuevo Producto</div>' : ''}
+                    
                     <div class="flex flex-col md:flex-row items-start md:items-center gap-4">
                         <!-- PREVIEW FOTO / UPLOAD -->
                         <div class="flex items-center gap-3 shrink-0">
@@ -6892,17 +7056,32 @@ ightarrow$ Ventas</p>
                             </div>
                         </div>
 
-                        <!-- CAMPOS DE EDICIÓN: NOMBRE, SKU, PRECIO -->
-                        <div class="flex-1 grid grid-cols-1 md:grid-cols-12 gap-3 w-full">
-                            <div class="md:col-span-6 space-y-1">
+                        <!-- CAMPOS: NOMBRE, CATEGORÍA OFICIAL, SKU, PRECIO -->
+                        <div class="flex-1 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-12 gap-3 w-full">
+                            <!-- Nombre -->
+                            <div class="md:col-span-4 space-y-1">
                                 <label class="text-[9px] font-bold text-gray-400 uppercase">Nombre del Producto</label>
-                                <input type="text" id="name_${rowId}" value="${name.replace(/"/g, '&quot;')}" placeholder="Nombre del producto..." class="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white font-bold focus:outline-none focus:border-blue-400">
+                                <input type="text" id="name_${rowId}" value="${name.replace(/"/g, '&quot;')}" placeholder="Ej: Jabón Líquido Premium..." class="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white font-bold focus:outline-none focus:border-blue-400">
                             </div>
+
+                            <!-- Categoría (32 Oficiales) -->
+                            <div class="md:col-span-3 space-y-1">
+                                <label class="text-[9px] font-bold text-cyan-300 uppercase flex items-center gap-1">
+                                    <span class="material-symbols-outlined text-[12px]">category</span> Categoría Oficial (32)
+                                </label>
+                                <select id="cat_${rowId}" onchange="actualizarSkuPorCategoria('${rowId}')" class="w-full bg-slate-900 border border-cyan-500/40 rounded-xl px-3 py-2 text-xs text-cyan-200 font-bold focus:outline-none focus:border-cyan-400">
+                                    ${renderCategoriasOptionsHtml(defaultCat)}
+                                </select>
+                            </div>
+
+                            <!-- SKU -->
                             <div class="md:col-span-3 space-y-1">
                                 <label class="text-[9px] font-bold text-amber-400 uppercase">SKU (Identificador)</label>
-                                <input type="text" id="sku_${rowId}" value="${sku.replace(/"/g, '&quot;')}" placeholder="Ej: QD-SHMR-1424" class="w-full bg-slate-950 border border-amber-500/30 rounded-xl px-3 py-2 text-xs text-amber-300 font-mono font-bold focus:outline-none focus:border-amber-400">
+                                <input type="text" id="sku_${rowId}" value="${sku.replace(/"/g, '&quot;')}" placeholder="Ej: QD-LIQ-1042" class="w-full bg-slate-950 border border-amber-500/30 rounded-xl px-3 py-2 text-xs text-amber-300 font-mono font-bold focus:outline-none focus:border-amber-400">
                             </div>
-                            <div class="md:col-span-3 space-y-1">
+
+                            <!-- Precio -->
+                            <div class="md:col-span-2 space-y-1">
                                 <label class="text-[9px] font-bold text-emerald-400 uppercase">Precio ($ ARS)</label>
                                 <input type="number" step="0.01" id="price_${rowId}" value="${price}" placeholder="0.00" class="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-emerald-300 font-mono font-bold focus:outline-none focus:border-emerald-400">
                             </div>
@@ -6918,6 +7097,14 @@ ightarrow$ Ventas</p>
 
             container.insertAdjacentHTML('beforeend', rowHtml);
             batchEditorRows.push(rowId);
+
+            // Auto-focus en el nombre si es producto nuevo
+            if (isNew) {
+                setTimeout(() => {
+                    const nameInp = document.getElementById(`name_${rowId}`);
+                    if (nameInp) nameInp.focus();
+                }, 100);
+            }
         }
 
         function handleRowImageSelected(rowId, event) {
@@ -6966,7 +7153,7 @@ ightarrow$ Ventas</p>
             if (batchEditorRows.length === 0) {
                 if (resDiv) {
                     resDiv.className = 'text-xs font-bold p-3 rounded-xl border bg-amber-500/20 text-amber-300 border-amber-500/40';
-                    resDiv.innerText = '⚠️ No hay productos en la lista para actualizar. Buscá o sumá uno primero.';
+                    resDiv.innerText = '⚠️ No hay productos en la lista para actualizar. Buscá uno existente o hacé clic en "+ Crear Nuevo Producto".';
                     resDiv.classList.remove('hidden');
                 }
                 return;
@@ -6974,55 +7161,51 @@ ightarrow$ Ventas</p>
 
             if (btn) {
                 btn.disabled = true;
-                btn.innerHTML = '<span class="animate-spin">⏳</span> Guardando en WooCommerce y Supabase...';
+                btn.innerHTML = '<span class="animate-spin">⏳</span> Guardando productos en WooCommerce y Supabase...';
             }
 
             let guardadosCount = 0;
             let errores = [];
 
             for (const rowId of batchEditorRows) {
+                const rowEl = document.getElementById(rowId);
                 const skuEl = document.getElementById(`sku_${rowId}`);
                 const nameEl = document.getElementById(`name_${rowId}`);
+                const catEl = document.getElementById(`cat_${rowId}`);
                 const priceEl = document.getElementById(`price_${rowId}`);
                 const base64El = document.getElementById(`base64_${rowId}`);
                 const filenameEl = document.getElementById(`filename_${rowId}`);
 
                 const sku = skuEl ? skuEl.value.trim() : '';
                 const name = nameEl ? nameEl.value.trim() : '';
+                const category = catEl ? catEl.value : 'PRODUCTOS LIQUIDOS';
                 const price = priceEl ? parseFloat(priceEl.value) : null;
                 const imageBase64 = base64El ? base64El.value : '';
                 const filename = filenameEl ? filenameEl.value : '';
+                const isNew = rowEl ? (rowEl.dataset.isNew === 'true') : false;
 
-                if (!sku) continue;
+                if (!sku && !name) continue;
 
                 try {
-                    // 1. Actualizar Nombre y Precios
-                    if (name || price !== null) {
-                        await fetch(`${API_URL}/products/update-details`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                sku: sku,
-                                name: name || undefined,
-                                regular_price: price || undefined
-                            })
-                        });
+                    const resp = await fetch(`${API_URL}/products/update-details`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            sku: sku,
+                            name: name || undefined,
+                            regular_price: price !== null ? price : undefined,
+                            category: category,
+                            image_base64: imageBase64 || undefined,
+                            image_filename: filename || undefined,
+                            is_new: isNew
+                        })
+                    });
+                    const resJson = await resp.json();
+                    if (resJson && resJson.success) {
+                        guardadosCount++;
+                    } else {
+                        errores.push(`SKU ${sku}: ${resJson.error || 'Error desconocido'}`);
                     }
-
-                    // 2. Si se cargó nueva foto, subirla
-                    if (imageBase64) {
-                        await fetch(`${API_URL}/products/upload-image`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                sku: sku,
-                                imageBase64: imageBase64,
-                                filename: filename || `${sku}.jpg`
-                            })
-                        });
-                    }
-
-                    guardadosCount++;
                 } catch (e) {
                     errores.push(`Error en SKU ${sku}: ${e.message}`);
                 }
@@ -7036,15 +7219,15 @@ ightarrow$ Ventas</p>
             if (resDiv) {
                 if (errores.length === 0) {
                     resDiv.className = 'text-xs font-bold p-3 rounded-xl border bg-emerald-500/20 text-emerald-300 border-emerald-500/40';
-                    resDiv.innerText = `✅ ¡Éxito! Se actualizaron correctamente ${guardadosCount} productos en WooCommerce y Supabase. Se purgó la caché de la tienda.`;
+                    resDiv.innerText = `🎉 ¡Éxito! Se guardaron correctamente ${guardadosCount} productos con sus categorías oficiales en WooCommerce y Supabase.`;
                 } else {
                     resDiv.className = 'text-xs font-bold p-3 rounded-xl border bg-amber-500/20 text-amber-300 border-amber-500/40';
-                    resDiv.innerText = `⚠️ Se actualizaron ${guardadosCount} productos con advertencias: ${errores.join(', ')}`;
+                    resDiv.innerText = `⚠️ Se procesaron ${guardadosCount} productos. Advertencias: ${errores.join(', ')}`;
                 }
                 resDiv.classList.remove('hidden');
             }
 
-            appendAuditLog('BATCH_PRODUCT_UPDATE', `Actualizó ${guardadosCount} productos desde el Editor Manual.`);
+            appendAuditLog('BATCH_PRODUCT_UPDATE', `Guardó ${guardadosCount} productos con categoría asignada desde el Editor Manual.`);
         }
 
         // =========================================================================
