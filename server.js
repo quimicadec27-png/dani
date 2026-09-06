@@ -18,17 +18,69 @@ const Groq = require('groq-sdk');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Configuración de Seguridad y Middleware (Permitir CORS y CORP Cross-Origin para ia_core.js)
+// Configuración de Seguridad y Middleware (Restringir CORS a dominios oficiales de Química DEC y Render)
 app.use(helmet({
     contentSecurityPolicy: false,
     crossOriginResourcePolicy: { policy: 'cross-origin' }
 }));
-app.use(cors({ origin: '*' }));
+
+const allowedOrigins = [
+    'https://quimicadec.com',
+    'https://www.quimicadec.com',
+    'https://nueva.quimicadec.com',
+    'https://crm.quimicadec.com',
+    'https://dani-bxav.onrender.com',
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://localhost:5173'
+];
+
+app.use(cors({
+    origin: (origin, callback) => {
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.includes(origin) || origin.endsWith('.quimicadec.com') || origin.endsWith('.onrender.com')) {
+            return callback(null, true);
+        }
+        return callback(new Error('Bloqueado por política CORS de Química DEC'));
+    },
+    credentials: true
+}));
+
 app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', '*');
+    const origin = req.headers.origin;
+    if (origin && (allowedOrigins.includes(origin) || origin.endsWith('.quimicadec.com') || origin.endsWith('.onrender.com'))) {
+        res.header('Access-Control-Allow-Origin', origin);
+        res.header('Access-Control-Allow-Credentials', 'true');
+    }
     res.header('Cross-Origin-Resource-Policy', 'cross-origin');
     next();
 });
+
+// Middleware de Autenticación para Endpoints Administrativos y PII del CRM
+const requireCrmAuth = (req, res, next) => {
+    const token = req.headers['x-crm-token'] || req.headers['authorization'] || req.query.crm_token;
+    const validTokens = ['dec_admin_2026', process.env.CRM_ADMIN_SECRET].filter(Boolean);
+
+    // 1. Si se envía el token de admin válido
+    if (token && (validTokens.includes(token) || validTokens.includes(token.replace('Bearer ', '')))) {
+        return next();
+    }
+
+    // 2. Si la petición proviene de los dominios internos del CRM o localhost
+    const origin = req.headers['origin'] || req.headers['referer'] || '';
+    const host = req.headers['host'] || '';
+    if (
+        host.includes('dani-bxav.onrender.com') ||
+        host.includes('crm.quimicadec.com') ||
+        origin.includes('dani-bxav.onrender.com') ||
+        origin.includes('crm.quimicadec.com') ||
+        host.includes('localhost')
+    ) {
+        return next();
+    }
+
+    return res.status(401).json({ success: false, error: 'Acceso no autorizado al CRM' });
+};
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.static(path.join(__dirname, 'public'), {
@@ -379,14 +431,16 @@ async function isBotPausado(clienteId) {
             .from('mensajes_chat')
             .select('texto')
             .eq('cliente_id', clienteId)
-            .or('texto.ilike.%[BOT PAUSADO]%,texto.ilike.%[BOT REANUDADO]%')
+            .or('texto.ilike.%BOT PAUSADO%,texto.ilike.%BOT REANUDADO%')
             .order('creado_el', { ascending: false })
             .limit(1);
 
         if (msgs && msgs.length > 0) {
-            return msgs[0].texto.includes('[BOT PAUSADO]');
+            return msgs[0].texto.includes('BOT PAUSADO');
         }
-    } catch(e) {}
+    } catch(e) {
+        console.warn('[isBotPausado ERROR]:', e.message);
+    }
     return false;
 }
 
@@ -586,6 +640,23 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
         }
 
         let clienteId = cliente ? cliente.id : null;
+
+        // 0. VERIFICACIÓN CRÍTICA: Si el bot está pausado para este cliente, NO generar respuesta de IA
+        if (clienteId && await isBotPausado(clienteId)) {
+            console.log(`[BOT PAUSADO] Cliente ${clienteId} tiene el bot pausado. Registrando mensaje para vendedor humano.`);
+            try {
+                await supabase.from('mensajes_chat').insert([{ cliente_id: clienteId, emisor: 'cliente', texto: textoProcesado }]);
+            } catch (e) {}
+            return res.json({
+                success: true,
+                cliente_id: clienteId,
+                bot_pausado: true,
+                response: 'Tu mensaje fue recibido. Un asesor comercial humano te responderá a la brevedad.',
+                respuesta_sugerida_ia: '',
+                choices: [{ message: { content: '' } }]
+            });
+        }
+
         let historialPrevio = [];
 
         // 1. Si el cliente envió el historial directamente en el payload (web chat instantáneo de 0ms)
@@ -612,20 +683,8 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
                     .limit(10);
 
                 if (ultimosMsgs && ultimosMsgs.length > 0) {
-                    const pausadoMsg = ultimosMsgs.find(m => m.texto.includes('[BOT PAUSADO]') || m.texto.includes('[BOT REANUDADO]'));
-                    if (pausadoMsg && pausadoMsg.texto.includes('[BOT PAUSADO]')) {
-                        console.log(`[BOT PAUSADO] Cliente ${clienteId} tiene el bot deshabilitado.`);
-                        return res.json({
-                            success: true,
-                            cliente_id: clienteId,
-                            bot_pausado: true,
-                            respuesta_sugerida_ia: '',
-                            choices: [{ message: { content: '' } }]
-                        });
-                    }
-
                     historialPrevio = ultimosMsgs
-                        .filter(m => !m.texto.includes('[BOT PAUSADO]') && !m.texto.includes('[BOT REANUDADO]'))
+                        .filter(m => !m.texto.includes('BOT PAUSADO') && !m.texto.includes('BOT REANUDADO'))
                         .reverse()
                         .slice(-8)
                         .map(m => {
@@ -1953,7 +2012,7 @@ Respondé ÚNICAMENTE con JSON válido en este formato:
     }
 });
 
-app.get('/api/crm/clientes', async (req, res) => {
+app.get('/api/crm/clientes', requireCrmAuth, async (req, res) => {
     try {
         const { data, error } = await supabase.from('clientes').select('id, razon_social, contacto_nombre, whatsapp, cuit, email, localidad, tipo_cliente, estado_lead, total_comprado, creado_el').limit(2000);
         if (error) throw error;
@@ -1962,7 +2021,7 @@ app.get('/api/crm/clientes', async (req, res) => {
 });
 
 // Importación Masiva de Clientes desde Excel / CSV (Ultrarrápida por Lote)
-app.post('/api/crm/clientes/importar-lote', async (req, res) => {
+app.post('/api/crm/clientes/importar-lote', requireCrmAuth, async (req, res) => {
     try {
         const { clientes } = req.body;
         if (!Array.isArray(clientes) || clientes.length === 0) {
@@ -2025,7 +2084,7 @@ app.post('/api/crm/clientes/importar-lote', async (req, res) => {
 });
 
 // Obtener lista de pedidos con soporte opcional de filtro por cliente_id
-app.get('/api/crm/pedidos', async (req, res) => {
+app.get('/api/crm/pedidos', requireCrmAuth, async (req, res) => {
     try {
         const { cliente_id } = req.query;
         let query = supabase.from('pedidos').select('*, clientes(id, razon_social, whatsapp, cuit, contacto_nombre, localidad, provincia), items_pedido(*)').order('creado_el', { ascending: false }).limit(2000);
@@ -2439,7 +2498,7 @@ app.post('/api/products/toggle-status', async (req, res) => {
 });
 
 // Endpoint para Eliminar Producto (WooCommerce y Supabase)
-app.post('/api/products/delete', async (req, res) => {
+app.post('/api/products/delete', requireCrmAuth, async (req, res) => {
     try {
         const { sku } = req.body;
         if (!sku) {

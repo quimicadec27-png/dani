@@ -516,11 +516,14 @@
                             <div class="text-center py-12 text-gray-500 text-xs">Seleccioná un cliente para chatear en vivo.</div>
                         </div>
 
-                        <div class="flex items-center gap-2 pt-2 border-t border-white/10">
+                        <div class="flex flex-wrap sm:flex-nowrap items-center gap-2 pt-2 border-t border-white/10">
                             <input type="text" id="vendedor-nombre-input" placeholder="Tu nombre..." class="w-28 bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-brand-yellow placeholder-gray-500 focus:outline-none focus:border-brand-yellow" oninput="localStorage.setItem('crm_vendor_name', this.value)">
-                            <input type="text" id="vendedor-msg-input" placeholder="Escribí un mensaje directo como Vendedor..." onkeydown="if(event.key==='Enter'){ event.preventDefault(); enviarMensajeVendedor(); }" class="flex-grow bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-yellow">
-                            <button onclick="enviarMensajeVendedor()" class="px-5 py-2.5 rounded-xl bg-brand-yellow text-primary-dark font-title text-xs font-bold uppercase tracking-wider hover:bg-yellow-400 transition-all flex items-center gap-1">
+                            <input type="text" id="vendedor-msg-input" placeholder="Escribí un mensaje directo como Vendedor..." onkeydown="if(event.key==='Enter'){ event.preventDefault(); enviarMensajeVendedor(); }" class="flex-grow bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-yellow min-w-[200px]">
+                            <button onclick="enviarMensajeVendedor()" class="px-4 py-2.5 rounded-xl bg-brand-yellow text-primary-dark font-title text-xs font-bold uppercase tracking-wider hover:bg-yellow-400 transition-all flex items-center gap-1 cursor-pointer" title="Registrar mensaje y pausar bot en CRM">
                                 <span class="material-symbols-outlined text-[16px]">send</span> Enviar
+                            </button>
+                            <button onclick="enviarMensajePorWhatsAppWeb()" class="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-title text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1 cursor-pointer shadow-lg shadow-emerald-500/20" title="Enviar directamente al WhatsApp del cliente">
+                                <span class="material-symbols-outlined text-[16px]">chat</span> WhatsApp
                             </button>
                         </div>
                         <script>
@@ -2435,6 +2438,7 @@ ightarrow$ Ventas</p>
                 localStorage.setItem('qdec_user_role', foundUser.role || 'direccion');
                 localStorage.setItem('qdec_user_email', foundUser.email);
                 localStorage.setItem('qdec_user_name', foundUser.name || 'Empleado CRM');
+                localStorage.setItem('qdec_crm_token', 'dec_admin_2026');
                 checkAuth();
                 return;
             }
@@ -2449,6 +2453,7 @@ ightarrow$ Ventas</p>
                 localStorage.setItem('qdec_user_role', userRole);
                 localStorage.setItem('qdec_user_email', email);
                 localStorage.setItem('qdec_user_name', email.split('@')[0].toUpperCase());
+                localStorage.setItem('qdec_crm_token', 'dec_admin_2026');
                 checkAuth();
                 return;
             }
@@ -3599,6 +3604,43 @@ ightarrow$ Ventas</p>
                     selectChatClient(selectedClienteId);
                 }
             } catch (e) {}
+        }
+
+        async function enviarMensajePorWhatsAppWeb() {
+            const input = document.getElementById('vendedor-msg-input');
+            const txt = input.value.trim();
+            if (!txt || !selectedClienteId) {
+                alert('Escribí un mensaje en la casilla antes de enviar.');
+                return;
+            }
+
+            // 1. Guardar mensaje en CRM y pausar bot
+            const nombreVendedor = (document.getElementById('vendedor-nombre-input') || {}).value || localStorage.getItem('crm_vendor_name') || '';
+            try {
+                await fetch(`${API_URL}/crm/chat/enviar-mensaje-vendedor`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cliente_id: selectedClienteId, texto_mensaje: txt, pausar_bot: true, nombre_vendedor: nombreVendedor.trim() })
+                });
+                input.value = '';
+                selectChatClient(selectedClienteId);
+            } catch (e) {}
+
+            // 2. Extraer teléfono limpio
+            let tel = (selectedClienteObj?.whatsapp || document.getElementById('edit-lead-telefono')?.value || '').trim();
+            let digits = tel.replace(/\D/g, '');
+            if (digits.startsWith('0')) digits = digits.substring(1);
+            if (digits.length === 10) digits = '549' + digits;
+            else if (digits.startsWith('54') && !digits.startsWith('549') && digits.length === 12) {
+                digits = '549' + digits.substring(2);
+            }
+
+            if (digits.length >= 8 && !tel.startsWith('Web_') && !tel.startsWith('cli_')) {
+                const url = `https://wa.me/${digits}?text=${encodeURIComponent(txt)}`;
+                window.open(url, '_blank');
+            } else {
+                alert('El lead aún no tiene un número de WhatsApp cargado en su ficha. Ingresalo en la columna izquierda para abrir WhatsApp.');
+            }
         }
 
         async function toggleBotStatus() {
