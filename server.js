@@ -103,6 +103,14 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANO
 });
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
+// Combos Emprendedores Oficiales inyectados en memoria RAM
+const OFFICIAL_COMBOS_BACKEND = [
+    { id: 6887, sku: 'QD-CMB-EMP-001', name: 'COMBO EMPRENDEDOR N1', price: 95231.25, regular_price: 95231.25, category: 'Combos Emprendedores', stock_status: 'instock', status: 'publish' },
+    { id: 6888, sku: 'QD-CMB-EMP-002', name: 'COMBO EMPRENDEDOR N2', price: 118601.84, regular_price: 118601.84, category: 'Combos Emprendedores', stock_status: 'instock', status: 'publish' },
+    { id: 6889, sku: 'QD-CMB-EMP-003', name: 'COMBO EMPRENDEDOR N3', price: 148920.50, regular_price: 148920.50, category: 'Combos Emprendedores', stock_status: 'instock', status: 'publish' },
+    { id: 6890, sku: 'QD-CMB-EMP-004', name: 'COMBO EMPRENDEDOR N4', price: 198500.00, regular_price: 198500.00, category: 'Combos Emprendedores', stock_status: 'instock', status: 'publish' }
+];
+
 // Caché en memoria RAM del catálogo de productos para respuestas ultra-rápidas en 0ms
 let PRODUCT_CATALOG_CACHE = [];
 async function refreshProductCatalog() {
@@ -127,7 +135,7 @@ async function refreshProductCatalog() {
         }
 
         if (allProducts.length > 0) {
-            PRODUCT_CATALOG_CACHE = allProducts
+            const mapped = allProducts
                 .filter(p => !p.sku?.includes('QD-DTRG-1320') && (p.status === 'publish' || !p.status) && !p.name?.toLowerCase().includes('skip'))
                 .map(p => ({
                     ...p,
@@ -135,6 +143,7 @@ async function refreshProductCatalog() {
                     regular_price: parseFloat(p.price || 0),
                     sku: (p.sku || '').replace(/_ID\d+$/, '')
                 }));
+            PRODUCT_CATALOG_CACHE = [...OFFICIAL_COMBOS_BACKEND, ...mapped];
             console.log(`[CATALOG CACHE] ✅ ${PRODUCT_CATALOG_CACHE.length} productos y variaciones publicados cargados en memoria RAM.`);
         } else {
             // Fallback a archivo local JSON con los productos si Supabase no responde
@@ -142,9 +151,10 @@ async function refreshProductCatalog() {
                 const localJsonPath = path.join(__dirname, 'catalogo_completo_3800.json');
                 if (fs.existsSync(localJsonPath)) {
                     const localData = JSON.parse(fs.readFileSync(localJsonPath, 'utf-8'));
-                    PRODUCT_CATALOG_CACHE = localData
+                    const mappedLocal = localData
                         .filter(p => !p.sku?.includes('QD-DTRG-1320') && (p.status === 'publish' || !p.status) && !p.name?.toLowerCase().includes('skip'))
                         .map(p => ({ ...p, regular_price: p.price }));
+                    PRODUCT_CATALOG_CACHE = [...OFFICIAL_COMBOS_BACKEND, ...mappedLocal];
                     console.log(`[CATALOG CACHE] ✅ ${PRODUCT_CATALOG_CACHE.length} productos cargados desde archivo local JSON.`);
                 }
             } catch (errLocal) {
@@ -232,6 +242,18 @@ En Química DEC fabricamos y distribuimos productos en 4 Macro-Sectores y 32 Cat
 3. HOGAR Y AMBIENTES: Baño e inodoros (pastillas y bloques mochila Harpic/Pato/Vim), Cocina y vajilla (esponjas de acero), Perfumería y difusores textiles, Repelentes (Off/Fuyi), Insecticidas (Raid), Desinfectantes en aerosol (Glade/Cif), Sahumerios y Defumación (Tuk Tuk x50u, Sagrada Madre, Iluminarte, Amogh, Prana), Textiles de limpieza (trapos de piso rayados, franelas, rejillas, microfibra), Toallitas y paños.
 4. ESPECIALIDADES Y PILETAS: Papeles y celulosa (Morita, New Pel, toallas intercaladas), Higiene personal (jabón de manos), Piletas (Cloro líquido 5L a 200L, pastillas triple acción 50g y 200g, cloro granulado, alguicidas, clarificantes), Línea Automotor (siliconas, shampoo siliconado, revividores), Jardinería (mangueras de 15m), Kiosco (cintas Tacsa), Bazar y Plásticos (baldes y fuentones).
 
+⚠️ LÍNEA DE DESENGRASANTES:
+- Desengrasante Multiuso Concentrado (fórmula líquida desengrasante para cocina, hornos, campanas, grasa pesada y pisos).
+- Desengrasante Industrial para Motores y Talleres Mecánicos.
+(Son productos desengrasantes formulados para remover grasas, NO son desodorantes ni perfuminas).
+
+⚠️ COMBOS EMPRENDEDORES OFICIALES (FABRICACIÓN Y REVENTA):
+- Combo Emprendedor N1 (Inicial): $95.231,25 (SKU: QD-CMB-EMP-001). Rinde más de 120 litros terminados. Incluye Cloro 20L, Detergente 20L, Suavizante 20L, Jabón Eco Plus 20L, Desengrasante Naranja 1L y 3 concentrados para diluir 25L c/u.
+- Combo Emprendedor N2 (Intermedio): $118.601,84 (SKU: QD-CMB-EMP-002).
+- Combo Emprendedor N3 (Avanzado): $148.920,50 (SKU: QD-CMB-EMP-003).
+- Combo Emprendedor N4 (Máster Full): $198.500,00 (SKU: QD-CMB-EMP-004) con envío 100% bonificado en toda la provincia de Entre Ríos.
+Cualquiera de estos combos supera los $80.000, por lo que califica y habilita automáticamente como compra mayorista para clientes nuevos.
+
 ⚠️ REGLA ABSOLUTA ANTI-INVENCIÓN DE PRECIOS:
 - EL VALOR "$2.500" ES ÚNICA Y EXCLUSIVAMENTE EL MONTO MÍNIMO DE COMPRA PARA RETIRAR EN EL LOCAL (para clientes mayoristas registrados). ¡BAJO NINGUNA CIRCUNSTANCIA ES EL PRECIO DE UN PRODUCTO!
 - QUEDA ROTUNDAMENTE PROHIBIDO ASIGNAR $2.500 O CUALQUIER PRECIO INVENTADO A PRODUCTOS.
@@ -244,7 +266,8 @@ En Química DEC fabricamos y distribuimos productos en 4 Macro-Sectores y 32 Cat
    - Retiro en Local: A partir de $2.500 por pedido (para clientes mayoristas registrados).
 
 2. COMPRA MÍNIMA MAYORISTA:
-   - Registro e Inicio Mayorista: $80.000 acumulados.
+   - Registro e Inicio Mayorista / Envíos: $80.000 acumulados para clientes nuevos.
+   - Clientes Registrados Retirando en Local: Si el usuario ya es cliente registrado o consulta expresamente por retiro en el local comercial (Av. Frondizi 815), el mínimo de compra es de únicamente $2.500. Respondé claramente $2.500 a esta consulta puntual.
    - Mantenimiento Mensual: Acumular $80.000 o más en compras mensuales.
 
 3. POLÍTICA EXACTA DE ENVÍOS EN CONCEPCIÓN DEL URUGUAY Y RESTO DEL PAÍS (ESTRICTO):
@@ -730,6 +753,10 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
             }
 
             let normalized = searchContext.toLowerCase()
+                .replace(/\bcombos?\s*emprendedor(?:es)?\s*(?:n|n°|num|numero)?\s*1\b/gi, 'combo emprendedor n1')
+                .replace(/\bcombos?\s*emprendedor(?:es)?\s*(?:n|n°|num|numero)?\s*2\b/gi, 'combo emprendedor n2')
+                .replace(/\bcombos?\s*emprendedor(?:es)?\s*(?:n|n°|num|numero)?\s*3\b/gi, 'combo emprendedor n3')
+                .replace(/\bcombos?\s*emprendedor(?:es)?\s*(?:n|n°|num|numero)?\s*4\b/gi, 'combo emprendedor n4')
                 .replace(/\bsaumerios?\b/gi, 'sahumerio')
                 .replace(/\blitros?\b|\blts?\b/gi, 'lt')
                 .replace(/\bunidades\b|\bunids?\b/gi, 'u')
