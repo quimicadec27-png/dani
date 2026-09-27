@@ -424,7 +424,47 @@ async function autoExtractAndUpdateLead(clienteId, clienteObj, textoUsuario) {
         }
 
         if (extracted.telefono && isPlaceholderWhatsapp) {
-            updateData.whatsapp = extracted.telefono.substring(0, 20);
+            const cleanNewPhone = extracted.telefono.substring(0, 20);
+
+            // 1. Verificar si este WhatsApp ya pertenece a otro cliente oficial existente
+            const { data: existingPhoneClient } = await supabase
+                .from('clientes')
+                .select('id, razon_social, whatsapp, notas')
+                .eq('whatsapp', cleanNewPhone)
+                .neq('id', clienteId)
+                .maybeSingle();
+
+            if (existingPhoneClient) {
+                console.log(`[AUTO LEAD EXTRACT] Fusión de lead temporal ${clienteId} con cliente existente ${existingPhoneClient.id} (${existingPhoneClient.razon_social})`);
+
+                // Si este lead vino de sesión web, preservar la sesión en notas del cliente definitivo
+                if (currentWhatsapp.startsWith('Web_')) {
+                    const targetNotas = existingPhoneClient.notas || '';
+                    if (!targetNotas.includes(`[SESSION:${currentWhatsapp}]`)) {
+                        const newNotas = targetNotas ? `${targetNotas} [SESSION:${currentWhatsapp}]` : `[SESSION:${currentWhatsapp}]`;
+                        await supabase.from('clientes').update({ notas: newNotas }).eq('id', existingPhoneClient.id);
+                    }
+                }
+
+                // Reasignar mensajes del chat al cliente existente
+                await supabase.from('mensajes_chat').update({ cliente_id: existingPhoneClient.id }).eq('cliente_id', clienteId);
+
+                // Reasignar pedidos si hubiera
+                await supabase.from('pedidos').update({ cliente_id: existingPhoneClient.id }).eq('cliente_id', clienteId);
+
+                // Eliminar el lead temporal ya fusionado para evitar duplicados en el CRM
+                await supabase.from('clientes').delete().eq('id', clienteId);
+                return;
+            } else {
+                updateData.whatsapp = cleanNewPhone;
+                // Preservar la sesión web en las notas del cliente para mantener la continuidad en futuras consultas
+                if (currentWhatsapp.startsWith('Web_')) {
+                    const currentNotas = clienteObj?.notas || '';
+                    if (!currentNotas.includes(`[SESSION:${currentWhatsapp}]`)) {
+                        updateData.notas = currentNotas ? `${currentNotas} [SESSION:${currentWhatsapp}]` : `[SESSION:${currentWhatsapp}]`;
+                    }
+                }
+            }
         }
 
         if (extracted.direccion && !clienteObj?.localidad) {
@@ -618,33 +658,55 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
             try {
                 const { data: cById } = await supabase
                     .from('clientes')
-                    .select('id, razon_social, whatsapp, cuit, contacto_nombre')
+                    .select('id, razon_social, whatsapp, cuit, contacto_nombre, notas')
                     .eq('id', cliente_id)
                     .maybeSingle();
                 cliente = cById;
             } catch (e) {}
         }
 
-        // 2. Si no se encontró por ID, buscar por whatsapp / session_id
+        // 2. Si no se encontró por ID, buscar por whatsapp / session_id directo
         if (!cliente) {
             try {
                 const { data: existingC } = await supabase
                     .from('clientes')
-                    .select('id, razon_social, whatsapp, cuit, contacto_nombre')
+                    .select('id, razon_social, whatsapp, cuit, contacto_nombre, notas')
                     .eq('whatsapp', clientePhone)
                     .maybeSingle();
                 cliente = existingC;
             } catch (e) {
-                console.error('Error buscando cliente:', e.message);
+                console.error('Error buscando cliente por whatsapp:', e.message);
             }
         }
 
-        // 3. Si no existe, crear registro nuevo (CUIT SIEMPRE NULL para evitar códigos Web_ en DNI)
+        // 2b. Si no se encontró por whatsapp directo y es una sesión web, buscar por tag [SESSION:...] en notas
+        const webSessionTag = (session_id || clientePhone || '').toString().trim();
+        if (!cliente && webSessionTag.startsWith('Web_')) {
+            try {
+                const cleanTag = webSessionTag.substring(0, 20);
+                const { data: cBySession } = await supabase
+                    .from('clientes')
+                    .select('id, razon_social, whatsapp, cuit, contacto_nombre, notas')
+                    .ilike('notas', `%[SESSION:${cleanTag}]%`)
+                    .order('creado_el', { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+                if (cBySession) {
+                    cliente = cBySession;
+                    console.log(`[SESSION RECOVERED] Cliente recuperado por session tag en notas: ${cliente.id} (${cliente.razon_social})`);
+                }
+            } catch (e) {
+                console.error('Error buscando cliente por session tag:', e.message);
+            }
+        }
+
+        // 3. Si no existe, crear registro nuevo (guardando el session tag en notas)
         if (!cliente) {
             try {
+                const initialNotes = webSessionTag.startsWith('Web_') ? `[SESSION:${webSessionTag.substring(0, 20)}]` : null;
                 const { data: newC, error: insertErr } = await supabase
                     .from('clientes')
-                    .insert([{ razon_social: leadNombre, whatsapp: clientePhone, cuit: null }])
+                    .insert([{ razon_social: leadNombre, whatsapp: clientePhone, cuit: null, notas: initialNotes }])
                     .select()
                     .maybeSingle();
                 if (newC) {
@@ -652,7 +714,7 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
                 } else {
                     const { data: fallbackC } = await supabase
                         .from('clientes')
-                        .select('id, razon_social, whatsapp, cuit, contacto_nombre')
+                        .select('id, razon_social, whatsapp, cuit, contacto_nombre, notas')
                         .eq('whatsapp', clientePhone)
                         .maybeSingle();
                     cliente = fallbackC;
@@ -936,7 +998,10 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
         
         // Filtro de seguridad post-procesamiento (elimina SKUs, asteriscos dobles, tarjetas, cuotas, CBU/cuentas inventadas, teléfonos falsos, corchetes, español neutro o modismos victimistas)
         respuestaIA = respuestaIA.replace(/\*\*(.*?)\*\*/g, '$1')
-                                 .replace(/\b\(?SKU:\s*[\w-]+\)?\b/gi, '')
+                                 .replace(/\s*\(\s*SKU:[^)]*\)/gi, '')
+                                 .replace(/\bSKU:\s*[\w.-]+/gi, '')
+                                 .replace(/\(\s*\)/g, '')
+                                 .replace(/\(\s*$/gm, '')
                                  .replace(/\[nombre\]/gi, '')
                                  .replace(/\[producto\]/gi, 'los productos que buscás')
                                  .replace(/tarjetas? de (crédito|débito)/gi, 'efectivo o transferencia bancaria')
@@ -1341,6 +1406,17 @@ app.get('/api/crm/chat/mensajes/:clienteId', async (req, res) => {
                 .limit(1);
             if (cData && cData.length > 0) {
                 targetUUID = cData[0].id;
+            } else if (clienteId.startsWith('Web_')) {
+                // Si el whatsapp del lead ya fue actualizado con un teléfono real, buscar por session tag en notas
+                const { data: cByNotes } = await supabase
+                    .from('clientes')
+                    .select('id')
+                    .ilike('notas', `%[SESSION:${phoneForWhatsapp}]%`)
+                    .order('creado_el', { ascending: false })
+                    .limit(1);
+                if (cByNotes && cByNotes.length > 0) {
+                    targetUUID = cByNotes[0].id;
+                }
             }
         }
 
