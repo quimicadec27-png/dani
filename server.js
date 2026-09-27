@@ -410,13 +410,19 @@ async function autoExtractAndUpdateLead(clienteId, clienteObj, textoUsuario) {
 
         const updateData = {};
 
+        const currentContacto = (clienteObj?.contacto_nombre || '').trim();
+        const sessionTagMatch = currentContacto.match(/\[SESSION:[^\]]+\]/);
+        const sessionTagStr = sessionTagMatch ? sessionTagMatch[0] : (currentWhatsapp.startsWith('Web_') ? `[SESSION:${currentWhatsapp}]` : '');
+
         if (extracted.nombre && isPlaceholderNombre) {
             const nombreCapitalizado = extracted.nombre
                 .split(' ')
                 .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
                 .join(' ');
             updateData.razon_social    = nombreCapitalizado;
-            updateData.contacto_nombre = nombreCapitalizado;
+            updateData.contacto_nombre = sessionTagStr ? `${nombreCapitalizado} ${sessionTagStr}`.substring(0, 150) : nombreCapitalizado;
+        } else if (sessionTagStr && !currentContacto.includes('[SESSION:')) {
+            updateData.contacto_nombre = `${currentContacto} ${sessionTagStr}`.trim().substring(0, 150);
         }
 
         if (extracted.dni && isPlaceholderCuit) {
@@ -429,7 +435,7 @@ async function autoExtractAndUpdateLead(clienteId, clienteObj, textoUsuario) {
             // 1. Verificar si este WhatsApp ya pertenece a otro cliente oficial existente
             const { data: existingPhoneClient } = await supabase
                 .from('clientes')
-                .select('id, razon_social, whatsapp, notas')
+                .select('id, razon_social, whatsapp, contacto_nombre')
                 .eq('whatsapp', cleanNewPhone)
                 .neq('id', clienteId)
                 .maybeSingle();
@@ -437,12 +443,12 @@ async function autoExtractAndUpdateLead(clienteId, clienteObj, textoUsuario) {
             if (existingPhoneClient) {
                 console.log(`[AUTO LEAD EXTRACT] Fusión de lead temporal ${clienteId} con cliente existente ${existingPhoneClient.id} (${existingPhoneClient.razon_social})`);
 
-                // Si este lead vino de sesión web, preservar la sesión en notas del cliente definitivo
+                // Si este lead vino de sesión web, preservar la sesión en contacto_nombre del cliente definitivo
                 if (currentWhatsapp.startsWith('Web_')) {
-                    const targetNotas = existingPhoneClient.notas || '';
-                    if (!targetNotas.includes(`[SESSION:${currentWhatsapp}]`)) {
-                        const newNotas = targetNotas ? `${targetNotas} [SESSION:${currentWhatsapp}]` : `[SESSION:${currentWhatsapp}]`;
-                        await supabase.from('clientes').update({ notas: newNotas }).eq('id', existingPhoneClient.id);
+                    const targetContacto = existingPhoneClient.contacto_nombre || '';
+                    if (!targetContacto.includes(`[SESSION:${currentWhatsapp}]`)) {
+                        const newContacto = `${targetContacto} [SESSION:${currentWhatsapp}]`.trim().substring(0, 150);
+                        await supabase.from('clientes').update({ contacto_nombre: newContacto }).eq('id', existingPhoneClient.id);
                     }
                 }
 
@@ -457,11 +463,11 @@ async function autoExtractAndUpdateLead(clienteId, clienteObj, textoUsuario) {
                 return;
             } else {
                 updateData.whatsapp = cleanNewPhone;
-                // Preservar la sesión web en las notas del cliente para mantener la continuidad en futuras consultas
+                // Preservar la sesión web en contacto_nombre del cliente para mantener la continuidad en futuras consultas
                 if (currentWhatsapp.startsWith('Web_')) {
-                    const currentNotas = clienteObj?.notas || '';
-                    if (!currentNotas.includes(`[SESSION:${currentWhatsapp}]`)) {
-                        updateData.notas = currentNotas ? `${currentNotas} [SESSION:${currentWhatsapp}]` : `[SESSION:${currentWhatsapp}]`;
+                    const baseContacto = updateData.contacto_nombre || currentContacto || '';
+                    if (!baseContacto.includes(`[SESSION:${currentWhatsapp}]`)) {
+                        updateData.contacto_nombre = `${baseContacto} [SESSION:${currentWhatsapp}]`.trim().substring(0, 150);
                     }
                 }
             }
@@ -658,7 +664,7 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
             try {
                 const { data: cById } = await supabase
                     .from('clientes')
-                    .select('id, razon_social, whatsapp, cuit, contacto_nombre, notas')
+                    .select('id, razon_social, whatsapp, cuit, contacto_nombre')
                     .eq('id', cliente_id)
                     .maybeSingle();
                 cliente = cById;
@@ -670,7 +676,7 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
             try {
                 const { data: existingC } = await supabase
                     .from('clientes')
-                    .select('id, razon_social, whatsapp, cuit, contacto_nombre, notas')
+                    .select('id, razon_social, whatsapp, cuit, contacto_nombre')
                     .eq('whatsapp', clientePhone)
                     .maybeSingle();
                 cliente = existingC;
@@ -679,34 +685,34 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
             }
         }
 
-        // 2b. Si no se encontró por whatsapp directo y es una sesión web, buscar por tag [SESSION:...] en notas
+        // 2b. Si no se encontró por whatsapp directo y es una sesión web, buscar por tag [SESSION:...] en contacto_nombre
         const webSessionTag = (session_id || clientePhone || '').toString().trim();
         if (!cliente && webSessionTag.startsWith('Web_')) {
             try {
                 const cleanTag = webSessionTag.substring(0, 20);
                 const { data: cBySession } = await supabase
                     .from('clientes')
-                    .select('id, razon_social, whatsapp, cuit, contacto_nombre, notas')
-                    .ilike('notas', `%[SESSION:${cleanTag}]%`)
+                    .select('id, razon_social, whatsapp, cuit, contacto_nombre')
+                    .ilike('contacto_nombre', `%[SESSION:${cleanTag}]%`)
                     .order('creado_el', { ascending: false })
                     .limit(1)
                     .maybeSingle();
                 if (cBySession) {
                     cliente = cBySession;
-                    console.log(`[SESSION RECOVERED] Cliente recuperado por session tag en notas: ${cliente.id} (${cliente.razon_social})`);
+                    console.log(`[SESSION RECOVERED] Cliente recuperado por session tag en contacto_nombre: ${cliente.id} (${cliente.razon_social})`);
                 }
             } catch (e) {
                 console.error('Error buscando cliente por session tag:', e.message);
             }
         }
 
-        // 3. Si no existe, crear registro nuevo (guardando el session tag en notas)
+        // 3. Si no existe, crear registro nuevo (guardando el session tag en contacto_nombre)
         if (!cliente) {
             try {
-                const initialNotes = webSessionTag.startsWith('Web_') ? `[SESSION:${webSessionTag.substring(0, 20)}]` : null;
+                const initialContacto = webSessionTag.startsWith('Web_') ? `[SESSION:${webSessionTag.substring(0, 20)}]` : null;
                 const { data: newC, error: insertErr } = await supabase
                     .from('clientes')
-                    .insert([{ razon_social: leadNombre, whatsapp: clientePhone, cuit: null, notas: initialNotes }])
+                    .insert([{ razon_social: leadNombre, whatsapp: clientePhone, cuit: null, contacto_nombre: initialContacto }])
                     .select()
                     .maybeSingle();
                 if (newC) {
@@ -714,7 +720,7 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
                 } else {
                     const { data: fallbackC } = await supabase
                         .from('clientes')
-                        .select('id, razon_social, whatsapp, cuit, contacto_nombre, notas')
+                        .select('id, razon_social, whatsapp, cuit, contacto_nombre')
                         .eq('whatsapp', clientePhone)
                         .maybeSingle();
                     cliente = fallbackC;
@@ -1407,11 +1413,11 @@ app.get('/api/crm/chat/mensajes/:clienteId', async (req, res) => {
             if (cData && cData.length > 0) {
                 targetUUID = cData[0].id;
             } else if (clienteId.startsWith('Web_')) {
-                // Si el whatsapp del lead ya fue actualizado con un teléfono real, buscar por session tag en notas
+                // Si el whatsapp del lead ya fue actualizado con un teléfono real, buscar por session tag en contacto_nombre
                 const { data: cByNotes } = await supabase
                     .from('clientes')
                     .select('id')
-                    .ilike('notas', `%[SESSION:${phoneForWhatsapp}]%`)
+                    .ilike('contacto_nombre', `%[SESSION:${phoneForWhatsapp}]%`)
                     .order('creado_el', { ascending: false })
                     .limit(1);
                 if (cByNotes && cByNotes.length > 0) {
