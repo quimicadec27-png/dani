@@ -813,11 +813,11 @@ ightarrow$ Ventas</p>
                         <!-- CONTENIDO DERECHO (EXPANDIBLE AL 100% DE ANCHO) -->
                         <div id="catalogo-main-content" class="flex-1 min-w-0 w-full space-y-6 transition-all duration-300">
 
-                            <!-- SUB-TAB 0: ACTUALIZADOR MASIVO DE PRECIOS (% Y MONTO FIJO) -->
+                            <!-- SUB-TAB 0: ACTUALIZADOR MASIVO DE PRECIOS (% Y MONTO FIJO + EXCEL) -->
                             <div id="subtab-content-precios" class="hidden space-y-6">
                                 
-                                <!-- ENCABEZADO Y EXPLICACIÓN -->
-                                <div class="glass-panel p-5 rounded-2xl border border-emerald-500/30 bg-gradient-to-r from-emerald-950/40 via-slate-900 to-slate-900 shadow-xl space-y-2">
+                                <!-- ENCABEZADO Y SELECTOR DE MODO -->
+                                <div class="glass-panel p-5 rounded-2xl border border-emerald-500/30 bg-gradient-to-r from-emerald-950/40 via-slate-900 to-slate-900 shadow-xl space-y-4">
                                     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
                                         <div>
                                             <h3 class="font-title text-base font-extrabold uppercase text-white tracking-wider flex items-center gap-2">
@@ -825,106 +825,194 @@ ightarrow$ Ventas</p>
                                                 <span>Actualizador Masivo de Precios</span>
                                             </h3>
                                             <p class="text-xs text-gray-300 mt-1">
-                                                Seleccioná categorías o productos específicos, elegí el aumento o descuento en porcentaje o monto fijo, visualizá el impacto en vivo y guardá en Supabase.
+                                                Actualizá precios calculando por <strong>Reglas / Porcentajes</strong> o cargando una <strong>Planilla Excel (.xlsx / .csv)</strong>. Revisá la comparativa en vivo antes de guardar.
                                             </p>
                                         </div>
-                                        <button onclick="cargarCatalogoPreciosMasivo()" class="px-3.5 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all shadow shrink-0 cursor-pointer">
-                                            <span class="material-symbols-outlined text-base">refresh</span>
-                                            <span>Recargar Catálogo</span>
-                                        </button>
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            <button type="button" onclick="exportarCatalogoPreciosExcel()" title="Descargar planilla con todos los productos y precios actuales para editar en tu PC" class="px-3.5 py-2 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/40 text-blue-300 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all shadow shrink-0 cursor-pointer">
+                                                <span class="material-symbols-outlined text-base">download</span>
+                                                <span>Descargar Catálogo (.xlsx)</span>
+                                            </button>
+                                            <button type="button" onclick="cargarCatalogoPreciosMasivo()" class="px-3.5 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all shadow shrink-0 cursor-pointer">
+                                                <span class="material-symbols-outlined text-base">refresh</span>
+                                                <span>Recargar Catálogo</span>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- SELECTOR DE MODO (REGLAS vs EXCEL) -->
+                                    <div class="flex flex-wrap items-center gap-2 border-t border-white/10 pt-3">
+                                        <span class="text-[11px] font-bold uppercase text-gray-400 mr-2 flex items-center gap-1">
+                                            <span class="material-symbols-outlined text-sm text-brand-yellow">tune</span> Modo de Actualización:
+                                        </span>
+                                        <div class="inline-flex p-1 bg-black/60 rounded-xl border border-white/10">
+                                            <button type="button" id="btn-modo-precios-reglas" onclick="cambiarModoActualizadorPrecios('reglas')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-emerald-500 text-slate-950 shadow-md flex items-center gap-1.5 cursor-pointer">
+                                                <span class="material-symbols-outlined text-sm">calculate</span>
+                                                <span>1. Por Reglas / Porcentajes</span>
+                                            </button>
+                                            <button type="button" id="btn-modo-precios-excel" onclick="cambiarModoActualizadorPrecios('excel')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all text-gray-300 hover:text-white flex items-center gap-1.5 cursor-pointer">
+                                                <span class="material-symbols-outlined text-sm">upload_file</span>
+                                                <span>2. Carga Masiva desde Excel</span>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
 
-                                <!-- FILTROS DE CATEGORÍA Y BÚSQUEDA -->
-                                <div class="glass-panel p-4 rounded-2xl border border-white/10 flex flex-col md:flex-row items-center justify-between gap-3">
-                                    <div class="flex flex-wrap items-center gap-3 w-full md:w-auto flex-grow">
-                                        <!-- Custom Category Dropdown (32 Oficiales) -->
-                                        <div class="relative w-full sm:w-auto min-w-[260px]" id="custom-cat-dropdown-container">
-                                            <label class="block text-[10px] font-bold uppercase text-gray-400 mb-1">Filtrar por Categoría (32 Oficiales):</label>
-                                            <input type="hidden" id="precios-filter-cat" value="TODAS">
-                                            <button type="button" id="btn-cat-dropdown-trigger" onclick="toggleCustomCatDropdown()" class="w-full flex items-center justify-between gap-2 border-2 border-brand-yellow/80 hover:border-brand-yellow rounded-xl px-3 py-2 text-xs text-white font-bold shadow-lg transition-all text-left" style="background-color: #0b1329 !important;">
-                                                <div class="flex items-center gap-2 overflow-hidden">
-                                                    <span class="material-symbols-outlined text-brand-yellow text-[18px] shrink-0">folder_open</span>
-                                                    <span id="selected-cat-label" class="truncate text-white font-black">Todas las Categorías</span>
-                                                </div>
-                                                <span class="material-symbols-outlined text-brand-yellow text-[18px] shrink-0 transition-transform duration-200" id="cat-dropdown-arrow">expand_more</span>
-                                            </button>
+                                <!-- ================= MODO 1: POR REGLAS / PORCENTAJES ================= -->
+                                <div id="panel-modo-precios-reglas" class="space-y-6">
+                                    <!-- FILTROS DE CATEGORÍA Y BÚSQUEDA (CON RELATIVE Z-30 PARA NO QUEDAR ATRÁS DEL PANEL DE OPERACIÓN) -->
+                                    <div class="glass-panel p-4 rounded-2xl border border-white/10 flex flex-col md:flex-row items-center justify-between gap-3 relative z-30">
+                                        <div class="flex flex-wrap items-center gap-3 w-full md:w-auto flex-grow">
+                                            <!-- Custom Category Dropdown (32 Oficiales) -->
+                                            <div class="relative z-40 w-full sm:w-auto min-w-[260px]" id="custom-cat-dropdown-container">
+                                                <label class="block text-[10px] font-bold uppercase text-gray-400 mb-1">Filtrar por Categoría (32 Oficiales):</label>
+                                                <input type="hidden" id="precios-filter-cat" value="TODAS">
+                                                <button type="button" id="btn-cat-dropdown-trigger" onclick="toggleCustomCatDropdown()" class="w-full flex items-center justify-between gap-2 border-2 border-brand-yellow/80 hover:border-brand-yellow rounded-xl px-3 py-2 text-xs text-white font-bold shadow-lg transition-all text-left" style="background-color: #0b1329 !important;">
+                                                    <div class="flex items-center gap-2 overflow-hidden">
+                                                        <span class="material-symbols-outlined text-brand-yellow text-[18px] shrink-0">folder_open</span>
+                                                        <span id="selected-cat-label" class="truncate text-white font-black">Todas las Categorías</span>
+                                                    </div>
+                                                    <span class="material-symbols-outlined text-brand-yellow text-[18px] shrink-0 transition-transform duration-200" id="cat-dropdown-arrow">expand_more</span>
+                                                </button>
 
-                                            <!-- Dropdown Menu 100% Solid Dark Navy & Gold -->
-                                            <div id="custom-cat-menu" class="hidden absolute top-full left-0 mt-1.5 w-full sm:w-[320px] max-w-[95vw] rounded-2xl border-2 border-brand-yellow shadow-2xl overflow-hidden divide-y divide-white/10" style="background-color: #0b1329 !important; z-index: 99999 !important; box-shadow: 0 25px 70px rgba(0,0,0,0.98) !important;">
-                                                <div class="p-2.5 bg-black/60 border-b border-white/10">
-                                                    <div class="relative">
-                                                        <span class="material-symbols-outlined absolute left-2.5 top-2 text-gray-400 text-[16px]">search</span>
-                                                        <input type="text" id="custom-cat-search" oninput="filtrarListaCategoriasPersonalizada(this.value)" placeholder="Buscar categoría..." class="w-full bg-white/10 border border-white/15 rounded-lg pl-8 pr-2.5 py-1.5 text-xs text-white placeholder-gray-400 focus:outline-none focus:border-brand-yellow font-medium">
+                                                <!-- Dropdown Menu 100% Solid Dark Navy & Gold con z-[99999] -->
+                                                <div id="custom-cat-menu" class="hidden absolute top-full left-0 mt-1.5 w-full sm:w-[320px] max-w-[95vw] rounded-2xl border-2 border-brand-yellow shadow-2xl overflow-hidden divide-y divide-white/10" style="background-color: #0b1329 !important; z-index: 99999 !important; box-shadow: 0 25px 70px rgba(0,0,0,0.98) !important;">
+                                                    <div class="p-2.5 bg-black/60 border-b border-white/10">
+                                                        <div class="relative">
+                                                            <span class="material-symbols-outlined absolute left-2.5 top-2 text-gray-400 text-[16px]">search</span>
+                                                            <input type="text" id="custom-cat-search" oninput="filtrarListaCategoriasPersonalizada(this.value)" placeholder="Buscar categoría..." class="w-full bg-white/10 border border-white/15 rounded-lg pl-8 pr-2.5 py-1.5 text-xs text-white placeholder-gray-400 focus:outline-none focus:border-brand-yellow font-medium">
+                                                        </div>
+                                                    </div>
+                                                    <div id="custom-cat-list" class="max-h-64 overflow-y-auto divide-y divide-white/5 py-1" style="background-color: #0b1329 !important;">
+                                                        <!-- Cargado dinámicamente con las 32 categorías -->
                                                     </div>
                                                 </div>
-                                                <div id="custom-cat-list" class="max-h-64 overflow-y-auto divide-y divide-white/5 py-1" style="background-color: #0b1329 !important;">
-                                                    <!-- Cargado dinámicamente con las 32 categorías -->
+                                            </div>
+
+                                            <div class="w-full sm:w-auto flex-grow min-w-[220px]">
+                                                <label class="block text-[10px] font-bold uppercase text-gray-400 mb-1">Buscar Producto o SKU:</label>
+                                                <div class="relative">
+                                                    <span class="material-symbols-outlined absolute left-3 top-2 text-gray-400 text-[18px]">search</span>
+                                                    <input type="text" id="precios-filter-search" oninput="filtrarProductosPrecios()" placeholder="Escribí nombre, aroma o SKU..." class="w-full bg-black/40 border border-white/20 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-yellow">
                                                 </div>
                                             </div>
                                         </div>
+                                    </div>
 
-                                        <div class="w-full sm:w-auto flex-grow min-w-[220px]">
-                                            <label class="block text-[10px] font-bold uppercase text-gray-400 mb-1">Buscar Producto o SKU:</label>
-                                            <div class="relative">
-                                                <span class="material-symbols-outlined absolute left-3 top-2 text-gray-400 text-[18px]">search</span>
-                                                <input type="text" id="precios-filter-search" oninput="filtrarProductosPrecios()" placeholder="Escribí nombre, aroma o SKU..." class="w-full bg-black/40 border border-white/20 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-yellow">
+                                    <!-- PANEL DE CONTROL DE OPERACIÓN (CON RELATIVE Z-10 PARA PERMITIR QUE EL DROPDOWN DE CATEGORÍAS FLOTE POR ENCIMA) -->
+                                    <div class="glass-panel p-5 rounded-2xl border border-amber-500/30 bg-slate-900/90 shadow-2xl space-y-5 relative z-10">
+                                        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                                            
+                                            <!-- 1. Operación -->
+                                            <div>
+                                                <label class="block text-[11px] font-extrabold uppercase text-gray-300 tracking-wider mb-2">1. Operación</label>
+                                                <div class="grid grid-cols-3 gap-1.5 bg-black/40 p-1.5 rounded-xl border border-white/10">
+                                                    <button type="button" id="btn-op-aumentar" onclick="setOperacionPrecios('Aumentar')" class="py-2.5 px-1.5 sm:px-2 rounded-xl text-xs font-black uppercase transition-all bg-emerald-500 text-slate-950 shadow-md flex items-center justify-center gap-1 cursor-pointer">
+                                                        <span class="material-symbols-outlined text-[15px]">arrow_upward</span>
+                                                        <span>Aumentar</span>
+                                                    </button>
+                                                    <button type="button" id="btn-op-restar" onclick="setOperacionPrecios('Restar')" class="py-2.5 px-1.5 sm:px-2 rounded-xl text-xs font-bold uppercase transition-all text-gray-400 hover:text-white hover:bg-white/5 flex items-center justify-center gap-1 cursor-pointer">
+                                                        <span class="material-symbols-outlined text-[15px]">arrow_downward</span>
+                                                        <span>Restar</span>
+                                                    </button>
+                                                    <button type="button" id="btn-op-igualar" onclick="setOperacionPrecios('Igualar')" class="py-2.5 px-1.5 sm:px-2 rounded-xl text-xs font-bold uppercase transition-all text-gray-400 hover:text-white hover:bg-white/5 flex items-center justify-center gap-1 cursor-pointer">
+                                                        <span class="material-symbols-outlined text-[15px]">equal</span>
+                                                        <span>Fijar</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <!-- 2. Método de Actualización -->
+                                            <div>
+                                                <label class="block text-[11px] font-extrabold uppercase text-gray-300 tracking-wider mb-2">2. Método de Cálculo</label>
+                                                <div class="grid grid-cols-2 gap-1.5 bg-black/40 p-1.5 rounded-xl border border-white/10">
+                                                    <button type="button" id="btn-metodo-porcentaje" onclick="setMetodoPrecios('porcentaje')" class="py-2 px-2 rounded-lg text-xs font-black uppercase transition-all bg-brand-yellow text-slate-950 shadow-md flex items-center justify-center gap-1">
+                                                        <span class="material-symbols-outlined text-[14px]">percent</span> Porcentaje (%)
+                                                    </button>
+                                                    <button type="button" id="btn-metodo-fijo" onclick="setMetodoPrecios('fijo')" class="py-2 px-2 rounded-lg text-xs font-bold uppercase transition-all text-gray-400 hover:text-white flex items-center justify-center gap-1">
+                                                        <span class="material-symbols-outlined text-[14px]">attach_money</span> Monto Fijo ($)
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <!-- 3. Cantidad / Valor y Redondeo -->
+                                            <div>
+                                                <label class="block text-[11px] font-extrabold uppercase text-gray-300 tracking-wider mb-2">3. Cantidad a Aplicar</label>
+                                                <div class="flex items-center gap-2">
+                                                    <div class="relative flex-grow">
+                                                        <span id="label-signo-precios" class="absolute left-3 top-2 font-black text-sm text-emerald-400">+</span>
+                                                        <input type="number" id="input-valor-precios" value="5" step="any" oninput="recalcularPreciosEnVivo()" class="w-full bg-black/60 border border-brand-yellow/50 rounded-xl pl-7 pr-10 py-2 text-base font-black text-brand-yellow focus:outline-none focus:border-brand-yellow font-mono shadow-inner">
+                                                        <span id="label-unidad-precios" class="absolute right-3 top-2.5 font-bold text-xs text-gray-400">%</span>
+                                                    </div>
+                                                </div>
+                                                <div class="flex items-center gap-4 mt-2">
+                                                    <label class="flex items-center gap-1.5 text-xs text-gray-300 cursor-pointer">
+                                                        <input type="checkbox" id="check-descartar-decimales" checked onchange="recalcularPreciosEnVivo()" class="rounded bg-white/10 border-white/20 text-brand-yellow focus:ring-0">
+                                                        <span>Descartar decimales (enteros)</span>
+                                                    </label>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                <!-- PANEL DE CONTROL DE OPERACIÓN (IDÉNTICO A PEDIX) -->
-                                <div class="glass-panel p-5 rounded-2xl border border-amber-500/30 bg-slate-900/90 shadow-2xl space-y-5">
-                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-                                        
-                                        <!-- 1. Operación -->
-                                        <div>
-                                            <label class="block text-[11px] font-extrabold uppercase text-gray-300 tracking-wider mb-2">1. Operación</label>
-                                            <div class="grid grid-cols-3 gap-1.5 bg-black/40 p-1.5 rounded-xl border border-white/10">
-                                                <button type="button" id="btn-op-aumentar" onclick="setOperacionPrecios('Aumentar')" class="py-2.5 px-1.5 sm:px-2 rounded-xl text-xs font-black uppercase transition-all bg-emerald-500 text-slate-950 shadow-md flex items-center justify-center gap-1 cursor-pointer">
-                                                    <span class="material-symbols-outlined text-[15px]">arrow_upward</span>
-                                                    <span>Aumentar</span>
-                                                </button>
-                                                <button type="button" id="btn-op-restar" onclick="setOperacionPrecios('Restar')" class="py-2.5 px-1.5 sm:px-2 rounded-xl text-xs font-bold uppercase transition-all text-gray-400 hover:text-white hover:bg-white/5 flex items-center justify-center gap-1 cursor-pointer">
-                                                    <span class="material-symbols-outlined text-[15px]">arrow_downward</span>
-                                                    <span>Restar</span>
-                                                </button>
-                                                <button type="button" id="btn-op-igualar" onclick="setOperacionPrecios('Igualar')" class="py-2.5 px-1.5 sm:px-2 rounded-xl text-xs font-bold uppercase transition-all text-gray-400 hover:text-white hover:bg-white/5 flex items-center justify-center gap-1 cursor-pointer">
-                                                    <span class="material-symbols-outlined text-[15px]">equal</span>
-                                                    <span>Fijar</span>
-                                                </button>
+                                <!-- ================= MODO 2: CARGA MASIVA DESDE EXCEL ================= -->
+                                <div id="panel-modo-precios-excel" class="hidden space-y-5">
+                                    <div class="glass-panel p-5 rounded-2xl border border-emerald-500/30 bg-slate-900/95 shadow-2xl space-y-4">
+                                        <!-- Header de modo Excel -->
+                                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-white/10 pb-3">
+                                            <div>
+                                                <h4 class="font-title text-sm font-bold uppercase text-emerald-400 flex items-center gap-2">
+                                                    <span class="material-symbols-outlined text-lg">upload_file</span>
+                                                    <span>Actualizar Lista de Precios desde Archivo Excel o CSV</span>
+                                                </h4>
+                                                <p class="text-xs text-gray-300 mt-0.5">
+                                                    Subí tu lista de precios en formato Excel. El sistema cruzará automáticamente los <strong>SKU</strong> o los <strong>Nombres</strong> con el catálogo de Química DEC y actualizará los precios en la tabla inferior para que revises los cambios en vivo antes de guardar.
+                                                </p>
                                             </div>
                                         </div>
 
-                                        <!-- 2. Método de Actualización -->
-                                        <div>
-                                            <label class="block text-[11px] font-extrabold uppercase text-gray-300 tracking-wider mb-2">2. Método de Cálculo</label>
-                                            <div class="grid grid-cols-2 gap-1.5 bg-black/40 p-1.5 rounded-xl border border-white/10">
-                                                <button type="button" id="btn-metodo-porcentaje" onclick="setMetodoPrecios('porcentaje')" class="py-2 px-2 rounded-lg text-xs font-black uppercase transition-all bg-brand-yellow text-slate-950 shadow-md flex items-center justify-center gap-1">
-                                                    <span class="material-symbols-outlined text-[14px]">percent</span> Porcentaje (%)
-                                                </button>
-                                                <button type="button" id="btn-metodo-fijo" onclick="setMetodoPrecios('fijo')" class="py-2 px-2 rounded-lg text-xs font-bold uppercase transition-all text-gray-400 hover:text-white flex items-center justify-center gap-1">
-                                                    <span class="material-symbols-outlined text-[14px]">attach_money</span> Monto Fijo ($)
-                                                </button>
+                                        <!-- Dropzone y Pegado de Texto -->
+                                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                                            <!-- Subir archivo Excel -->
+                                            <div class="lg:col-span-2 p-5 bg-emerald-950/20 border-2 border-dashed border-emerald-500/40 hover:border-emerald-400 rounded-2xl transition-all flex flex-col items-center justify-center text-center group cursor-pointer relative" onclick="document.getElementById('excel-precios-file-input').click()">
+                                                <span class="material-symbols-outlined text-4xl text-emerald-400 group-hover:scale-110 transition-transform mb-2">cloud_upload</span>
+                                                <p class="text-xs font-bold text-white mb-1">Hacé clic o arrastrá tu planilla Excel (.xlsx, .xls o .csv) aquí</p>
+                                                <p class="text-[11px] text-gray-400">Columnas reconocidas automáticamente: <code>SKU</code> (o <code>Nombre</code>) y <code>Precio</code> (o <code>Precio Nuevo</code>)</p>
+                                                <input type="file" id="excel-precios-file-input" accept=".xlsx, .xls, .csv" onchange="leerExcelParaActualizador(event)" class="hidden">
                                             </div>
-                                        </div>
 
-                                        <!-- 3. Cantidad / Valor y Redondeo -->
-                                        <div>
-                                            <label class="block text-[11px] font-extrabold uppercase text-gray-300 tracking-wider mb-2">3. Cantidad a Aplicar</label>
-                                            <div class="flex items-center gap-2">
-                                                <div class="relative flex-grow">
-                                                    <span id="label-signo-precios" class="absolute left-3 top-2 font-black text-sm text-emerald-400">+</span>
-                                                    <input type="number" id="input-valor-precios" value="5" step="any" oninput="recalcularPreciosEnVivo()" class="w-full bg-black/60 border border-brand-yellow/50 rounded-xl pl-7 pr-10 py-2 text-base font-black text-brand-yellow focus:outline-none focus:border-brand-yellow font-mono shadow-inner">
-                                                    <span id="label-unidad-precios" class="absolute right-3 top-2.5 font-bold text-xs text-gray-400">%</span>
+                                            <!-- Pegado alternativo de texto copiado -->
+                                            <div class="p-4 bg-black/40 border border-white/10 rounded-2xl flex flex-col justify-between">
+                                                <div>
+                                                    <label class="block text-[10px] font-bold uppercase text-gray-400 mb-1">O pegar datos copiados de Excel:</label>
+                                                    <textarea id="excel-precios-paste-input" rows="3" placeholder="SKU-101 ; 15400&#10;SKU-102 ; 22500&#10;DETERGENTE ; 18900" class="w-full bg-slate-950 border border-white/15 rounded-xl p-2.5 text-xs text-white font-mono placeholder-gray-500 focus:outline-none focus:border-emerald-400"></textarea>
                                                 </div>
+                                                <button type="button" onclick="procesarTextoPegadoPrecios()" class="mt-2 w-full py-2 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer">
+                                                    <span class="material-symbols-outlined text-sm">content_paste_go</span>
+                                                    <span>Procesar Texto Pegado</span>
+                                                </button>
                                             </div>
-                                            <div class="flex items-center gap-4 mt-2">
-                                                <label class="flex items-center gap-1.5 text-xs text-gray-300 cursor-pointer">
-                                                    <input type="checkbox" id="check-descartar-decimales" checked onchange="recalcularPreciosEnVivo()" class="rounded bg-white/10 border-white/20 text-brand-yellow focus:ring-0">
-                                                    <span>Descartar decimales (enteros)</span>
-                                                </label>
+                                        </div>
+
+                                        <!-- Banner de Estado de Excel -->
+                                        <div id="excel-precios-status-banner" class="hidden p-3.5 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs font-medium">
+                                            <div class="flex items-center gap-2">
+                                                <span class="material-symbols-outlined text-xl" id="excel-precios-status-icon">check_circle</span>
+                                                <span id="excel-precios-status-text">...</span>
+                                            </div>
+                                            <div class="flex items-center gap-2 shrink-0">
+                                                <button type="button" onclick="limpiarPreciosExcelCargados()" class="px-2.5 py-1 bg-white/10 hover:bg-rose-500/20 hover:text-rose-300 rounded-lg text-[11px] font-bold text-gray-300 transition-all cursor-pointer">
+                                                    Deshacer Excel
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <!-- Búsqueda en modo Excel -->
+                                        <div class="flex flex-col sm:flex-row items-center gap-3 pt-2 border-t border-white/10">
+                                            <div class="relative w-full">
+                                                <span class="material-symbols-outlined absolute left-3 top-2 text-gray-400 text-[18px]">search</span>
+                                                <input type="text" id="precios-excel-search" oninput="filtrarProductosPrecios()" placeholder="Buscar producto en la lista procesada..." class="w-full bg-black/40 border border-white/20 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-emerald-400">
                                             </div>
                                         </div>
                                     </div>
@@ -940,6 +1028,10 @@ ightarrow$ Ventas</p>
                                         <span class="text-xs text-gray-400">
                                             Seleccionados: <strong id="count-precios-seleccionados" class="text-brand-yellow font-mono">0</strong> de <span id="count-precios-total" class="font-mono">0</span>
                                         </span>
+                                        <button type="button" id="btn-filtro-solo-modificados" onclick="toggleFiltroSoloModificadosPrecios()" class="hidden px-2.5 py-1 rounded-lg text-xs font-bold border border-brand-yellow/40 bg-brand-yellow/10 text-brand-yellow hover:bg-brand-yellow/20 transition-all flex items-center gap-1 cursor-pointer">
+                                            <span class="material-symbols-outlined text-sm">filter_alt</span>
+                                            <span id="label-filtro-solo-modificados">Ver solo modificados (0)</span>
+                                        </button>
                                     </div>
 
                                     <div class="flex items-center gap-3 w-full sm:w-auto justify-end">
@@ -1564,6 +1656,21 @@ ightarrow$ Ventas</p>
                                         <span class="material-symbols-outlined text-emerald-400 text-xl">description</span> <span>Carga Masiva desde Archivo Excel o CSV</span>
                                     </h4>
                                     <p class="text-xs text-gray-300 mt-1">Seleccioná directamente el archivo Excel de tu computadora. El sistema detectará automáticamente los SKUs, Nombres, Precios, Stock y Categorías para actualizar la tienda y la base de datos.</p>
+                                </div>
+
+                                <!-- BANNER DE ACCESO DIRECTO A ACTUALIZADOR DE PRECIOS -->
+                                <div class="p-3.5 bg-gradient-to-r from-emerald-950/60 via-slate-900 to-slate-900 border border-emerald-500/40 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg">
+                                    <div class="flex items-center gap-2.5">
+                                        <span class="material-symbols-outlined text-brand-yellow text-2xl shrink-0">price_change</span>
+                                        <div>
+                                            <p class="text-xs font-bold text-white">¿Solo necesitás cambiar o aumentar precios de productos existentes?</p>
+                                            <p class="text-[11px] text-gray-300">Usá el <strong>Actualizador de Precios con Excel</strong>: tiene comparativa en vivo, cálculo de variación y guardado instantáneo.</p>
+                                        </div>
+                                    </div>
+                                    <button type="button" onclick="switchCatSubTab('precios'); cambiarModoActualizadorPrecios('excel');" class="px-3.5 py-1.5 bg-brand-yellow hover:bg-yellow-400 text-slate-950 font-bold text-xs rounded-lg transition-all shrink-0 flex items-center gap-1.5 cursor-pointer shadow">
+                                        <span class="material-symbols-outlined text-sm">trending_up</span>
+                                        <span>Ir a Actualizador de Precios</span>
+                                    </button>
                                 </div>
 
                                 <!-- SELECTOR DE CATEGORÍA POR DEFECTO -->
@@ -8054,16 +8161,19 @@ ightarrow$ Ventas</p>
 
 
         // =========================================================================
-        // GESTOR DE ACTUALIZACIÓN MASIVA DE PRECIOS (% Y MONTO FIJO)
+        // GESTOR DE ACTUALIZACIÓN MASIVA DE PRECIOS (% Y MONTO FIJO + CARGA EXCEL)
         // =========================================================================
         let catalogoPreciosData = [];
         let catalogoPreciosFiltrado = [];
         let operacionPreciosActual = 'Aumentar'; // 'Aumentar' | 'Restar' | 'Igualar'
         let metodoPreciosActual = 'porcentaje'; // 'porcentaje' | 'fijo'
+        let modoActualizadorPrecios = 'reglas'; // 'reglas' | 'excel'
+        let filtroSoloModificadosPrecios = false;
+        let excelPreciosCargadosCount = 0;
 
         function normalizarTextoBusqueda(str) {
             if (!str) return '';
-            return str.toLowerCase()
+            return String(str).toLowerCase()
                 .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
                 .replace(/\bsahumerios?\b/g, 'sahumerio')
                 .replace(/\bcloros?\b/g, 'cloro')
@@ -8074,6 +8184,284 @@ ightarrow$ Ventas</p>
                 .replace(/\bjabones?\b/g, 'jabon')
                 .replace(/\bcombos?\b/g, 'combo')
                 .trim();
+        }
+
+        // Cambiar entre Modo 1 (Reglas / %) y Modo 2 (Carga Masiva Excel)
+        function cambiarModoActualizadorPrecios(modo) {
+            modoActualizadorPrecios = modo;
+            const btnReglas = document.getElementById('btn-modo-precios-reglas');
+            const btnExcel = document.getElementById('btn-modo-precios-excel');
+            const panelReglas = document.getElementById('panel-modo-precios-reglas');
+            const panelExcel = document.getElementById('panel-modo-precios-excel');
+
+            if (modo === 'reglas') {
+                if (btnReglas) {
+                    btnReglas.className = 'px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-emerald-500 text-slate-950 shadow-md flex items-center gap-1.5 cursor-pointer';
+                }
+                if (btnExcel) {
+                    btnExcel.className = 'px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all text-gray-300 hover:text-white flex items-center gap-1.5 cursor-pointer';
+                }
+                if (panelReglas) panelReglas.classList.remove('hidden');
+                if (panelExcel) panelExcel.classList.add('hidden');
+                filtrarProductosPrecios();
+            } else {
+                if (btnExcel) {
+                    btnExcel.className = 'px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-emerald-500 text-slate-950 shadow-md flex items-center gap-1.5 cursor-pointer';
+                }
+                if (btnReglas) {
+                    btnReglas.className = 'px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all text-gray-300 hover:text-white flex items-center gap-1.5 cursor-pointer';
+                }
+                if (panelReglas) panelReglas.classList.add('hidden');
+                if (panelExcel) panelExcel.classList.remove('hidden');
+                filtrarProductosPrecios();
+            }
+        }
+
+        // Exportar catálogo completo en Excel (.xlsx) para que Danilo lo descargue y edite
+        function exportarCatalogoPreciosExcel() {
+            if (!catalogoPreciosData || catalogoPreciosData.length === 0) {
+                alert('⚠️ El catálogo de productos aún se está cargando. Aguardá unos segundos y volvé a intentar.');
+                return;
+            }
+
+            try {
+                const rows = catalogoPreciosData.map(p => ({
+                    'SKU': p.sku || '',
+                    'PRODUCTO': p.name || '',
+                    'CATEGORIA': p.category || '',
+                    'PRECIO_ACTUAL': p.precio_original || 0,
+                    'PRECIO_NUEVO': p.precio_original || 0
+                }));
+
+                const worksheet = XLSX.utils.json_to_sheet(rows);
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, 'Catálogo Precios');
+                const fecha = new Date().toISOString().slice(0, 10);
+                XLSX.writeFile(workbook, `LISTA_PRECIOS_QUIMICA_DEC_${fecha}.xlsx`);
+            } catch (err) {
+                alert('Error al generar archivo Excel: ' + err.message);
+            }
+        }
+
+        // Cargar archivo Excel para el Actualizador de Precios
+        function leerExcelParaActualizador(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const jsonRows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+                    if (!jsonRows || jsonRows.length === 0) {
+                        mostrarBannerStatusExcel('error', '⚠️ El archivo Excel está vacío o no contiene filas con datos válidos.');
+                        return;
+                    }
+
+                    aplicarPreciosDesdeFilasExcel(jsonRows, file.name);
+                } catch(err) {
+                    console.error('[EXCEL PRECIOS ERROR]', err);
+                    mostrarBannerStatusExcel('error', '❌ Error al procesar el archivo Excel: ' + err.message);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // Procesar texto pegado con SKU / Nombre y Precio
+        function procesarTextoPegadoPrecios() {
+            const textarea = document.getElementById('excel-precios-paste-input');
+            const texto = textarea ? textarea.value.trim() : '';
+
+            if (!texto) {
+                alert('⚠️ Por favor pegá al menos una línea con formato "SKU ; PRECIO" o "NOMBRE ; PRECIO".');
+                return;
+            }
+
+            const lineas = texto.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+            const jsonRows = [];
+
+            lineas.forEach(line => {
+                const delim = line.includes(';') ? ';' : (line.includes('\t') ? '\t' : ',');
+                const partes = line.split(delim).map(p => p.trim());
+                if (partes.length >= 2) {
+                    jsonRows.push({
+                        'SKU': partes[0],
+                        'PRECIO': partes[1]
+                    });
+                }
+            });
+
+            if (jsonRows.length === 0) {
+                mostrarBannerStatusExcel('error', '⚠️ No se pudieron reconocer columnas en el texto pegado. Utilizá delimitador ";" o tabulación.');
+                return;
+            }
+
+            aplicarPreciosDesdeFilasExcel(jsonRows, 'Texto pegado');
+        }
+
+        // Motor de coincidencia de precios desde Excel contra el catálogo de Supabase
+        function aplicarPreciosDesdeFilasExcel(rows, fuente) {
+            if (!catalogoPreciosData || catalogoPreciosData.length === 0) {
+                mostrarBannerStatusExcel('error', '⚠️ Esperá a que el catálogo de productos termine de cargar antes de subir el Excel.');
+                return;
+            }
+
+            // Construir mapas O(1) para búsqueda instantánea
+            const skuMap = new Map();
+            const nameMap = new Map();
+
+            catalogoPreciosData.forEach(p => {
+                if (p.sku) skuMap.set(String(p.sku).trim().toLowerCase(), p);
+                if (p.name) nameMap.set(normalizarTextoBusqueda(p.name), p);
+            });
+
+            // Función auxiliar para buscar valor en columnas con nombres flexibles
+            function extraerValor(row, posiblesNombres) {
+                for (const k of Object.keys(row)) {
+                    const kNorm = k.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                    for (const target of posiblesNombres) {
+                        if (kNorm === target || kNorm.includes(target)) {
+                            return row[k];
+                        }
+                    }
+                }
+                return null;
+            }
+
+            let coincidencias = 0;
+            let modificados = 0;
+            let noEncontrados = 0;
+
+            rows.forEach(row => {
+                const rowSku = extraerValor(row, ['sku', 'codigo', 'cod', 'ref', 'id']);
+                const rowName = extraerValor(row, ['producto', 'nombre', 'descripcion', 'articulo', 'name']);
+                
+                // Priorizar columna PRECIO_NUEVO si existe (plantilla oficial descargada)
+                let rowPrice = extraerValor(row, ['precio_nuevo', 'precio nuevo', 'nuevo precio']);
+                if (rowPrice === null || rowPrice === undefined || rowPrice === '') {
+                    rowPrice = extraerValor(row, ['precio ($)', 'precio', 'precio regular', 'importe', 'price']);
+                }
+
+                if (rowPrice === null || rowPrice === undefined || rowPrice === '') return;
+
+                const nuevoPrecio = parseArgentinePriceClient(rowPrice);
+                if (isNaN(nuevoPrecio) || nuevoPrecio <= 0) return;
+
+                // Buscar producto por SKU o Nombre
+                let prod = null;
+                if (rowSku) {
+                    prod = skuMap.get(String(rowSku).trim().toLowerCase());
+                }
+                if (!prod && rowName) {
+                    prod = nameMap.get(normalizarTextoBusqueda(rowName));
+                }
+
+                if (prod) {
+                    coincidencias++;
+                    prod.precio_nuevo = Math.round(nuevoPrecio * 100) / 100;
+                    prod.modificado_por_excel = true;
+                    if (prod.precio_nuevo !== prod.precio_original) {
+                        modificados++;
+                        prod.seleccionado = true;
+                    } else {
+                        prod.seleccionado = false;
+                    }
+                } else {
+                    noEncontrados++;
+                }
+            });
+
+            excelPreciosCargadosCount = modificados;
+
+            if (coincidencias === 0) {
+                mostrarBannerStatusExcel('error', `⚠️ No se encontraron productos coincidentes en el catálogo. Verificá que las columnas tengan los títulos SKU o Producto/Nombre.`);
+                return;
+            }
+
+            mostrarBannerStatusExcel('success', `🎉 Planilla procesada con éxito: Se encontraron <strong>${coincidencias} productos</strong> coincidentes (${fuente}). <strong>${modificados} tienen variación de precio</strong> y quedaron pre-seleccionados.`, { coincidencias, modificados, noEncontrados });
+
+            // Activar automáticamente el filtro para ver los modificados
+            filtroSoloModificadosPrecios = (modificados > 0);
+            actualizarBotonFiltroModificados();
+
+            filtrarProductosPrecios();
+        }
+
+        function mostrarBannerStatusExcel(tipo, mensaje, stats) {
+            const banner = document.getElementById('excel-precios-status-banner');
+            const icon = document.getElementById('excel-precios-status-icon');
+            const text = document.getElementById('excel-precios-status-text');
+
+            if (!banner || !icon || !text) return;
+
+            banner.classList.remove('hidden', 'border-emerald-500/40', 'bg-emerald-950/40', 'text-emerald-200', 'border-rose-500/40', 'bg-rose-950/40', 'text-rose-200');
+
+            if (tipo === 'success') {
+                banner.className = 'p-3.5 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs font-medium border-emerald-500/40 bg-emerald-950/40 text-emerald-200 shadow-lg';
+                icon.className = 'material-symbols-outlined text-xl text-emerald-400';
+                icon.innerText = 'check_circle';
+            } else {
+                banner.className = 'p-3.5 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs font-medium border-rose-500/40 bg-rose-950/40 text-rose-200 shadow-lg';
+                icon.className = 'material-symbols-outlined text-xl text-rose-400';
+                icon.innerText = 'error';
+            }
+
+            text.innerHTML = mensaje;
+            banner.classList.remove('hidden');
+        }
+
+        function limpiarPreciosExcelCargados() {
+            catalogoPreciosData.forEach(p => {
+                p.precio_nuevo = p.precio_original;
+                p.modificado_por_excel = false;
+                p.seleccionado = true;
+            });
+
+            excelPreciosCargadosCount = 0;
+            filtroSoloModificadosPrecios = false;
+
+            const banner = document.getElementById('excel-precios-status-banner');
+            if (banner) banner.classList.add('hidden');
+
+            const fileInput = document.getElementById('excel-precios-file-input');
+            if (fileInput) fileInput.value = '';
+
+            const pasteInput = document.getElementById('excel-precios-paste-input');
+            if (pasteInput) pasteInput.value = '';
+
+            actualizarBotonFiltroModificados();
+            filtrarProductosPrecios();
+        }
+
+        function toggleFiltroSoloModificadosPrecios() {
+            filtroSoloModificadosPrecios = !filtroSoloModificadosPrecios;
+            actualizarBotonFiltroModificados();
+            filtrarProductosPrecios();
+        }
+
+        function actualizarBotonFiltroModificados() {
+            const btn = document.getElementById('btn-filtro-solo-modificados');
+            const label = document.getElementById('label-filtro-solo-modificados');
+            if (!btn || !label) return;
+
+            const modificadosTotal = catalogoPreciosData.filter(p => p.precio_nuevo !== p.precio_original).length;
+
+            if (modificadosTotal > 0) {
+                btn.classList.remove('hidden');
+                if (filtroSoloModificadosPrecios) {
+                    btn.className = 'px-2.5 py-1 rounded-lg text-xs font-bold border border-emerald-400 bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 transition-all flex items-center gap-1 cursor-pointer';
+                    label.innerText = `Mostrando solo modificados (${modificadosTotal})`;
+                } else {
+                    btn.className = 'px-2.5 py-1 rounded-lg text-xs font-bold border border-brand-yellow/40 bg-brand-yellow/10 text-brand-yellow hover:bg-brand-yellow/20 transition-all flex items-center gap-1 cursor-pointer';
+                    label.innerText = `Filtrar solo modificados (${modificadosTotal})`;
+                }
+            } else {
+                btn.classList.add('hidden');
+            }
         }
 
         async function cargarCatalogoPreciosMasivo() {
@@ -8094,7 +8482,8 @@ ightarrow$ Ventas</p>
                         category: p.category || 'General',
                         precio_original: parseFloat(p.price || 0),
                         precio_nuevo: parseFloat(p.price || 0),
-                        seleccionado: true
+                        seleccionado: true,
+                        modificado_por_excel: false
                     }));
 
                     // Cargar selector de 32 categorías oficiales personalizadas
@@ -8249,17 +8638,32 @@ ightarrow$ Ventas</p>
         }
 
         function filtrarProductosPrecios() {
-            const catSelect = document.getElementById('precios-filter-cat');
-            const searchInput = document.getElementById('precios-filter-search');
+            let cat = 'TODAS';
+            let rawSearch = '';
 
-            const cat = catSelect ? catSelect.value : 'TODAS';
-            const rawSearch = searchInput ? searchInput.value.trim() : '';
+            if (modoActualizadorPrecios === 'excel') {
+                const searchInputExcel = document.getElementById('precios-excel-search');
+                rawSearch = searchInputExcel ? searchInputExcel.value.trim() : '';
+            } else {
+                const catSelect = document.getElementById('precios-filter-cat');
+                const searchInput = document.getElementById('precios-filter-search');
+                cat = catSelect ? catSelect.value : 'TODAS';
+                rawSearch = searchInput ? searchInput.value.trim() : '';
+            }
+
             const searchNorm = normalizarTextoBusqueda(rawSearch);
             const tokens = searchNorm.split(/\s+/).filter(t => t.length > 0);
 
             catalogoPreciosFiltrado = catalogoPreciosData.filter(p => {
-                const matchCat = cat === 'TODAS' || (p.category && p.category.includes(cat));
-                if (!matchCat) return false;
+                // Filtro para ver solo los modificados si el usuario lo activó
+                if (filtroSoloModificadosPrecios && p.precio_nuevo === p.precio_original) {
+                    return false;
+                }
+
+                if (modoActualizadorPrecios === 'reglas') {
+                    const matchCat = cat === 'TODAS' || (p.category && p.category.includes(cat));
+                    if (!matchCat) return false;
+                }
 
                 if (tokens.length === 0) return true;
 
@@ -8270,10 +8674,19 @@ ightarrow$ Ventas</p>
                 return tokens.every(tok => nameNorm.includes(tok) || skuNorm.includes(tok) || catNorm.includes(tok));
             });
 
-            recalcularPreciosEnVivo();
+            if (modoActualizadorPrecios === 'excel') {
+                renderTablaPreciosUI();
+            } else {
+                recalcularPreciosEnVivo();
+            }
         }
 
         function recalcularPreciosEnVivo() {
+            if (modoActualizadorPrecios === 'excel') {
+                renderTablaPreciosUI();
+                return;
+            }
+
             const valorInput = document.getElementById('input-valor-precios');
             const checkDecimales = document.getElementById('check-descartar-decimales');
             
@@ -8313,6 +8726,7 @@ ightarrow$ Ventas</p>
                 p.precio_nuevo = nuevo;
             });
 
+            actualizarBotonFiltroModificados();
             renderTablaPreciosUI();
         }
 
@@ -8341,13 +8755,17 @@ ightarrow$ Ventas</p>
                         ? `<span class="text-red-400 font-bold text-[11px]">${diffPorc}% (-$${Math.abs(diff).toLocaleString('es-AR')})</span>`
                         : `<span class="text-gray-400 text-[11px]">Sin cambio</span>`);
 
+                const excelTag = p.modificado_por_excel 
+                    ? `<span class="inline-block px-1.5 py-0.5 rounded text-[9px] bg-blue-500/20 text-blue-300 font-bold border border-blue-500/30 ml-1.5">Excel</span>` 
+                    : '';
+
                 return `
                     <tr class="hover:bg-white/5 transition-colors ${p.seleccionado ? 'bg-white/[0.02]' : 'opacity-40'}">
                         <td class="py-2.5 px-3 text-center">
                             <input type="checkbox" onchange="toggleSelectItemPrecio(${idx}, this.checked)" ${p.seleccionado ? 'checked' : ''} class="rounded bg-black/40 border-white/30 text-brand-yellow focus:ring-0">
                         </td>
                         <td class="py-3 px-4 font-bold text-white text-xs leading-snug" title="${p.name}">
-                            ${p.name}
+                            ${p.name} ${excelTag}
                         </td>
                         <td class="py-3 px-3 font-mono text-[11px] text-amber-300/90 whitespace-nowrap">
                             ${p.sku || '-'}
@@ -8373,18 +8791,18 @@ ightarrow$ Ventas</p>
 
         function toggleSelectAllPrecios(checked) {
             catalogoPreciosFiltrado.forEach(p => { p.seleccionado = checked; });
-            recalcularPreciosEnVivo();
+            renderTablaPreciosUI();
         }
 
         function toggleSelectItemPrecio(idx, checked) {
             if (catalogoPreciosFiltrado[idx]) {
                 catalogoPreciosFiltrado[idx].seleccionado = checked;
-                recalcularPreciosEnVivo();
+                renderTablaPreciosUI();
             }
         }
 
         async function aplicarAumentoPreciosMasivo() {
-            const seleccionados = catalogoPreciosFiltrado.filter(p => p.seleccionado && p.precio_nuevo !== p.precio_original);
+            const seleccionados = catalogoPreciosData.filter(p => p.seleccionado && p.precio_nuevo !== p.precio_original);
             
             if (seleccionados.length === 0) {
                 alert('⚠️ No hay productos seleccionados con cambios de precio para aplicar.');
@@ -8394,7 +8812,11 @@ ightarrow$ Ventas</p>
             const valorInput = document.getElementById('input-valor-precios');
             const valor = valorInput ? valorInput.value : '';
 
-            const confirmacion = confirm(`¿Estás seguro de que deseás actualizar los precios de ${seleccionados.length} productos seleccionados?\n\nOperación: ${operacionPreciosActual} ${valor}${metodoPreciosActual === 'porcentaje' ? '%' : '$'}\n\nLos cambios se guardarán en Supabase y la IA Dani usará estos precios al instante.`);
+            const resumenModo = modoActualizadorPrecios === 'excel'
+                ? `Planilla Excel (${seleccionados.length} productos identificados)`
+                : `${operacionPreciosActual} ${valor}${metodoPreciosActual === 'porcentaje' ? '%' : '$'}`;
+
+            const confirmacion = confirm(`¿Estás seguro de que deseás actualizar los precios de ${seleccionados.length} productos seleccionados?\n\nModo de Actualización: ${resumenModo}\n\nLos cambios se guardarán de forma permanente en Supabase y la IA Dani cotizará con estos nuevos precios al instante.`);
             if (!confirmacion) return;
 
             const btn = document.getElementById('btn-guardar-precios-masivo');
@@ -8412,11 +8834,11 @@ ightarrow$ Ventas</p>
                         precio_anterior: p.precio_original,
                         precio_nuevo: p.precio_nuevo
                     })),
-                    operacion: operacionPreciosActual,
-                    metodo: metodoPreciosActual,
-                    valor: valor,
-                    motivo: `Aumento masivo ${operacionPreciosActual} ${valor}${metodoPreciosActual === 'porcentaje' ? '%' : '$'}`,
-                    usuario: localStorage.getItem('crm_vendor_name') || 'Administrador'
+                    operacion: modoActualizadorPrecios === 'excel' ? 'Excel' : operacionPreciosActual,
+                    metodo: modoActualizadorPrecios === 'excel' ? 'Archivo Excel' : metodoPreciosActual,
+                    valor: modoActualizadorPrecios === 'excel' ? `${seleccionados.length} productos` : valor,
+                    motivo: modoActualizadorPrecios === 'excel' ? 'Actualización masiva de precios desde planilla Excel' : `Aumento masivo ${operacionPreciosActual} ${valor}${metodoPreciosActual === 'porcentaje' ? '%' : '$'}`,
+                    usuario: localStorage.getItem('crm_vendor_name') || 'Administrador Danilo'
                 };
 
                 const resp = await fetch('/api/crm/productos/actualizar-precios-masivo', {
@@ -8427,7 +8849,8 @@ ightarrow$ Ventas</p>
 
                 const data = await resp.json();
                 if (data.success) {
-                    alert(`🎉 ¡ÉXITO!\n\nSe actualizaron correctamente ${data.actualizados} productos en Supabase y en la memoria de la IA Dani.`);
+                    alert(`🎉 ¡ÉXITO TOTAL!\n\nSe actualizaron correctamente ${data.actualizados} productos en Supabase y en la memoria RAM de la IA Dani.`);
+                    limpiarPreciosExcelCargados();
                     await cargarCatalogoPreciosMasivo();
                 } else {
                     alert(`❌ Error al actualizar: ${data.error || 'No se pudo guardar en Supabase.'}`);
