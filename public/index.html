@@ -1761,9 +1761,14 @@ ightarrow$ Ventas</p>
                                     <textarea id="excel-paste-input" rows="4" placeholder="DETERGENTE MAGENTA CONCENTRADO 1+4 - 5 LT ; 24065 ; 50&#10;DETERGENTE MAGENTA CONCENTRADO 1+4 - 10 LT ; 45000 ; 30" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-xs text-white font-mono placeholder-gray-500 focus:outline-none focus:border-emerald-400"></textarea>
                                 </div>
 
-                                <button onclick="subirListaExcel()" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-title text-xs font-bold uppercase tracking-wider shadow-xl transition-all flex items-center justify-center gap-2">
-                                    <span class="material-symbols-outlined text-[18px]">publish</span> Aplicar Lista Excel en WooCommerce, Supabase y Web
-                                </button>
+                                <div class="flex flex-col sm:flex-row items-center gap-3">
+                                    <button onclick="subirListaExcel()" class="flex-1 w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-title text-xs font-bold uppercase tracking-wider shadow-xl transition-all flex items-center justify-center gap-2 cursor-pointer">
+                                        <span class="material-symbols-outlined text-[18px]">publish</span> Aplicar Lista Excel en Supabase y Tienda Web
+                                    </button>
+                                    <button type="button" onclick="exportarProductosSinImagenCatalogo()" class="w-full sm:w-auto py-3.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 border border-brand-yellow/50 text-brand-yellow font-title text-xs font-bold uppercase tracking-wider shadow-xl transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0">
+                                        <span class="material-symbols-outlined text-[18px]">add_a_photo</span> Exportar Productos Sin Foto (.xlsx)
+                                    </button>
+                                </div>
                                 <div id="excel-res-msg" class="hidden text-xs font-bold p-3 rounded-xl border"></div>
                             </div>
 
@@ -6343,7 +6348,7 @@ ightarrow$ Ventas</p>
             }
 
             resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-300';
-            resDiv.innerText = `⏳ Procesando ${excelRowsData.length || 'líneas de'} productos en WooCommerce y Supabase...`;
+            resDiv.innerText = `⏳ Procesando ${excelRowsData.length || 'líneas de'} productos en Supabase...`;
             resDiv.classList.remove('hidden');
 
             try {
@@ -6357,15 +6362,102 @@ ightarrow$ Ventas</p>
                 });
                 const data = await resp.json();
                 if (data.success) {
-                    resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-300';
-                    resDiv.innerText = `🎉 ¡Carga Masiva completada con éxito! Se procesaron ${data.processed || excelRowsData.length} productos en la base de datos y la tienda web.`;
+                    window.ultimosProductosNuevosCreados = data.nuevos_productos || [];
+                    const creadosCount = data.inserted || 0;
+                    const actualizadosCount = data.updated || 0;
+
+                    let downloadBtnHtml = '';
+                    if (creadosCount > 0 && window.ultimosProductosNuevosCreados.length > 0) {
+                        downloadBtnHtml = `
+                            <div class="mt-3 pt-3 border-t border-emerald-500/30 flex flex-col sm:flex-row items-center justify-between gap-3">
+                                <div class="text-[11px] text-amber-300">
+                                    📸 <strong>${creadosCount} productos nuevos</strong> fueron creados sin imagen. Descargá la planilla para organizar las fotos:
+                                </div>
+                                <button type="button" onclick="descargarReporteNuevosProductosExcel()" class="px-4 py-2 bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-slate-950 font-black text-xs rounded-xl shadow-lg flex items-center gap-1.5 cursor-pointer">
+                                    <span class="material-symbols-outlined text-base">download</span>
+                                    <span>Descargar Reporte de Nuevos para Fotos (.xlsx)</span>
+                                </button>
+                            </div>
+                        `;
+                    }
+
+                    resDiv.className = 'text-xs font-bold p-4 rounded-xl border border-emerald-500/40 bg-emerald-950/40 text-emerald-200 shadow-xl';
+                    resDiv.innerHTML = `
+                        <div class="flex items-center gap-2">
+                            <span class="material-symbols-outlined text-emerald-400 text-lg">check_circle</span>
+                            <span>🎉 ¡Carga Masiva completada en Supabase! Actualizados: <strong>${actualizadosCount}</strong> | Nuevos creados: <strong>${creadosCount}</strong>.</span>
+                        </div>
+                        ${downloadBtnHtml}
+                    `;
                 } else {
-                    resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-300';
-                    resDiv.innerText = `🎉 ¡Lista de ${excelRowsData.length || 'varios'} productos interpretada y cargada con éxito!`;
+                    resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-rose-500/40 bg-rose-500/10 text-rose-300';
+                    resDiv.innerText = `❌ Error: ${data.error || 'No se pudo procesar la carga masiva.'}`;
                 }
             } catch(e) {
-                resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-300';
-                resDiv.innerText = `🎉 ¡Lista de ${excelRowsData.length || 'varios'} productos interpretada y cargada con éxito!`;
+                resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-rose-500/40 bg-rose-500/10 text-rose-300';
+                resDiv.innerText = `❌ Error de conexión: ${e.message}`;
+            }
+        }
+
+        // Descargar reporte Excel exclusivo de los productos recién creados que necesitan foto
+        function descargarReporteNuevosProductosExcel() {
+            if (!window.ultimosProductosNuevosCreados || window.ultimosProductosNuevosCreados.length === 0) {
+                alert('⚠️ No hay registro de productos nuevos en la última carga realizada.');
+                return;
+            }
+
+            try {
+                const rows = window.ultimosProductosNuevosCreados.map((p, idx) => ({
+                    'N°': idx + 1,
+                    'SKU': p.sku,
+                    'PRODUCTO': p.name,
+                    'CATEGORIA': p.category,
+                    'PRECIO': p.price,
+                    'ESTADO IMAGEN': 'PENDIENTE DE FOTO',
+                    'NOMBRE ARCHIVO FOTO RECOMENDADO': p.archivo_foto_sugerido || `${p.sku}.jpg`
+                }));
+
+                const worksheet = XLSX.utils.json_to_sheet(rows);
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, 'Nuevos - Pendientes Foto');
+                const fecha = new Date().toISOString().slice(0, 10);
+                XLSX.writeFile(workbook, `PRODUCTOS_NUEVOS_PENDIENTES_FOTO_${fecha}.xlsx`);
+            } catch(e) {
+                alert('Error al generar el reporte Excel: ' + e.message);
+            }
+        }
+
+        // Exportar a Excel TODOS los productos del catálogo que actualmente no tengan imagen cargada
+        function exportarProductosSinImagenCatalogo() {
+            if (!catalogoPreciosData || catalogoPreciosData.length === 0) {
+                alert('⚠️ El catálogo aún se está cargando. Aguardá unos segundos y volvé a intentar.');
+                return;
+            }
+
+            try {
+                const sinFoto = catalogoPreciosData.filter(p => !p.image_url || String(p.image_url).trim() === '' || String(p.image_url).includes('placeholder'));
+                if (sinFoto.length === 0) {
+                    alert('🎉 ¡Excelente noticia! Todos los productos del catálogo ya cuentan con imagen cargada.');
+                    return;
+                }
+
+                const rows = sinFoto.map((p, idx) => ({
+                    'N°': idx + 1,
+                    'SKU': p.sku || `QD-ID-${p.id}`,
+                    'PRODUCTO': p.name,
+                    'CATEGORIA': p.category,
+                    'PRECIO': p.precio_original || p.price || 0,
+                    'ESTADO IMAGEN': 'PENDIENTE DE FOTO',
+                    'NOMBRE ARCHIVO FOTO RECOMENDADO': `${p.sku || `QD-ID-${p.id}`}.jpg`
+                }));
+
+                const worksheet = XLSX.utils.json_to_sheet(rows);
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, 'Sin Imagen');
+                const fecha = new Date().toISOString().slice(0, 10);
+                XLSX.writeFile(workbook, `PRODUCTOS_CATALOGO_SIN_FOTO_${fecha}.xlsx`);
+            } catch(e) {
+                alert('Error al exportar productos sin foto: ' + e.message);
             }
         }
 
@@ -8627,6 +8719,7 @@ ightarrow$ Ventas</p>
                         category: p.category || 'General',
                         precio_original: parseFloat(p.price || 0),
                         precio_nuevo: parseFloat(p.price || 0),
+                        image_url: p.image_url || null,
                         seleccionado: true,
                         modificado_por_excel: false
                     }));

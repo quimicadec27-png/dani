@@ -2910,46 +2910,32 @@ app.post('/api/products/bulk-excel', async (req, res) => {
             updatedCount += chunk.length;
         }
 
-        // 2. Inserciones en Supabase
+        // 2. Inserciones en Supabase (Productos Nuevos sin imagen)
         if (productsToInsertSupa.length > 0) {
             const { error: insErr } = await supabase.from('dec_products').insert(productsToInsertSupa);
             if (!insErr) insertedCount += productsToInsertSupa.length;
         }
 
-        // 3. Sincronización en lotes seguros con WooCommerce (chunks de 40 para evitar timeouts de PHP)
-        let wcUpdatedCount = 0;
-        const wcChunkSize = 40;
-        for (let i = 0; i < productsToSyncWC.length; i += wcChunkSize) {
-            const chunk = productsToSyncWC.slice(i, i + wcChunkSize);
-            try {
-                const wcRes = await fetch('https://quimicadec.com/?qdec_api=upsert_products_bulk', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        secret_key: 'qdec_crm_sec_2026',
-                        products: chunk
-                    })
-                });
-                const wcData = await wcRes.json();
-                if (wcData && wcData.success) {
-                    wcUpdatedCount += (wcData.updated || 0) + (wcData.created || 0);
-                }
-            } catch (e) {
-                console.error(`[WC BULK SYNC ERROR chunk ${i}]:`, e.message);
-            }
-        }
-
-        // Purgar memoria caché de Dani
+        // Purgar memoria caché de Dani para reflejar cambios en tiempo real
         lastCatalogFetch = 0;
+        PRODUCT_CATALOG_CACHE = null;
 
         res.json({
             success: true,
             updated: updatedCount,
             inserted: insertedCount,
-            wc_synced: wcUpdatedCount,
+            nuevos_productos: productsToInsertSupa.map(p => ({
+                sku: p.sku,
+                name: p.name,
+                category: p.category,
+                price: p.price,
+                stock: p.stock_status,
+                image_status: 'PENDIENTE DE FOTO',
+                archivo_foto_sugerido: `${p.sku}.jpg`
+            })),
             skipped_zero: skippedZeroCount,
             processed: updatedCount + insertedCount,
-            mensaje: `🎉 ¡Carga Masiva completada con éxito! Se actualizaron ${updatedCount} productos en Supabase y ${wcUpdatedCount} en la tienda WooCommerce en vivo. (${skippedZeroCount} items con precio $0 fueron protegidos).`
+            mensaje: `🎉 ¡Carga Masiva completada con éxito en Supabase! Se actualizaron ${updatedCount} productos y se crearon ${insertedCount} productos nuevos. (${skippedZeroCount} items con precio $0 fueron protegidos).`
         });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
@@ -3301,7 +3287,7 @@ app.get('/api/crm/catalogo-precios-lista', async (req, res) => {
                 const offset = page * pageSize;
                 const { data: pageData, error: pageErr } = await supabase
                     .from('dec_products')
-                    .select('id, sku, name, price, category, stock_status, status')
+                    .select('id, sku, name, price, category, stock_status, status, image_url')
                     .gt('price', 0)
                     .order('name', { ascending: true })
                     .range(offset, offset + pageSize - 1);
