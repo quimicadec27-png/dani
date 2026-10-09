@@ -975,10 +975,10 @@ ightarrow$ Ventas</p>
                                         <!-- Dropzone y Pegado de Texto -->
                                         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
                                             <!-- Subir archivo Excel -->
-                                            <div class="lg:col-span-2 p-5 bg-emerald-950/20 border-2 border-dashed border-emerald-500/40 hover:border-emerald-400 rounded-2xl transition-all flex flex-col items-center justify-center text-center group cursor-pointer relative" onclick="document.getElementById('excel-precios-file-input').click()">
+                                            <div class="lg:col-span-2 p-5 bg-emerald-950/20 border-2 border-dashed border-emerald-500/40 hover:border-emerald-400 rounded-2xl transition-all flex flex-col items-center justify-center text-center group cursor-pointer relative" onclick="document.getElementById('excel-precios-file-input').click()" ondragover="event.preventDefault(); this.classList.add('border-emerald-300', 'bg-emerald-900/30');" ondragleave="this.classList.remove('border-emerald-300', 'bg-emerald-900/30');" ondrop="handleExcelDrop(event); this.classList.remove('border-emerald-300', 'bg-emerald-900/30');">
                                                 <span class="material-symbols-outlined text-4xl text-emerald-400 group-hover:scale-110 transition-transform mb-2">cloud_upload</span>
                                                 <p class="text-xs font-bold text-white mb-1">Hacé clic o arrastrá tu planilla Excel (.xlsx, .xls o .csv) aquí</p>
-                                                <p class="text-[11px] text-gray-400">Columnas reconocidas automáticamente: <code>SKU</code> (o <code>Nombre</code>) y <code>Precio</code> (o <code>Precio Nuevo</code>)</p>
+                                                <p class="text-[11px] text-gray-400">Compatible directo con tu planilla de Pedix (<code>Nombre</code>, <code>Nombre (presentación)</code>, <code>Precio</code>) o plantilla oficial</p>
                                                 <input type="file" id="excel-precios-file-input" accept=".xlsx, .xls, .csv" onchange="leerExcelParaActualizador(event)" class="hidden">
                                             </div>
 
@@ -8175,6 +8175,12 @@ ightarrow$ Ventas</p>
             if (!str) return '';
             return String(str).toLowerCase()
                 .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                .replace(/\b(litros?|lts?|lt|l)\b/g, 'litro')
+                .replace(/\b(cm3|cc|c\.c\.)\b/g, 'cc')
+                .replace(/\b(gramos?|grs?|gr|g)\b/g, 'gramos')
+                .replace(/\b(kilos?|kgs?|kg|k)\b/g, 'kg')
+                .replace(/\b(mililitros?|mls?|ml)\b/g, 'ml')
+                .replace(/\b(unidades?|unid|u)\b/g, 'u')
                 .replace(/\bsahumerios?\b/g, 'sahumerio')
                 .replace(/\bcloros?\b/g, 'cloro')
                 .replace(/\bdetergentes?\b/g, 'detergente')
@@ -8183,7 +8189,19 @@ ightarrow$ Ventas</p>
                 .replace(/\bsuavizantes?\b/g, 'suavizante')
                 .replace(/\bjabones?\b/g, 'jabon')
                 .replace(/\bcombos?\b/g, 'combo')
+                .replace(/[^a-z0-9]/g, ' ')
+                .replace(/\s+/g, ' ')
                 .trim();
+        }
+
+        function extraerTokensBusqueda(str) {
+            const stop = new Set(['de', 'el', 'la', 'los', 'las', 'en', 'para', 'con', 'por', 'y', 'x']);
+            const norm = normalizarTextoBusqueda(str);
+            const tokens = new Set();
+            norm.split(' ').forEach(t => {
+                if (t && t.length > 1 && !stop.has(t)) tokens.add(t);
+            });
+            return tokens;
         }
 
         // Cambiar entre Modo 1 (Reglas / %) y Modo 2 (Carga Masiva Excel)
@@ -8243,9 +8261,8 @@ ightarrow$ Ventas</p>
             }
         }
 
-        // Cargar archivo Excel para el Actualizador de Precios
-        function leerExcelParaActualizador(event) {
-            const file = event.target.files[0];
+        // Cargar archivo Excel para el Actualizador de Precios (compatible con Pedix y plantilla oficial)
+        function procesarArchivoExcelPrecios(file) {
             if (!file) return;
 
             const reader = new FileReader();
@@ -8253,8 +8270,15 @@ ightarrow$ Ventas</p>
                 try {
                     const data = new Uint8Array(e.target.result);
                     const workbook = XLSX.read(data, { type: 'array' });
-                    const firstSheetName = workbook.SheetNames[0];
-                    const worksheet = workbook.Sheets[firstSheetName];
+                    // Preferir hoja "Productos", "Catalogo", "Precios", o la primera disponible
+                    let sheetName = workbook.SheetNames[0];
+                    for (const s of workbook.SheetNames) {
+                        if (/producto|catalogo|precios|lista/i.test(s)) {
+                            sheetName = s;
+                            break;
+                        }
+                    }
+                    const worksheet = workbook.Sheets[sheetName];
                     const jsonRows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
 
                     if (!jsonRows || jsonRows.length === 0) {
@@ -8269,6 +8293,18 @@ ightarrow$ Ventas</p>
                 }
             };
             reader.readAsArrayBuffer(file);
+        }
+
+        function leerExcelParaActualizador(event) {
+            const file = event.target.files && event.target.files[0];
+            if (file) procesarArchivoExcelPrecios(file);
+        }
+
+        function handleExcelDrop(event) {
+            event.preventDefault();
+            if (event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files[0]) {
+                procesarArchivoExcelPrecios(event.dataTransfer.files[0]);
+            }
         }
 
         // Procesar texto pegado con SKU / Nombre y Precio
@@ -8303,20 +8339,33 @@ ightarrow$ Ventas</p>
             aplicarPreciosDesdeFilasExcel(jsonRows, 'Texto pegado');
         }
 
-        // Motor de coincidencia de precios desde Excel contra el catálogo de Supabase
+        // Motor de coincidencia de alta precisión (SKU -> Nombre + Presentación -> Tokens 75%)
         function aplicarPreciosDesdeFilasExcel(rows, fuente) {
             if (!catalogoPreciosData || catalogoPreciosData.length === 0) {
                 mostrarBannerStatusExcel('error', '⚠️ Esperá a que el catálogo de productos termine de cargar antes de subir el Excel.');
                 return;
             }
 
-            // Construir mapas O(1) para búsqueda instantánea
+            // Construir mapas O(1) e índices para búsqueda instantánea
             const skuMap = new Map();
-            const nameMap = new Map();
+            const normNameMap = new Map();
+            const catalogTokensList = [];
 
             catalogoPreciosData.forEach(p => {
-                if (p.sku) skuMap.set(String(p.sku).trim().toLowerCase(), p);
-                if (p.name) nameMap.set(normalizarTextoBusqueda(p.name), p);
+                const s = p.sku ? String(p.sku).trim().toLowerCase() : '';
+                if (s) {
+                    if (!skuMap.has(s)) skuMap.set(s, []);
+                    skuMap.get(s).push(p);
+                }
+                const n = normalizarTextoBusqueda(p.name);
+                if (n) {
+                    if (!normNameMap.has(n)) normNameMap.set(n, []);
+                    normNameMap.get(n).push(p);
+                }
+                const toks = extraerTokensBusqueda(p.name);
+                if (toks.size > 0) {
+                    catalogTokensList.push({ tokens: toks, prod: p });
+                }
             });
 
             // Función auxiliar para buscar valor en columnas con nombres flexibles
@@ -8332,60 +8381,143 @@ ightarrow$ Ventas</p>
                 return null;
             }
 
-            let coincidencias = 0;
-            let modificados = 0;
-            let noEncontrados = 0;
+            const coincidenciasSet = new Set();
+            const modificadosSet = new Set();
+            let filasIgnoradasInactivas = 0;
+            let filasSinPrecio = 0;
+            let filasNoEncontradas = 0;
 
             rows.forEach(row => {
-                const rowSku = extraerValor(row, ['sku', 'codigo', 'cod', 'ref', 'id']);
-                const rowName = extraerValor(row, ['producto', 'nombre', 'descripcion', 'articulo', 'name']);
-                
-                // Priorizar columna PRECIO_NUEVO si existe (plantilla oficial descargada)
+                // 1. Filtrar filas explícitamente INACTIVAS
+                const estado = String(extraerValor(row, ['estado', 'status']) || '').trim().toUpperCase();
+                if (estado === 'INACTIVO') {
+                    filasIgnoradasInactivas++;
+                    return;
+                }
+
+                // 2. Extraer precio (priorizar PRECIO_NUEVO de plantilla oficial)
                 let rowPrice = extraerValor(row, ['precio_nuevo', 'precio nuevo', 'nuevo precio']);
                 if (rowPrice === null || rowPrice === undefined || rowPrice === '') {
                     rowPrice = extraerValor(row, ['precio ($)', 'precio', 'precio regular', 'importe', 'price']);
                 }
-
-                if (rowPrice === null || rowPrice === undefined || rowPrice === '') return;
+                if (rowPrice === null || rowPrice === undefined || rowPrice === '') {
+                    filasSinPrecio++;
+                    return;
+                }
 
                 const nuevoPrecio = parseArgentinePriceClient(rowPrice);
-                if (isNaN(nuevoPrecio) || nuevoPrecio <= 0) return;
-
-                // Buscar producto por SKU o Nombre
-                let prod = null;
-                if (rowSku) {
-                    prod = skuMap.get(String(rowSku).trim().toLowerCase());
-                }
-                if (!prod && rowName) {
-                    prod = nameMap.get(normalizarTextoBusqueda(rowName));
+                if (isNaN(nuevoPrecio) || nuevoPrecio <= 0) {
+                    filasSinPrecio++;
+                    return;
                 }
 
-                if (prod) {
-                    coincidencias++;
-                    prod.precio_nuevo = Math.round(nuevoPrecio * 100) / 100;
-                    prod.modificado_por_excel = true;
-                    if (prod.precio_nuevo !== prod.precio_original) {
-                        modificados++;
-                        prod.seleccionado = true;
-                    } else {
-                        prod.seleccionado = false;
+                // 3. Extraer SKU (ignorar hashes aleatorios de 20 caracteres estilo Pedix como "fxkYLwZ3Obwv0twqCXGW")
+                let rawSku = extraerValor(row, ['sku', 'codigo', 'cod', 'ref', 'articulo']);
+                if (!rawSku) {
+                    const rawId = extraerValor(row, ['id']);
+                    if (rawId && !/^[a-zA-Z0-9]{20}$/.test(String(rawId).trim())) {
+                        rawSku = rawId;
                     }
-                } else {
-                    noEncontrados++;
+                }
+                const rowSku = rawSku ? String(rawSku).trim().toLowerCase() : '';
+
+                // 4. Extraer Nombre y Presentación (clave en planillas Pedix)
+                const rowNombre = String(extraerValor(row, ['producto', 'nombre', 'descripcion', 'name']) || '').trim();
+                let rowPres = '';
+                for (const k of Object.keys(row)) {
+                    const kNorm = k.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                    if (kNorm.includes('presentaci') && kNorm.includes('nombre')) {
+                        rowPres = String(row[k] || '').trim();
+                        break;
+                    }
+                }
+                if (!rowPres) {
+                    rowPres = String(extraerValor(row, ['presentacion', 'medida', 'tamano', 'variacion']) || '').trim();
+                }
+
+                let prodsCoincidentes = [];
+
+                // Etapa A: Coincidencia por SKU
+                if (rowSku && skuMap.has(rowSku)) {
+                    prodsCoincidentes = skuMap.get(rowSku);
+                }
+
+                // Etapa B: Coincidencia exacta por Nombre + Presentación
+                if (prodsCoincidentes.length === 0 && rowNombre) {
+                    const candidatos = [];
+                    if (rowPres) {
+                        candidatos.push(normalizarTextoBusqueda(`${rowNombre} ${rowPres}`));
+                        candidatos.push(normalizarTextoBusqueda(`${rowNombre} - ${rowPres}`));
+                    }
+                    candidatos.push(normalizarTextoBusqueda(rowNombre));
+
+                    for (const cand of candidatos) {
+                        if (normNameMap.has(cand)) {
+                            prodsCoincidentes = normNameMap.get(cand);
+                            break;
+                        }
+                    }
+                }
+
+                // Etapa C: Coincidencia difusa por superposición de palabras clave (tokens >= 75%)
+                if (prodsCoincidentes.length === 0 && rowNombre) {
+                    const fullText = rowPres ? `${rowNombre} ${rowPres}` : rowNombre;
+                    const rowTokens = extraerTokensBusqueda(fullText);
+                    if (rowTokens.size > 0) {
+                        let bestOverlap = 0;
+                        let bestMatches = [];
+                        for (const item of catalogTokensList) {
+                            let matchCount = 0;
+                            rowTokens.forEach(t => {
+                                if (item.tokens.has(t)) matchCount++;
+                            });
+                            const overlap = matchCount / rowTokens.size;
+                            if (overlap > bestOverlap) {
+                                bestOverlap = overlap;
+                                bestMatches = [item.prod];
+                            } else if (overlap === bestOverlap && overlap >= 0.75) {
+                                bestMatches.push(item.prod);
+                            }
+                        }
+                        if (bestOverlap >= 0.75) {
+                            prodsCoincidentes = bestMatches;
+                        }
+                    }
+                }
+
+                // 5. Aplicar precios a los productos encontrados
+                if (prodsCoincidentes.length > 0) {
+                    prodsCoincidentes.forEach(prod => {
+                        coincidenciasSet.add(prod.id);
+                        prod.precio_nuevo = Math.round(nuevoPrecio * 100) / 100;
+                        prod.modificado_por_excel = true;
+                        if (prod.precio_nuevo !== prod.precio_original) {
+                            modificadosSet.add(prod.id);
+                            prod.seleccionado = true;
+                        } else {
+                            prod.seleccionado = false;
+                        }
+                    });
+                } else if (rowNombre) {
+                    filasNoEncontradas++;
                 }
             });
 
-            excelPreciosCargadosCount = modificados;
+            excelPreciosCargadosCount = modificadosSet.size;
 
-            if (coincidencias === 0) {
-                mostrarBannerStatusExcel('error', `⚠️ No se encontraron productos coincidentes en el catálogo. Verificá que las columnas tengan los títulos SKU o Producto/Nombre.`);
+            if (coincidenciasSet.size === 0) {
+                mostrarBannerStatusExcel('error', `⚠️ No se encontraron productos coincidentes en el catálogo. Verificá que el archivo contenga columnas "Nombre" o "SKU" y "Precio".`);
                 return;
             }
 
-            mostrarBannerStatusExcel('success', `🎉 Planilla procesada con éxito: Se encontraron <strong>${coincidencias} productos</strong> coincidentes (${fuente}). <strong>${modificados} tienen variación de precio</strong> y quedaron pre-seleccionados.`, { coincidencias, modificados, noEncontrados });
+            mostrarBannerStatusExcel(
+                'success',
+                `🎉 Planilla procesada con éxito: Se vincularon <strong>${coincidenciasSet.size} productos</strong> del catálogo (${fuente}). <strong>${modificadosSet.size} tienen variación de precio</strong> y quedaron pre-seleccionados listos para guardar en Supabase.<br><span class="opacity-80 text-[11px]">Resumen: ${rows.length} filas analizadas (${coincidenciasSet.size} vinculados, ${filasNoEncontradas} no en catálogo, ${filasIgnoradasInactivas} inactivos, ${filasSinPrecio} sin precio).</span>`,
+                { coincidencias: coincidenciasSet.size, modificados: modificadosSet.size, noEncontrados: filasNoEncontradas }
+            );
 
             // Activar automáticamente el filtro para ver los modificados
-            filtroSoloModificadosPrecios = (modificados > 0);
+            filtroSoloModificadosPrecios = (modificadosSet.size > 0);
             actualizarBotonFiltroModificados();
 
             filtrarProductosPrecios();
