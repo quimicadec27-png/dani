@@ -6257,15 +6257,28 @@ ightarrow$ Ventas</p>
                     const defaultCat = defaultCatEl ? defaultCatEl.value : 'PRODUCTOS LIQUIDOS';
 
                     excelRowsData = jsonRows.map(row => {
-                        const sku = row['SKU'] || row['sku'] || row['Sku'] || row['ID'] || '';
-                        const name = row['Nombre del Producto / Variación'] || row['Nombre del Producto / Variacin'] || row['Nombre'] || row['Producto'] || row['name'] || '';
-                        const rawPrice = row['Precio ($)'] || row['Precio'] || row['price'] || row['Precio Regular'] || 0;
+                        let sku = row['SKU Sugerido'] || row['SKU'] || row['sku'] || row['Sku'] || '';
+                        if (!sku && row['ID'] && !/^[a-zA-Z0-9]{20}$/.test(String(row['ID']).trim())) {
+                            sku = String(row['ID']).trim();
+                        }
+
+                        let baseName = row['Nombre del Producto'] || row['Nombre del Producto / Variación'] || row['Nombre del Producto / Variacin'] || row['Nombre'] || row['Producto'] || row['name'] || '';
+                        let pres = '';
+                        for (const k of Object.keys(row)) {
+                            const kNorm = k.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                            if (kNorm.includes('presentaci') && kNorm.includes('nombre')) {
+                                pres = String(row[k] || '').trim();
+                                break;
+                            }
+                        }
+                        const name = (baseName && pres) ? `${baseName} - ${pres}` : (baseName || '');
+                        const rawPrice = row['Precio Mayorista ($)'] || row['Precio ($)'] || row['Precio'] || row['price'] || row['Precio Regular'] || 0;
                         const price = parseArgentinePriceClient(rawPrice);
-                        const stock = row['Estado de Stock'] || row['Stock'] || row['stock_status'] || 'En Stock';
-                        const cat = row['Categorías'] || row['Categoras'] || row['Categoría'] || row['category'] || defaultCat;
+                        const stock = row['Stock Inicial'] || row['Estado de Stock'] || row['Stock'] || row['stock_status'] || 'En Stock';
+                        const cat = row['Categoría Oficial'] || row['Categorías'] || row['Categoras'] || row['Categoría'] || row['category'] || defaultCat;
                         const estado = row['Estado'] || row['estado'] || 'ACTIVO';
                         return { sku, name, price, stock, cat, estado };
-                    }).filter(r => r.sku || r.name);
+                    }).filter(r => (r.sku || r.name) && String(r.estado).toUpperCase() !== 'INACTIVO' && r.price > 0);
 
                     renderVistaPreviaExcel();
                 } catch(err) {
