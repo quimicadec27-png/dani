@@ -2744,7 +2744,10 @@ app.post('/api/products/bulk-excel', async (req, res) => {
                 .toLowerCase()
                 .normalize('NFD')
                 .replace(/[\u0300-\u036f]/g, '')
+                .replace(/&/g, 'y')
+                .replace(/,/g, '.')
                 .replace(/[^a-z0-9]/g, ' ')
+                .replace(/s\b/g, '')
                 .replace(/\s+/g, ' ')
                 .trim();
         }
