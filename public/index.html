@@ -6389,6 +6389,11 @@ ightarrow$ Ventas</p>
                         </div>
                         ${downloadBtnHtml}
                     `;
+
+                    // Refrescar automáticamente la grilla y memoria del CRM
+                    if (typeof cargarCatalogoPreciosMasivo === 'function') {
+                        cargarCatalogoPreciosMasivo();
+                    }
                 } else {
                     resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-rose-500/40 bg-rose-500/10 text-rose-300';
                     resDiv.innerText = `❌ Error: ${data.error || 'No se pudo procesar la carga masiva.'}`;

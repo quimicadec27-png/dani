@@ -2916,9 +2916,9 @@ app.post('/api/products/bulk-excel', async (req, res) => {
             if (!insErr) insertedCount += productsToInsertSupa.length;
         }
 
-        // Purgar memoria caché de Dani para reflejar cambios en tiempo real
+        // Purgar y refrescar memoria caché de Dani para reflejar cambios en tiempo real
         lastCatalogFetch = 0;
-        PRODUCT_CATALOG_CACHE = null;
+        await refreshProductCatalog();
 
         res.json({
             success: true,
@@ -3301,15 +3301,17 @@ app.get('/api/crm/catalogo-precios-lista', async (req, res) => {
 
         if (!data || data.length === 0) {
             console.warn('[PRECIOS] Fallback a caché local: sin datos');
-            data = PRODUCT_CATALOG_CACHE.map((p, idx) => ({
-                id: p.id || `cache_${idx}`,
-                sku: p.sku || `QD-${idx}`,
-                name: p.name,
-                price: parseFloat(p.price || 0),
-                category: p.category,
-                stock_status: p.stock_status || 'instock',
-                status: 'publish'
-            }));
+            if (Array.isArray(PRODUCT_CATALOG_CACHE) && PRODUCT_CATALOG_CACHE.length > 0) {
+                data = PRODUCT_CATALOG_CACHE.map((p, idx) => ({
+                    id: p.id || `cache_${idx}`,
+                    sku: p.sku || `QD-${idx}`,
+                    name: p.name,
+                    price: parseFloat(p.price || 0),
+                    category: p.category,
+                    stock_status: p.stock_status || 'instock',
+                    status: 'publish'
+                }));
+            }
         }
 
         const CATEGORIAS_OFICIALES_32 = [
