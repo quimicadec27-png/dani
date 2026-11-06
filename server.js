@@ -5,7 +5,7 @@
  * Cotización por Presentaciones Reales, Edición de Leads (Nombre, Tel, DNI), Auto-polling y Sync CRM.
  */
 
-require('dotenv').config();
+require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -102,6 +102,62 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANO
     auth: { persistSession: false }
 });
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+
+// Función centralizada para guardar imágenes en almacenamiento local y público
+function saveBase64Image(base64Str, originalFilename, prefix = 'upload') {
+    const uploadsDir = path.join(__dirname, 'public', 'uploads');
+    if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+
+    let ext = 'jpg';
+    let dataBuffer;
+    if (typeof base64Str === 'string' && base64Str.includes(';base64,')) {
+        const parts = base64Str.split(';base64,');
+        const mime = parts[0].split(':')[1];
+        if (mime) {
+            ext = mime.split('/')[1] || 'jpg';
+            if (ext === 'jpeg') ext = 'jpg';
+        }
+        dataBuffer = Buffer.from(parts[1], 'base64');
+    } else if (typeof base64Str === 'string') {
+        dataBuffer = Buffer.from(base64Str, 'base64');
+    } else if (Buffer.isBuffer(base64Str)) {
+        dataBuffer = base64Str;
+    } else {
+        throw new Error('Formato de imagen inválido');
+    }
+
+    if (originalFilename && originalFilename.includes('.')) {
+        const fileExt = originalFilename.split('.').pop().toLowerCase();
+        if (['jpg', 'jpeg', 'png', 'webp', 'avif', 'gif'].includes(fileExt)) {
+            ext = fileExt;
+        }
+    }
+
+    const cleanBase = (originalFilename ? originalFilename.replace(/\.[^/.]+$/, "") : prefix + '_' + Date.now())
+        .replace(/[^a-zA-Z0-9_-]/g, '_');
+    const filename = cleanBase + '.' + ext;
+
+    const crmFilePath = path.join(uploadsDir, filename);
+    fs.writeFileSync(crmFilePath, dataBuffer);
+
+    // Guardar copia en quimica_dec_web/public/productos si existe
+    const webPublicDir = path.join(__dirname, '..', 'quimica_dec_web', 'public', 'productos');
+    if (fs.existsSync(webPublicDir)) {
+        try {
+            fs.writeFileSync(path.join(webPublicDir, filename), dataBuffer);
+        } catch (e) {}
+    }
+
+    return {
+        filename,
+        publicUrl: '/uploads/' + filename,
+        dataBuffer,
+        ext
+    };
+}
+
 
 // Combos Emprendedores Oficiales inyectados en memoria RAM
 const OFFICIAL_COMBOS_BACKEND = [
@@ -2458,23 +2514,10 @@ app.post('/api/products/update-details', async (req, res) => {
         let uploadedImageUrl = null;
         if (image_base64) {
             try {
-                const imgRes = await fetch('https://quimicadec.com/?qdec_api=upload_image', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        secret_key: 'qdec_crm_sec_2026',
-                        sku: finalSku,
-                        image_data: image_base64,
-                        filename: image_filename || `${finalSku}.jpg`,
-                        type: 'cover'
-                    })
-                });
-                const imgData = await imgRes.json();
-                if (imgData && imgData.success) {
-                    uploadedImageUrl = imgData.image_url;
-                }
+                const saved = saveBase64Image(image_base64, image_filename || `${finalSku}.jpg`, `prod_${finalSku}`);
+                uploadedImageUrl = saved.publicUrl;
             } catch (e) {
-                console.error('Error subiendo foto de producto:', e.message);
+                console.error('Error guardando foto de producto:', e.message);
             }
         }
 
@@ -2974,29 +3017,73 @@ app.post('/api/crm/update-homepage-html', async (req, res) => {
 
 app.get('/api/combos', async (req, res) => {
     try {
-        const resp = await fetch('https://quimicadec.com/?qdec_api=get_combos&secret_key=qdec_crm_sec_2026');
-        const data = await resp.json();
-        res.json(data);
+        const { data: dbCombos, error } = await supabase
+            .from('dec_products')
+            .select('*')
+            .or('category.eq.Combos Emprendedores,sku.ilike.QD-CMB%,name.ilike.%combo%')
+            .order('name');
+
+        if (error) throw error;
+
+        const officialMeta = {
+            'QD-CMB-EMP-001': {
+                name: 'COMBO EMPRENDEDOR N1',
+                featured_image: 'https://quimicadec.com/wp-content/uploads/2026/08/portada_QD-CMB-EMP-001_1785619872774.webp'
+            },
+            'QD-CMB-EMP-002': {
+                name: 'COMBO EMPRENDEDOR N2',
+                featured_image: 'https://quimicadec.com/wp-content/uploads/2026/08/portada_QD-CMB-EMP-002_1785620034299.webp'
+            },
+            'QD-CMB-EMP-003': {
+                name: 'COMBO EMPRENDEDOR N3',
+                featured_image: 'https://quimicadec.com/wp-content/uploads/2026/08/portada_QD-CMB-EMP-003_1785620284722.webp'
+            },
+            'QD-CMB-EMP-004': {
+                name: 'COMBO EMPRENDEDOR N4',
+                featured_image: 'https://quimicadec.com/wp-content/uploads/2026/08/portada_QD-CMB-EMP-004_1785620460606.webp'
+            },
+            'QD-CMB-PST-001': {
+                name: 'COMBO EMPRENDEDOR PASTAS N1',
+                featured_image: 'https://quimicadec.com/wp-content/uploads/2026/08/portada_QD-CMB-PST-001_1785614478240.webp'
+            },
+            'QD-CMB-PST-002': {
+                name: 'COMBO EMPRENDEDOR PASTAS N2',
+                featured_image: 'https://quimicadec.com/wp-content/uploads/2026/08/portada_QD-CMB-PST-002_1785615998121.webp'
+            }
+        };
+
+        const combos = (dbCombos || []).map(p => {
+            const meta = officialMeta[p.sku] || {};
+            const img = p.image_url || meta.featured_image || 'https://via.placeholder.com/300x300?text=Combo';
+            return {
+                id: p.id,
+                sku: p.sku,
+                name: p.name,
+                price: p.price,
+                regular_price: p.price,
+                sale_price: null,
+                image: img,
+                image_url: img,
+                featured_url: img,
+                gallery: [img],
+                status: p.status || 'publish',
+                stock_status: p.stock_status || 'instock'
+            };
+        });
+
+        res.json({ success: true, combos });
     } catch (e) {
+        console.error('[API COMBOS ERROR]:', e.message);
         res.status(500).json({ success: false, error: e.message });
     }
 });
 
 app.post('/api/combos/delete-image', async (req, res) => {
     try {
-        const { sku, attachment_id, image_url } = req.body;
-        const resp = await fetch('https://quimicadec.com/?qdec_api=delete_gallery_image', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                secret_key: 'qdec_crm_sec_2026',
-                sku,
-                attachment_id,
-                image_url
-            })
-        });
-        const data = await resp.json();
-        res.json(data);
+        const { sku } = req.body;
+        if (!sku) return res.status(400).json({ success: false, error: 'SKU requerido' });
+        await supabase.from('dec_products').update({ image_url: null, updated_at: new Date().toISOString() }).eq('sku', sku);
+        res.json({ success: true, mensaje: `Imagen removida del combo ${sku}` });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
     }
@@ -3004,19 +3091,24 @@ app.post('/api/combos/delete-image', async (req, res) => {
 
 app.post('/api/combos/auto-link-skus', async (req, res) => {
     try {
-        const { comboSku, productSkus, clearFirst } = req.body;
-        const resp = await fetch('https://quimicadec.com/?qdec_api=auto_link_combo_gallery', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                secret_key: 'qdec_crm_sec_2026',
-                combo_sku: comboSku,
-                product_skus: productSkus,
-                clear_first: clearFirst || false
-            })
-        });
-        const data = await resp.json();
-        res.json(data);
+        const { comboSku, productSkus } = req.body;
+        if (!comboSku) return res.status(400).json({ success: false, error: 'comboSku requerido' });
+        const skuList = (typeof productSkus === 'string' ? productSkus.split(/[\s,;]+/) : productSkus || [])
+            .map(s => s.trim())
+            .filter(Boolean);
+
+        const { data: prods } = await supabase
+            .from('dec_products')
+            .select('sku, image_url')
+            .in('sku', skuList)
+            .not('image_url', 'is', null);
+
+        const images = (prods || []).map(p => p.image_url).filter(Boolean);
+        if (images.length > 0) {
+            await supabase.from('dec_products').update({ image_url: images[0], updated_at: new Date().toISOString() }).eq('sku', comboSku);
+        }
+
+        res.json({ success: true, linked_count: images.length, images });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
     }
@@ -3026,114 +3118,94 @@ app.post('/api/categories/upload-banner', async (req, res) => {
     const stepsLog = [];
     try {
         const { categoryKey, imageBase64, imageUrl, filename } = req.body;
-
-        const slugMap = {
-            'pastas-y-concentrados': 'concentrados',
-            'aerosoles': 'aerosol',
-            'limpieza-hogar': 'limpieza-hogar'
-        };
-        const targetSlug = slugMap[categoryKey] || categoryKey;
-
-        stepsLog.push(`1. Conectando con WordPress para registrar banner de categoría '${targetSlug}'...`);
-
-        const resp = await fetch('https://quimicadec.com/?qdec_api=upload_category_banner', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                secret_key: 'qdec_crm_sec_2026',
-                category_key: targetSlug,
-                image_base64: imageBase64 || '',
-                image_url: imageUrl || '',
-                filename: filename || `banner_${targetSlug}_${Date.now()}.jpg`
-            })
-        });
-        const data = await resp.json();
-
-        if (data.success && data.image_url) {
-            stepsLog.push(`2. Imagen subida con éxito a WordPress: ${data.image_url}`);
-
-            // Actualizar la URL de la imagen en catalogo_final.html y sincronizar con WP
-            try {
-                let catalogPath = path.join(__dirname, 'catalogo_final.html');
-                if (!fs.existsSync(catalogPath)) {
-                    catalogPath = path.join(__dirname, '..', 'catalogo_final.html');
-                }
-                
-                if (fs.existsSync(catalogPath)) {
-                    let html = fs.readFileSync(catalogPath, 'utf8');
-
-                    // Buscar por data-banner-key (más robusto y directo)
-                    const dataKeyRegex = new RegExp(`(data-banner-key="${targetSlug}"[^>]*>|<img[^>]*data-banner-key="${targetSlug}"[^>]*)`, 'i');
-                    // Regex que encuentra la etiqueta img con ese data-banner-key y reemplaza su src
-                    const imgRegex = new RegExp(`(<img\\s[^>]*data-banner-key="${targetSlug}"[^>]*\\ssrc=")([^"]+)(")`, 'i');
-                    const imgRegexSrcFirst = new RegExp(`(<img\\s[^>]*src=")([^"]+)("[^>]*data-banner-key="${targetSlug}"[^>]*)`, 'i');
-
-                    if (imgRegex.test(html)) {
-                        html = html.replace(imgRegex, `$1${data.image_url}$3`);
-                        stepsLog.push(`3. Banner actualizado por data-banner-key="${targetSlug}" (src después).`);
-                    } else if (imgRegexSrcFirst.test(html)) {
-                        html = html.replace(imgRegexSrcFirst, `$1${data.image_url}$3`);
-                        stepsLog.push(`3. Banner actualizado por data-banner-key="${targetSlug}" (src primero).`);
-                    } else {
-                        // Fallback: buscar por href de la categoría
-                        const hrefRegex = new RegExp(`(<a\\s+href="[^"]*categoria-producto\\/${targetSlug}\\/?[^"]*"[\\s\\S]*?<img\\s+src=")([^"]+)(")`, 'i');
-                        if (hrefRegex.test(html)) {
-                            html = html.replace(hrefRegex, `$1${data.image_url}$3`);
-                            stepsLog.push(`3. Banner actualizado por href de categoría "${targetSlug}".`);
-                        } else {
-                            stepsLog.push(`⚠️ Paso 3: No se encontró sección para "${targetSlug}" en catalogo_final.html. Verificar estructura HTML.`);
-                        }
-                    }
-
-                    fs.writeFileSync(catalogPath, html, 'utf8');
-
-                    // Sincronizar catálogo con WordPress automáticamente
-                    stepsLog.push(`4. Sincronizando catálogo con WordPress (Página ID 2271)...`);
-                    const wpSyncRes = await fetch('https://quimicadec.com/?qdec_api=update_homepage_content', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            secret_key: 'qdec_crm_sec_2026',
-                            html_content: html
-                        })
-                    });
-                    const wpSyncData = await wpSyncRes.json().catch(() => ({ success: false }));
-                    if (wpSyncData.success) {
-                        stepsLog.push(`5. Página 'Nuestros Productos' (ID 2271) en WordPress actualizada e integración en vivo completada.`);
-                    } else {
-                        stepsLog.push(`⚠️ WordPress update_homepage_content no confirmó la actualización: ${JSON.stringify(wpSyncData)}`);
-                    }
-                } else {
-                    stepsLog.push(`⚠️ No se encontró catalogo_final.html en el servidor.`);
-                }
-            } catch (errSync) {
-                console.error('[CATEGORY BANNER HTML SYNC ERROR]:', errSync.message);
-                stepsLog.push(`⚠️ Error en sincronización local HTML: ${errSync.message}`);
-            }
-
-            data.steps = stepsLog;
-            data.cache_busting_url = `${data.image_url}?v=${Date.now()}`;
+        if (!categoryKey) {
+            return res.status(400).json({ success: false, error: 'Se requiere categoryKey o slug.' });
         }
 
-        res.json(data);
+        stepsLog.push(`1. Procesando banner para categoría "${categoryKey}"...`);
+        let finalBannerUrl = imageUrl || '';
+
+        if (imageBase64) {
+            const saved = saveBase64Image(imageBase64, filename || `banner_${categoryKey}.jpg`, `banner_${categoryKey}`);
+            finalBannerUrl = saved.publicUrl;
+            stepsLog.push(`2. Banner guardado localmente en CRM (${saved.publicUrl})`);
+
+            // Copiar a quimica_dec_web/public/categorias
+            const catWebDir = path.join(__dirname, '..', 'quimica_dec_web', 'public', 'categorias');
+            if (fs.existsSync(catWebDir)) {
+                try {
+                    const ext = saved.ext || 'jpg';
+                    const catFilename = `${categoryKey}.${ext}`;
+                    fs.writeFileSync(path.join(catWebDir, catFilename), saved.dataBuffer);
+                    finalBannerUrl = `/categorias/${catFilename}`;
+                    stepsLog.push(`3. Copia sincronizada en web (${finalBannerUrl})`);
+                } catch(e) {}
+            }
+        }
+
+        // Actualizar constants.ts en quimica_dec_web
+        try {
+            const constantsPath = path.join(__dirname, '..', 'quimica_dec_web', 'src', 'lib', 'constants.ts');
+            if (fs.existsSync(constantsPath)) {
+                let constCode = fs.readFileSync(constantsPath, 'utf8');
+                const catSlugRegex = new RegExp(`(slug:\\s*['"]${categoryKey}['"][\\s\\S]*?imageUrl:\\s*['"])([^'"]+)(['"])`);
+                if (catSlugRegex.test(constCode)) {
+                    constCode = constCode.replace(catSlugRegex, `$1${finalBannerUrl}$3`);
+                    fs.writeFileSync(constantsPath, constCode, 'utf8');
+                    stepsLog.push(`4. constants.ts actualizado con el nuevo banner.`);
+                }
+            }
+        } catch (errSync) {
+            stepsLog.push(`Aviso constants.ts: ${errSync.message}`);
+        }
+
+        // Actualizar en Supabase dec_categories
+        try {
+            await supabase.from('dec_categories').update({ image_url: finalBannerUrl }).eq('slug', categoryKey);
+            stepsLog.push(`5. Supabase dec_categories actualizado.`);
+        } catch (sbErr) {}
+
+        res.json({
+            success: true,
+            mensaje: `✅ Banner asignado con éxito a la categoría ${categoryKey}`,
+            image_url: finalBannerUrl,
+            steps: stepsLog
+        });
     } catch (e) {
+        console.error('[UPLOAD BANNER ERROR]:', e.message);
         res.status(500).json({ success: false, error: e.message, steps: stepsLog });
     }
 });
 
 app.get('/api/ofertas', async (req, res) => {
     try {
-        const resp = await fetch('https://quimicadec.com/?qdec_api=get_ofertas&secret_key=qdec_crm_sec_2026');
-        const data = await resp.json();
-        res.json(data);
+        const { data: prods, error } = await supabase
+            .from('dec_products')
+            .select('*')
+            .or('category.ilike.%oferta%,name.ilike.%oferta%,sku.ilike.QD-OFRT%')
+            .order('name');
+
+        if (error) throw error;
+
+        const ofertas = (prods || []).map(p => ({
+            id: p.id,
+            sku: p.sku,
+            name: p.name,
+            regular_price: p.price,
+            sale_price: p.price,
+            featured_url: p.image_url || 'https://via.placeholder.com/300x300?text=Oferta',
+            gallery_items: [p.image_url].filter(Boolean),
+            status: p.status || 'publish'
+        }));
+
+        res.json({ success: true, ofertas });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
     }
 });
 
-// Endpoint de Carga e Integración Directa de Imagen a WooCommerce + Supabase
+// Endpoint de Carga e Integración Directa de Imagen a Supabase y Almacenamiento Local
 app.post('/api/products/upload-image', async (req, res) => {
-
     try {
         const { sku, imageBase64, imageUrl, filename, mode } = req.body;
         if (!sku) {
@@ -3143,79 +3215,57 @@ app.post('/api/products/upload-image', async (req, res) => {
             return res.status(400).json({ success: false, error: 'Se requiere la imagen en Base64 o la URL de la imagen.' });
         }
 
-        // 1. Enviar imagen a WordPress / WooCommerce API (endpoint WPCode)
-        const targetUrl = 'https://quimicadec.com/?qdec_api=upload_image';
-        const payload = {
-            secret_key: 'qdec_crm_sec_2026',
-            sku: sku,
-            image_base64: imageBase64 || '',
-            image_url: imageUrl || '',
-            filename: filename || `producto_${sku}_${Date.now()}.jpg`,
-            mode: mode || 'auto'
-        };
+        let uploadedUrl = imageUrl || '';
 
-        let wcResult = null;
-        try {
-            const resp = await fetch(targetUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            wcResult = await resp.json();
-        } catch (fetchErr) {
-            console.error('[WOOCOMMERCE UPLOAD FETCH ERROR]:', fetchErr.message);
+        if (imageBase64) {
+            const saved = saveBase64Image(imageBase64, filename || `producto_${sku}.jpg`, `prod_${sku}`);
+            uploadedUrl = saved.publicUrl;
+
+            // Intentar subir a Supabase Storage si un bucket público estuviera configurado
+            try {
+                const { data: sbUp, error: sbUpErr } = await supabase.storage
+                    .from('products')
+                    .upload(`productos/${saved.filename}`, saved.dataBuffer, {
+                        contentType: `image/${saved.ext === 'jpg' ? 'jpeg' : saved.ext}`,
+                        upsert: true
+                    });
+                if (!sbUpErr && sbUp) {
+                    const { data: pubData } = supabase.storage.from('products').getPublicUrl(`productos/${saved.filename}`);
+                    if (pubData?.publicUrl) {
+                        uploadedUrl = pubData.publicUrl;
+                    }
+                }
+            } catch (storageErr) {
+                // Silencioso: usa la ruta local pública
+            }
         }
 
-        const uploadedUrl = (wcResult && wcResult.success && wcResult.image_url)
-            ? wcResult.image_url
-            : (imageUrl || '');
-
-        // 2. Actualizar Supabase (tabla dec_products)
+        // Actualizar Supabase (tabla dec_products)
         let dbUpdated = false;
         if (uploadedUrl) {
             const { error: sbError } = await supabase
                 .from('dec_products')
-                .update({ image_url: uploadedUrl })
+                .update({ 
+                    image_url: uploadedUrl,
+                    updated_at: new Date().toISOString()
+                })
                 .eq('sku', sku);
 
             if (!sbError) dbUpdated = true;
         }
 
-        // 3. Forzar purga de caché agresiva desde el backend
-        let cachePurged = false;
-        try {
-            // Purga vía LiteSpeed LSCWP nativo (query param que el plugin reconoce)
-            await fetch('https://quimicadec.com/?LSCWP_CTRL=purge_all', { method: 'GET', redirect: 'follow' }).catch(() => {});
-            // Purga vía WPCode endpoint ping (que tiene header X-LiteSpeed-Purge: *)
-            await fetch('https://quimicadec.com/?qdec_api=ping', { method: 'GET' }).catch(() => {});
-            // Purga de la página principal y el catálogo
-            const purgeUrls = [
-                'https://quimicadec.com/',
-                'https://quimicadec.com/catalogo/',
-                'https://quimicadec.com/tienda/',
-                'https://quimicadec.com/?purge_all=1'
-            ];
-            await Promise.allSettled(purgeUrls.map(u => fetch(u, { 
-                method: 'GET',
-                headers: { 'X-LiteSpeed-Purge': '*' }
-            }).catch(() => {})));
-            cachePurged = true;
-        } catch(purgeErr) {
-            console.error('[CACHE PURGE ERROR]:', purgeErr.message);
-        }
+        refreshProductCatalog();
 
         res.json({
             success: true,
-            mensaje: `✅ Imagen asignada con éxito al producto SKU ${sku}. Caché purgada.`,
+            mensaje: `✅ Imagen asignada con éxito al producto SKU ${sku}.`,
             sku: sku,
             image_url: uploadedUrl,
-            woocommerce_synced: !!(wcResult && wcResult.success),
-            supabase_synced: dbUpdated,
-            cache_purged: cachePurged,
-            wc_response: wcResult
+            supabase_synced: dbUpdated
         });
 
     } catch (err) {
+        console.error('[UPLOAD IMAGE ERROR]:', err.message);
         res.status(500).json({ success: false, error: err.message });
     }
 });
@@ -3228,44 +3278,42 @@ app.post('/api/products/bulk-upload-images', async (req, res) => {
             return res.status(400).json({ success: false, error: 'Se requiere una lista de imágenes.' });
         }
 
+        let processed = 0;
+        let successful = 0;
         const results = [];
+
         for (const item of images) {
             const { sku, imageBase64, filename } = item;
             if (!sku || !imageBase64) continue;
 
-            const targetUrl = 'https://quimicadec.com/?qdec_api=upload_image';
-            const payload = {
-                secret_key: 'qdec_crm_sec_2026',
-                sku: sku,
-                image_base64: imageBase64,
-                filename: filename || `${sku}.webp`
-            };
-
-            let uploadedUrl = '';
             try {
-                const resp = await fetch(targetUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                const wcResult = await resp.json();
-                if (wcResult && wcResult.success && wcResult.image_url) {
-                    uploadedUrl = wcResult.image_url;
-                }
-            } catch (e) {}
+                const saved = saveBase64Image(imageBase64, filename || `producto_${sku}.jpg`, `prod_${sku}`);
+                const uploadedUrl = saved.publicUrl;
 
-            if (uploadedUrl) {
-                await supabase.from('dec_products').update({ image_url: uploadedUrl }).eq('sku', sku);
+                await supabase
+                    .from('dec_products')
+                    .update({ 
+                        image_url: uploadedUrl,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('sku', sku);
+
+                successful++;
+                results.push({ sku, success: true, image_url: uploadedUrl });
+            } catch (errOne) {
+                results.push({ sku, success: false, error: errOne.message });
             }
-
-            results.push({ sku, success: !!uploadedUrl, image_url: uploadedUrl });
+            processed++;
         }
+
+        refreshProductCatalog();
 
         res.json({
             success: true,
             total: images.length,
-            processed: results.length,
-            results: results
+            processed,
+            successful,
+            results
         });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });

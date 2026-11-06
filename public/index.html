@@ -1093,7 +1093,7 @@ ightarrow$ Ventas</p>
 
                                     <div id="visor-combos-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                         <div class="col-span-full text-center py-6 text-purple-300/60 text-xs font-bold">
-                                            ⏳ Cargando combos desde WooCommerce...
+                                            ⏳ Cargando combos en vivo...
                                         </div>
                                     </div>
                                 </div>
@@ -1290,7 +1290,7 @@ ightarrow$ Ventas</p>
 
                                     <div id="visor-ofertas-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                         <div class="col-span-full text-center py-6 text-amber-300/60 text-xs font-bold">
-                                            ⏳ Cargando ofertas semanales desde WooCommerce...
+                                            ⏳ Cargando ofertas semanales...
                                         </div>
                                     </div>
                                 </div>
@@ -5570,7 +5570,7 @@ ightarrow$ Ventas</p>
         async function cargarVisorCombos() {
             const container = document.getElementById('visor-combos-container');
             if (!container) return;
-            container.innerHTML = `<div class="col-span-full text-center py-6 text-purple-300/60 text-xs font-bold animate-pulse">⏳ Cargando datos de combos desde WooCommerce...</div>`;
+            container.innerHTML = `<div class="col-span-full text-center py-6 text-purple-300/60 text-xs font-bold animate-pulse">⏳ Cargando datos de combos desde la base de datos...</div>`;
 
             try {
                 const resp = await fetch(`${API_URL}/combos?sec=qdec_crm_sec_2026`);
@@ -5595,7 +5595,7 @@ ightarrow$ Ventas</p>
             const msgDiv = document.getElementById(`combo-msg-${sku}`);
 
             msgDiv.className = 'text-[10px] font-bold p-2 rounded-lg text-center bg-purple-500/20 text-purple-300 border border-purple-500/40';
-            msgDiv.innerText = '⏳ Guardando en WooCommerce y Supabase...';
+            msgDiv.innerText = '⏳ Guardando en la base de datos...';
             msgDiv.classList.remove('hidden');
 
             try {
@@ -5701,7 +5701,7 @@ ightarrow$ Ventas</p>
         async function cargarVisorOfertas() {
             const container = document.getElementById('visor-ofertas-container');
             if (!container) return;
-            container.innerHTML = `<div class="col-span-full text-center py-6 text-amber-300/60 text-xs font-bold animate-pulse">⏳ Cargando ofertas semanales desde WooCommerce...</div>`;
+            container.innerHTML = `<div class="col-span-full text-center py-6 text-amber-300/60 text-xs font-bold animate-pulse">⏳ Cargando ofertas semanales...</div>`;
 
             try {
                 const resp = await fetch(`${API_URL}/ofertas`);
@@ -6569,21 +6569,234 @@ ightarrow$ Ventas</p>
         const defaultProductAttributes = [];
 
         // ========================================================
-        // GESTOR DE BANNERS DE SECCIONES / CATEGORÍAS
+        // GESTOR DE BANNERS DE SECCIONES (32 CATEGORÍAS OFICIALES)
         // ========================================================
         const bannersCategoriasDB = [
-            { id: 1, name: "Concentrados & Pastas", slug: "concentrados-pastas", desc: "Materias primas y fórmulas de alto rendimiento" },
-            { id: 2, name: "Lavandería & Ropa", slug: "lavanderia-ropa", desc: "Jabones líquidos, suavizantes y blanqueadores" },
-            { id: 3, name: "Cocina & Vajilla", slug: "cocina-vajilla", desc: "Detergentes, desengrasantes y limpiadores" },
-            { id: 4, name: "Pisos & Superficies", slug: "pisos-superficies", desc: "Desodorantes, ceras y limpiadores multiuso" },
-            { id: 5, name: "Sahumerios & Aromas", slug: "sahumerios-aromas", desc: "Líneas de la India, Prana, Sagrada Madre y más" },
-            { id: 6, name: "Insecticidas & Repelentes", slug: "insecticidas-repelentes", desc: "Aerosoles, espirales y repelentes de mosquitos" },
-            { id: 7, name: "Higiene & Cuidado Personal", slug: "higiene-personal", desc: "Jabones de tocador, champús y alcohol" },
-            { id: 8, name: "Automotor", slug: "automotor", desc: "Siliconas, shampoo y cuidado de vehículos" },
-            { id: 9, name: "Papelería & Descartables", slug: "papeleria-descartables", desc: "Rollos de papel higiénico, toallas y servilletas" },
-            { id: 10, name: "Accesorios de Limpieza", slug: "accesorios-limpieza", desc: "Escobillones, trapos, esponjas y mopas" },
-            { id: 11, name: "Plásticos & Envases", slug: "plasticos-envases", desc: "Bidones de 5L, botellas y atomizadores" }
-        ];
+          {
+                    "id": 1,
+                    "name": "Productos Líquidos",
+                    "slug": "productos-liquidos",
+                    "desc": "Jabón para ropa Eco Plus y Premium, suavizantes, desodorantes de piso en más de 50 fragancias, lavandinas, desengrasantes, cloro y quita manchas.",
+                    "image": "/categorias/productosliquidos.jpeg"
+          },
+          {
+                    "id": 2,
+                    "name": "Pastas y Concentrados",
+                    "slug": "pastas-y-concentrados",
+                    "desc": "Pastas para elaboración de hasta 1000 litros de jabón, detergente y cera.",
+                    "image": "/categorias/pastasyconcentrados.jpeg"
+          },
+          {
+                    "id": 3,
+                    "name": "Productos para Diluir",
+                    "slug": "productos-para-diluir",
+                    "desc": "Detergentes y jabones líquidos concentrados 1+4 en envases de 500cc a 10L que rinden hasta 50 litros de producto terminado.",
+                    "image": "/categorias/productosparadiluir.jpeg"
+          },
+          {
+                    "id": 4,
+                    "name": "Primeras Marcas",
+                    "slug": "primeras-marcas",
+                    "desc": "Productos de primeras marcas.",
+                    "image": "/categorias/primerasmarcas.jpeg"
+          },
+          {
+                    "id": 5,
+                    "name": "Aerosoles",
+                    "slug": "aerosoles",
+                    "desc": "Desinfectantes y aromatizantes ambientales CIF, Glade, Poett y Lysoform.",
+                    "image": "/categorias/aerosoles.jpeg"
+          },
+          {
+                    "id": 6,
+                    "name": "Jabón en Polvo",
+                    "slug": "jabon-en-polvo",
+                    "desc": "Ala, Granby y Skip en formatos bolsa y paquetes cerrados mayoristas.",
+                    "image": "/categorias/jabonenpolvo.jpeg"
+          },
+          {
+                    "id": 7,
+                    "name": "Jabón en Pan",
+                    "slug": "jabon-en-pan",
+                    "desc": "Jabones blancos neutros y quitamanchas en barra de 150g y 200g: marcas Argentino, Sirkis y La Perdiz.",
+                    "image": "/categorias/jabonenpan.jpeg"
+          },
+          {
+                    "id": 8,
+                    "name": "Esponjas",
+                    "slug": "esponjas",
+                    "desc": "Esponjas con salvaúñas, fibras verdes lisas, esponjas parrilleras, de acero inoxidable, esponja vegetal y virulanas.",
+                    "image": "/categorias/esponjas.jpeg"
+          },
+          {
+                    "id": 9,
+                    "name": "Escobillones",
+                    "slug": "escobillones",
+                    "desc": "Escobillones para interiores y exteriores, escobas de paja y plumeros de techo.",
+                    "image": "/categorias/escobillones.jpeg"
+          },
+          {
+                    "id": 10,
+                    "name": "Cepillos",
+                    "slug": "cepillos",
+                    "desc": "Cepillos lava auto, lava camion, cepillos de mano de madera y plástico, cepillo planchita y cepillos de piso.",
+                    "image": "/categorias/cepillos.jpeg"
+          },
+          {
+                    "id": 11,
+                    "name": "Secadores",
+                    "slug": "secadores",
+                    "desc": "Secadores de piso de goma negra y reforzados en medidas de 30cm, 35cm, 37cm, 40cm y 50cm.",
+                    "image": "/categorias/secadores.jpeg"
+          },
+          {
+                    "id": 12,
+                    "name": "Cabos",
+                    "slug": "cabos",
+                    "desc": "Cabos de madera plastificada y metálicos con rosca universal.",
+                    "image": "/categorias/cabos.jpeg"
+          },
+          {
+                    "id": 13,
+                    "name": "Burletes",
+                    "slug": "burlete",
+                    "desc": "Aislantes autoadhesivos para puertas y ventanas.",
+                    "image": "/categorias/burletes.jpeg"
+          },
+          {
+                    "id": 14,
+                    "name": "Bolsas de Residuo",
+                    "slug": "bolsas",
+                    "desc": "Bolsas tipo camiseta reforzadas, residuos domiciliarios, consorcio y escombros.",
+                    "image": "/categorias/bolsas.jpeg"
+          },
+          {
+                    "id": 15,
+                    "name": "Envases y Bidones",
+                    "slug": "envases",
+                    "desc": "Gatillos pulverizadores reforzados, botellas con escala de 750cc y 1L, envases para difusores con tapa y bidones.",
+                    "image": "/categorias/envases.jpeg"
+          },
+          {
+                    "id": 16,
+                    "name": "Baño y Sanitarios",
+                    "slug": "bano",
+                    "desc": "Escobillas limpia inodoros con base y solas, sopapas de goma, bloques adhesivos y canastitas desodorantes Pato Purific.",
+                    "image": "/categorias/baño.jpeg"
+          },
+          {
+                    "id": 17,
+                    "name": "Cocina y Desengrasantes",
+                    "slug": "cocina",
+                    "desc": "Guantes de látex, papel aluminio, film adherente, papel manteca y antorchitas para hornos.",
+                    "image": "/categorias/cocina.jpeg"
+          },
+          {
+                    "id": 18,
+                    "name": "Perfumería y Fragancias",
+                    "slug": "perfumeria",
+                    "desc": "Perfuminas textiles que no manchan y esencias para el hogar.",
+                    "image": "/categorias/perfumeria.jpeg"
+          },
+          {
+                    "id": 19,
+                    "name": "Sahumerios y Aromas",
+                    "slug": "sahumerios",
+                    "desc": "Tuk Tuk triple empaste, Sagrada Madre y carbones para defumación.",
+                    "image": "/categorias/sahumerios.jpeg"
+          },
+          {
+                    "id": 20,
+                    "name": "Textiles de Limpieza",
+                    "slug": "textiles",
+                    "desc": "Trapos de piso tradicionales y consorcio, paños absorbentes tipo ballerina y franelas de limpieza.",
+                    "image": "/categorias/textiles.jpeg"
+          },
+          {
+                    "id": 21,
+                    "name": "Papeles",
+                    "slug": "papeles",
+                    "desc": "Papel higiénico fardos, rollos de cocina y toallas intercaladas.",
+                    "image": "/categorias/papeles.jpeg"
+          },
+          {
+                    "id": 22,
+                    "name": "Repelentes",
+                    "slug": "repelentes",
+                    "desc": "Repelentes en crema, spray y aerosol.",
+                    "image": "/categorias/repelente.jpeg"
+          },
+          {
+                    "id": 23,
+                    "name": "Insecticidas",
+                    "slug": "insecticidas",
+                    "desc": "Insecticidas, K-Othrina y Derribante, mata yuyo, espirales, aerosoles y tramperas.",
+                    "image": "/categorias/insecticida.jpeg"
+          },
+          {
+                    "id": 24,
+                    "name": "Higiene Personal",
+                    "slug": "higiene-personal",
+                    "desc": "Shampoo y crema de enjuague capilar, jabones de mano, desodorantes, pasta dental, toallita femenina y cepillos de dientes.",
+                    "image": "/categorias/higiene personal.jpeg"
+          },
+          {
+                    "id": 25,
+                    "name": "Jabón Tocador",
+                    "slug": "jabon-tocador",
+                    "desc": "Jabones en barra Dove, Plusbelle y Primordial al por mayor.",
+                    "image": "/categorias/jabontocador.jpeg"
+          },
+          {
+                    "id": 26,
+                    "name": "Jardín",
+                    "slug": "jardin",
+                    "desc": "Barre-hojas plásticos chicos, medianos y grandes con rosca ajustable, rociadores y lentes de seguridad.",
+                    "image": "/categorias/jardin.jpeg"
+          },
+          {
+                    "id": 27,
+                    "name": "Pileta",
+                    "slug": "pileta",
+                    "desc": "Pastillas de cloro triple acción, cloro granulado de disolución rápida, clarificante, soda caustica 25%, PH+, boyas, mangueras, saca hojas, bicarbonato, acido citrico y percarbonato.",
+                    "image": "/categorias/pilera.jpeg"
+          },
+          {
+                    "id": 28,
+                    "name": "Automóvil",
+                    "slug": "automovil",
+                    "desc": "Limpia motores, revividor de cubiertas, shampoo, perfuminas, silicona, saca bichos, pinitos y gamuza magica.",
+                    "image": "/categorias/automovil.jpeg"
+          },
+          {
+                    "id": 29,
+                    "name": "Kiosco y Varios",
+                    "slug": "kiosco-y-varios",
+                    "desc": "Pilas, cintas, focos, trincheta, tijera, plantilla, naftalina, tanza y coleros.",
+                    "image": "/categorias/kioskoyvarios.jpeg"
+          },
+          {
+                    "id": 30,
+                    "name": "Plásticos",
+                    "slug": "plastico",
+                    "desc": "Canastos, embudos, baldes, palas, fuentones y palanganas.",
+                    "image": "/categorias/plasticos.jpeg"
+          },
+          {
+                    "id": 31,
+                    "name": "Ofertas Semanales",
+                    "slug": "ofertas-semanales",
+                    "desc": "Precios especiales por bulto cerrado y promociones por volumen para maximizar tu ganancia.",
+                    "image": "/categorias/ofertassemanales.jpeg"
+          },
+          {
+                    "id": 32,
+                    "name": "Combos Emprendedores",
+                    "slug": "combos-emprendedores",
+                    "desc": "Kits listos para revendedores con bidones, pastas y fraccionado para iniciar tu negocio de limpieza.",
+                    "image": "/categorias/combos_emprendedores.jpeg"
+          }
+];
 
         let bannersFilterQuery = '';
 
@@ -6602,18 +6815,22 @@ ightarrow$ Ventas</p>
             container.innerHTML = filtered.map(c => `
                 <div class="p-4 rounded-xl bg-slate-900/80 border border-white/10 hover:border-cyan-500/50 transition-all flex flex-col justify-between gap-3 shadow-lg">
                     <div>
+                        <div class="relative w-full aspect-video rounded-lg overflow-hidden bg-black/40 border border-white/10 mb-2">
+                            <img id="banner-img-${c.slug}" src="${c.image || 'https://via.placeholder.com/400x225?text=Sin+Banner'}" class="w-full h-full object-cover">
+                        </div>
                         <div class="flex items-center justify-between gap-2 mb-1">
                             <h4 class="font-bold text-white text-xs">${c.name}</h4>
                             <span class="text-[10px] text-cyan-400 font-mono">#${c.id}</span>
                         </div>
-                        <p class="text-[11px] text-gray-400 leading-snug">${c.desc}</p>
+                        <p class="text-[11px] text-gray-400 leading-snug line-clamp-2">${c.desc}</p>
                         <div class="text-[10px] text-gray-500 font-mono mt-1">Slug: ${c.slug}</div>
                     </div>
                     <div class="pt-2 border-t border-white/5 flex items-center justify-between gap-2">
                         <span class="text-[10px] text-emerald-400 flex items-center gap-1 font-bold">
                             <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Activo
                         </span>
-                        <button type="button" onclick="alert('Sección lista para vincular banners de portada en WooCommerce')" class="px-2.5 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 text-[10px] font-bold border border-cyan-500/30 transition-all">
+                        <input type="file" id="banner-file-${c.slug}" accept="image/*" class="hidden" onchange="subirBannerCategoria('${c.slug}', this)">
+                        <button type="button" onclick="document.getElementById('banner-file-${c.slug}').click()" class="px-2.5 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 text-[10px] font-bold border border-cyan-500/30 transition-all flex items-center gap-1 cursor-pointer">
                             <span class="material-symbols-outlined text-xs">add_photo_alternate</span> Cambiar Banner
                         </button>
                     </div>
@@ -6624,6 +6841,60 @@ ightarrow$ Ventas</p>
         function filtrarBannersUI(val) {
             bannersFilterQuery = val || '';
             renderBannersGridUI();
+        }
+
+        async function subirBannerCategoria(slug, input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const resDiv = document.getElementById('banner-upload-res');
+            if (resDiv) {
+                resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-cyan-500/40 bg-cyan-500/10 text-cyan-300';
+                resDiv.innerText = `⏳ Subiendo nuevo banner para "${slug}"...`;
+                resDiv.classList.remove('hidden');
+            }
+
+            try {
+                const base64Data = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                });
+
+                const resp = await fetch(`${API_URL}/categories/upload-banner`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        categoryKey: slug,
+                        imageBase64: base64Data,
+                        filename: file.name
+                    })
+                });
+
+                const data = await resp.json();
+                if (data.success) {
+                    const cat = bannersCategoriasDB.find(c => c.slug === slug);
+                    if (cat) cat.image = data.image_url;
+
+                    const imgElem = document.getElementById(`banner-img-${slug}`);
+                    if (imgElem) {
+                        imgElem.src = `${data.image_url}?v=${Date.now()}`;
+                    }
+
+                    if (resDiv) {
+                        resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-300';
+                        resDiv.innerText = `🎉 ¡Banner de "${slug}" actualizado con éxito!`;
+                    }
+                } else {
+                    throw new Error(data.error || 'Error al guardar el banner.');
+                }
+            } catch(err) {
+                if (resDiv) {
+                    resDiv.className = 'text-xs font-bold p-3 rounded-xl border border-red-500/40 bg-red-500/10 text-red-400';
+                    resDiv.innerText = `❌ Error: ${err.message}`;
+                }
+            }
         }
 
         // ========================================================
@@ -8257,7 +8528,7 @@ ightarrow$ Ventas</p>
             appendAuditLog('BULK_IMAGE_UPLOAD', `Subió lote de ${processed} imágenes de productos.`);
         }
 
-        // Auto-cargar catálogo completo desde WooCommerce al iniciar CRM
+        // Auto-cargar catálogo completo desde la base de datos al iniciar CRM
         async function cargarCatalogoCompletoUI() {
             if (window.combosDataCache && window.combosDataCache.length > 0) return;
             try {
