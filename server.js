@@ -2355,13 +2355,6 @@ app.get('/api/products/all', async (req, res) => {
             .limit(2000);
 
         if (error || !data || data.length === 0) {
-            const wcUrl = 'https://quimicadec.com/?qdec_api=search_product&secret_key=qdec_crm_sec_2026&q=a';
-            const wcRes = await fetch(wcUrl);
-            const wcData = await wcRes.json().catch(() => ({}));
-            if (wcData && wcData.products) {
-                const cleanProds = wcData.products.filter(p => !p.sku?.includes('_ID') && parseFloat(p.regular_price || p.price || 0) > 0);
-                return res.json({ success: true, count: cleanProds.length, products: cleanProds });
-            }
             return res.json({ success: true, count: 0, products: [] });
         }
 
@@ -2466,31 +2459,6 @@ app.get('/api/products/search', async (req, res) => {
             return res.json({ success: true, count: formatted.length, products: formatted });
         }
 
-        // 2. Fallback live WooCommerce search si en Supabase no hubo resultados
-        try {
-            const wcUrl = `https://quimicadec.com/?qdec_api=search_product&secret_key=qdec_crm_sec_2026&q=${encodeURIComponent(query)}`;
-            const wcRes = await fetch(wcUrl);
-            if (wcRes.ok) {
-                const wcData = await wcRes.json();
-                if (wcData && wcData.success && wcData.products && wcData.products.length > 0) {
-                    const validProds = wcData.products.filter(p => {
-                        const pSku = (p.sku || '').toUpperCase();
-                        const pName = (p.name || '').toUpperCase();
-                        const price = parseFloat(p.regular_price || p.price || 0);
-                        if (pSku.includes('_ID') || pSku.includes('QD-DTRG-1320') || (pName.includes('MAGISTRAL AZUL') && price < 1000) || price <= 0) {
-                            return false;
-                        }
-                        return true;
-                    });
-                    if (validProds.length > 0) {
-                        return res.json({ success: true, count: validProds.length, products: validProds });
-                    }
-                }
-            }
-        } catch (wcErr) {
-            console.error('Error live WooCommerce search:', wcErr.message);
-        }
-
         return res.json({ success: true, count: 0, products: [] });
 
     } catch (err) {
@@ -2499,16 +2467,16 @@ app.get('/api/products/search', async (req, res) => {
 });
 
 
-// Endpoint para editar Título, Precios, Categoría y Detalles de un Producto (WooCommerce + Supabase)
+// Endpoint para editar Título, Precios, Categoría y Detalles de un Producto (Supabase)
 app.post('/api/products/update-details', async (req, res) => {
     try {
-        const { sku, name, regular_price, sale_price, category, image_base64, image_filename, is_new } = req.body;
+        const { sku, name, regular_price, sale_price, category, status, stock_status, image_base64, image_filename, is_new } = req.body;
         if (!sku && !name) {
             return res.status(400).json({ success: false, error: 'Se requiere el SKU o Nombre del producto.' });
         }
 
         const finalSku = sku || `QD-${Date.now().toString(36).toUpperCase()}`;
-        const priceNum = parseFloat(regular_price || sale_price || 0);
+        const priceNum = parseFloat(sale_price || regular_price || 0);
 
         // 1. Subida de imagen si se adjuntó en base64
         let uploadedImageUrl = null;
@@ -2521,40 +2489,7 @@ app.post('/api/products/update-details', async (req, res) => {
             }
         }
 
-        // 2. Enviar a WooCommerce (update_product_details)
-        let wcData = { success: false };
-        try {
-            const wcRes = await fetch('https://quimicadec.com/?qdec_api=update_product_details', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    secret_key: 'qdec_crm_sec_2026',
-                    sku: finalSku,
-                    name: name || '',
-                    regular_price: regular_price || '',
-                    sale_price: sale_price || '',
-                    category: category || ''
-                })
-            });
-            const textResp = await wcRes.text();
-            try { wcData = JSON.parse(textResp); } catch(e) { wcData = { success: false, method: 'POST', raw: textResp.slice(0, 100) }; }
-        } catch(e) { wcData = { success: false, method: 'POST', error: e.message }; }
-
-        // Fallback GET con query params si POST falló
-        if (!wcData.success) {
-            try {
-                const baseParams = `secret_key=qdec_crm_sec_2026&sku=${encodeURIComponent(finalSku)}`;
-                const nameParam = name ? `&name=${encodeURIComponent(name)}` : '';
-                const priceParam = regular_price ? `&regular_price=${encodeURIComponent(regular_price)}` : '';
-                const catParam = category ? `&category=${encodeURIComponent(category)}` : '';
-                const getUrl = `https://quimicadec.com/?qdec_api=update_product_details&${baseParams}${nameParam}${priceParam}${catParam}`;
-                const wcRes2 = await fetch(getUrl, { method: 'GET' });
-                const textResp2 = await wcRes2.text();
-                try { wcData = JSON.parse(textResp2); } catch(e) { wcData = { success: false, method: 'GET', raw: textResp2.slice(0, 100) }; }
-            } catch(e) { wcData = { success: false, method: 'GET', error: e.message }; }
-        }
-
-        // 3. Actualizar o Insertar en Supabase dec_products
+        // 2. Actualizar o Insertar en Supabase dec_products
         let sbUpdated = false;
         const { data: existing } = await supabase.from('dec_products').select('id, sku').eq('sku', finalSku).maybeSingle();
 
@@ -2563,6 +2498,8 @@ app.post('/api/products/update-details', async (req, res) => {
             if (name) updateDb.name = name;
             if (priceNum > 0) updateDb.price = priceNum;
             if (category) updateDb.category = category;
+            if (status) updateDb.status = status;
+            if (stock_status) updateDb.stock_status = stock_status;
             if (uploadedImageUrl) updateDb.image_url = uploadedImageUrl;
 
             const { error: sbErr } = await supabase.from('dec_products').update(updateDb).eq('sku', finalSku);
@@ -2576,8 +2513,8 @@ app.post('/api/products/update-details', async (req, res) => {
                 name: name || `Producto ${finalSku}`,
                 price: priceNum,
                 category: category || 'PRODUCTOS LIQUIDOS',
-                stock_status: 'instock',
-                status: 'publish',
+                stock_status: stock_status || 'instock',
+                status: status || 'publish',
                 type: 'simple',
                 image_url: uploadedImageUrl || null,
                 updated_at: new Date().toISOString()
@@ -2589,12 +2526,10 @@ app.post('/api/products/update-details', async (req, res) => {
             }
         }
 
-        const wcOk = wcData.success;
         res.json({
             success: true,
-            mensaje: `🎉 Producto '${name || finalSku}' guardado correctamente en la categoría ${category || 'seleccionada'}, WooCommerce y Supabase.`,
+            mensaje: `🎉 Producto '${name || finalSku}' guardado correctamente en Supabase.`,
             sku: finalSku,
-            wc_response: wcData,
             supabase_updated: sbUpdated
         });
     } catch (err) {
@@ -2612,28 +2547,12 @@ app.post('/api/products/toggle-status', async (req, res) => {
 
         const newStatus = (status === 'draft' || status === 'borrador') ? 'draft' : 'publish';
 
-        // 1. Actualizar en WooCommerce
-        let wcData = { success: false };
-        try {
-            const wcRes = await fetch('https://quimicadec.com/?qdec_api=update_product_details', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    secret_key: 'qdec_crm_sec_2026',
-                    sku: sku,
-                    status: newStatus
-                })
-            });
-            wcData = await wcRes.json();
-        } catch (e) {
-            console.error('Error actualizando estado en WC:', e.message);
-        }
-
-        // 2. Actualizar en Supabase
         const { error: sbErr } = await supabase
             .from('dec_products')
             .update({ status: newStatus, updated_at: new Date().toISOString() })
             .eq('sku', sku);
+
+        if (sbErr) throw sbErr;
 
         refreshProductCatalog();
 
@@ -2641,15 +2560,14 @@ app.post('/api/products/toggle-status', async (req, res) => {
             success: true,
             sku,
             status: newStatus,
-            mensaje: newStatus === 'draft' ? `🟡 Producto ${sku} cambiado a Borrador (Pausado en Tienda).` : `🟢 Producto ${sku} publicado (Activo en Tienda).`,
-            wc_response: wcData
+            mensaje: newStatus === 'draft' ? `🟡 Producto ${sku} cambiado a Borrador (Pausado en Tienda).` : `🟢 Producto ${sku} publicado (Activo en Tienda).`
         });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
     }
 });
 
-// Endpoint para Eliminar Producto (WooCommerce y Supabase)
+// Endpoint para Eliminar Producto (Supabase)
 app.post('/api/products/delete', requireCrmAuth, async (req, res) => {
     try {
         const { sku } = req.body;
@@ -2657,35 +2575,19 @@ app.post('/api/products/delete', requireCrmAuth, async (req, res) => {
             return res.status(400).json({ success: false, error: 'SKU es requerido.' });
         }
 
-        // 1. Eliminar en WooCommerce
-        let wcData = { success: false };
-        try {
-            const wcRes = await fetch('https://quimicadec.com/?qdec_api=delete_product', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    secret_key: 'qdec_crm_sec_2026',
-                    sku: sku
-                })
-            });
-            wcData = await wcRes.json();
-        } catch (e) {
-            console.error('Error eliminando en WC:', e.message);
-        }
-
-        // 2. Eliminar en Supabase
         const { error: sbErr } = await supabase
             .from('dec_products')
             .delete()
             .eq('sku', sku);
+
+        if (sbErr) throw sbErr;
 
         refreshProductCatalog();
 
         res.json({
             success: true,
             sku,
-            mensaje: `🗑️ Producto ${sku} eliminado correctamente de la base de datos y WooCommerce.`,
-            wc_response: wcData
+            mensaje: `🗑️ Producto ${sku} eliminado correctamente de la base de datos.`
         });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
@@ -2989,28 +2891,108 @@ app.post('/api/products/bulk-excel', async (req, res) => {
 });
 app.post('/api/crm/update-homepage-html', async (req, res) => {
     try {
-        const fs = require('fs');
-        const path = require('path');
-        const htmlPath = path.join(__dirname, '../catalogo_final.html');
-        let htmlContent = req.body.html_content;
-        if (!htmlContent && fs.existsSync(htmlPath)) {
-            htmlContent = fs.readFileSync(htmlPath, 'utf8');
-        }
-        if (!htmlContent) {
-            return res.status(400).json({ success: false, error: 'No se proporcionó contenido HTML.' });
+        lastCatalogFetch = 0;
+        await refreshProductCatalog();
+        const total = Array.isArray(PRODUCT_CATALOG_CACHE) ? PRODUCT_CATALOG_CACHE.length : 0;
+        res.json({
+            success: true,
+            total,
+            mensaje: `🎉 ¡Catálogo Web y memoria RAM de la IA Dani sincronizados con éxito! (${total} productos activos y 32 categorías oficiales actualizadas en vivo).`
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Endpoint para procesar instrucciones de catálogo en lenguaje natural con IA (Sub-tab 8: Instrucción IA / Voz)
+app.post('/api/crm/ejecutar-instruccion-ia', async (req, res) => {
+    try {
+        const { prompt } = req.body;
+        if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
+            return res.status(400).json({ success: false, error: 'Por favor ingresá una instrucción válida.' });
         }
 
-        const resp = await fetch('https://quimicadec.com/?qdec_api=update_homepage_content', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                secret_key: 'qdec_crm_sec_2026',
-                html_content: htmlContent
-            })
+        const systemInstruction = `Sos el asistente de administración de catálogo de Química DEC.
+Analizá la instrucción del administrador y devolvé ÚNICAMENTE un objeto JSON válido con la siguiente estructura (sin markdown ni texto extra):
+{
+  "accion": "aumentar_porcentaje" | "descontar_porcentaje" | "fijar_precio" | "pausar" | "activar",
+  "valor": number,
+  "filtro_nombre": string,
+  "filtro_presentacion": string,
+  "filtro_categoria": string,
+  "explicacion": string
+}`;
+
+        const completion = await groq.chat.completions.create({
+            model: 'llama-3.3-70b-versatile',
+            messages: [
+                { role: 'system', content: systemInstruction },
+                { role: 'user', content: prompt.trim() }
+            ],
+            temperature: 0.1,
+            response_format: { type: 'json_object' }
         });
-        const data = await resp.json();
-        res.json(data);
+
+        const parsed = JSON.parse(completion.choices[0]?.message?.content || '{}');
+        if (!parsed.accion) {
+            return res.status(400).json({ success: false, error: 'No se pudo interpretar una acción clara del comando.' });
+        }
+
+        let query = supabase.from('dec_products').select('id, sku, name, price, category, status');
+        if (parsed.filtro_nombre) {
+            query = query.ilike('name', `%${parsed.filtro_nombre}%`);
+        }
+        if (parsed.filtro_presentacion) {
+            query = query.ilike('name', `%${parsed.filtro_presentacion}%`);
+        }
+        if (parsed.filtro_categoria) {
+            query = query.ilike('category', `%${parsed.filtro_categoria}%`);
+        }
+
+        const { data: matched, error: qErr } = await query.limit(500);
+        if (qErr) throw qErr;
+
+        if (!matched || matched.length === 0) {
+            return res.json({
+                success: false,
+                error: `No se encontraron productos que coincidan con el filtro (${parsed.filtro_nombre || parsed.filtro_categoria || 'especificado'}).`
+            });
+        }
+
+        let updatedCount = 0;
+        const val = parseFloat(parsed.valor) || 0;
+
+        for (const p of matched) {
+            const updateFields = { updated_at: new Date().toISOString() };
+            if (parsed.accion === 'aumentar_porcentaje' && val > 0) {
+                updateFields.price = Math.round(parseFloat(p.price || 0) * (1 + val / 100));
+            } else if (parsed.accion === 'descontar_porcentaje' && val > 0) {
+                updateFields.price = Math.max(1, Math.round(parseFloat(p.price || 0) * (1 - val / 100)));
+            } else if (parsed.accion === 'fijar_precio' && val > 0) {
+                updateFields.price = val;
+            } else if (parsed.accion === 'pausar') {
+                updateFields.status = 'draft';
+            } else if (parsed.accion === 'activar') {
+                updateFields.status = 'publish';
+            } else {
+                continue;
+            }
+
+            const { error: uErr } = await supabase.from('dec_products').update(updateFields).eq('id', p.id);
+            if (!uErr) updatedCount++;
+        }
+
+        lastCatalogFetch = 0;
+        await refreshProductCatalog();
+
+        res.json({
+            success: true,
+            updated: updatedCount,
+            interpretacion: parsed,
+            mensaje: `🤖 IA ejecutó: "${parsed.explicacion || prompt}". Se actualizaron ${updatedCount} productos en Supabase y se refrescó la memoria de Dani.`
+        });
     } catch (err) {
+        console.error('[IA ADMIN ERROR]:', err.message);
         res.status(500).json({ success: false, error: err.message });
     }
 });
@@ -3020,7 +3002,7 @@ app.get('/api/combos', async (req, res) => {
         const { data: dbCombos, error } = await supabase
             .from('dec_products')
             .select('*')
-            .or('category.eq.Combos Emprendedores,sku.ilike.QD-CMB%,name.ilike.%combo%')
+            .or('category.ilike.%Combos Emprendedores%,sku.ilike.QD-CMB%')
             .order('name');
 
         if (error) throw error;
@@ -3091,7 +3073,8 @@ app.post('/api/combos/delete-image', async (req, res) => {
 
 app.post('/api/combos/auto-link-skus', async (req, res) => {
     try {
-        const { comboSku, productSkus } = req.body;
+        const comboSku = req.body.comboSku || req.body.combo_sku;
+        const productSkus = req.body.productSkus || req.body.sku_list;
         if (!comboSku) return res.status(400).json({ success: false, error: 'comboSku requerido' });
         const skuList = (typeof productSkus === 'string' ? productSkus.split(/[\s,;]+/) : productSkus || [])
             .map(s => s.trim())

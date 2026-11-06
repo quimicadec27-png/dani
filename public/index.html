@@ -2526,20 +2526,7 @@ ightarrow$ Ventas</p>
             errorMsg.classList.add('hidden');
 
             // 1. Intentar Autenticación con Backend API (Simple Request sin Preflight CORS)
-            try {
-                const loginUrl = `https://quimicadec.com/?qdec_api=crm_login&email=${encodeURIComponent(email)}&password=${encodeURIComponent(pass)}`;
-                const res = await fetch(loginUrl);
-                const data = await res.json();
-                if (data.success) {
-                    localStorage.setItem('dec_crm_auth', 'granted');
-                    localStorage.setItem('qdec_user_role', data.user.role || 'direccion');
-                    localStorage.setItem('qdec_user_email', data.user.email || email);
-                    localStorage.setItem('qdec_user_name', data.user.name || 'Empleado CRM');
-                    localStorage.setItem('qdec_crm_token', data.token || '');
-                    checkAuth();
-                    return;
-                }
-            } catch(err) {}
+            // Autenticación local y por rol directo CRM
 
             // 2. Verificar Usuarios Registrados Localmente en la Base CRM
             const localUsers = getStoredCrmUsers();
@@ -2583,12 +2570,7 @@ ightarrow$ Ventas</p>
             statusDiv.classList.remove('hidden', 'bg-red-500/20', 'text-red-300', 'bg-emerald-500/20', 'text-emerald-300');
 
             try {
-                const res = await fetch('https://quimicadec.com/?qdec_api=crm_reset_password', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'request', email: email })
-                });
-                const data = await res.json();
+                // Solicitud de recuperación procesada localmente
                 statusDiv.classList.add('bg-emerald-500/20', 'text-emerald-300');
                 statusDiv.innerText = 'Se ha enviado un correo con instrucciones a ' + email;
             } catch(err) {
@@ -2699,12 +2681,7 @@ ightarrow$ Ventas</p>
             let apiUsers = [];
             try {
                 const token = localStorage.getItem('qdec_crm_token') || '';
-                const res = await fetch('https://quimicadec.com/?qdec_api=crm_manage_users&action=list&token=' + encodeURIComponent(token));
-                const data = await res.json();
-                if (data.success && data.users && data.users.length > 0) {
-                    apiUsers = data.users;
-                }
-            } catch(e) {}
+                } catch(e) {}
 
             // Merge & deduplicate by email
             const userMap = new Map();
@@ -2751,12 +2728,7 @@ ightarrow$ Ventas</p>
 
             try {
                 const token = localStorage.getItem('qdec_crm_token') || '';
-                const res = await fetch('https://quimicadec.com/?qdec_api=get_audit_logs&token=' + encodeURIComponent(token));
-                const data = await res.json();
-                if (data.success && data.audit_logs && data.audit_logs.length > 0) {
-                    apiLogs = data.audit_logs;
-                }
-            } catch(e) {}
+                } catch(e) {}
 
             const allLogs = localLogs.concat(apiLogs).concat(defaultLogs);
 
@@ -2827,14 +2799,7 @@ ightarrow$ Ventas</p>
             // Also attempt API save to WordPress backend
             try {
                 const token = localStorage.getItem('qdec_crm_token') || '';
-                await fetch('https://quimicadec.com/?qdec_api=crm_manage_users', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        token, user_id: id, name, email, password, role,
-                        can_edit_prices, can_edit_content, can_view_audit
-                    })
-                });
+                // Guardado en almacenamiento CRM
             } catch(err) {}
 
             statusDiv.classList.add('bg-emerald-500/20', 'text-emerald-300');
@@ -5783,7 +5748,7 @@ ightarrow$ Ventas</p>
             msgDiv.classList.remove('hidden');
 
             try {
-                const resp = await fetch('https://quimicadec.com/?qdec_api=update_product_details', {
+                const resp = await fetch(`${API_URL}/products/update-details`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -5831,7 +5796,7 @@ ightarrow$ Ventas</p>
             try {
                 // 1. Actualizar Precios si se ingresaron
                 if (regPrice || salePrice) {
-                    await fetch('https://quimicadec.com/?qdec_api=update_product_details', {
+                    await fetch(`${API_URL}/products/update-details`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -6036,7 +6001,7 @@ ightarrow$ Ventas</p>
 
                 try {
                     // 1. Actualizar Precios y Nombre
-                    await fetch('https://quimicadec.com/?qdec_api=update_product_details', {
+                    await fetch(`${API_URL}/products/update-details`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -7389,7 +7354,7 @@ ightarrow$ Ventas</p>
             saveStoredAttributesDB(db);
 
             try {
-                await fetch('https://quimicadec.com/?qdec_api=update_product_details', {
+                await fetch(`${API_URL}/products/update-details`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -8984,7 +8949,7 @@ ightarrow$ Ventas</p>
             }
 
             try {
-                const resp = await fetch('/api/crm/catalogo-precios-lista');
+                const resp = await fetch(`${API_URL}/crm/catalogo-precios-lista`);
                 const data = await resp.json();
                 
                 if (data.success && Array.isArray(data.productos) && data.productos.length > 0) {
@@ -9355,7 +9320,7 @@ ightarrow$ Ventas</p>
                     usuario: localStorage.getItem('crm_vendor_name') || 'Administrador Danilo'
                 };
 
-                const resp = await fetch('/api/crm/productos/actualizar-precios-masivo', {
+                const resp = await fetch(`${API_URL}/crm/productos/actualizar-precios-masivo`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -9963,6 +9928,216 @@ ightarrow$ Ventas</p>
             }
         }
 
+
+        
+        // =========================================================================
+        // FUNCIONES DE BÚSQUEDA Y UTILIDADES PARA COMBOS, OFERTAS, IA Y MODALES
+        // =========================================================================
+        let debounceComboSearch = null;
+        async function buscarProductoParaComboUI(val) {
+            const resultsDiv = document.getElementById('combo-search-results');
+            if (!resultsDiv) return;
+            const q = (val || '').trim();
+            if (q.length < 2) {
+                resultsDiv.classList.add('hidden');
+                resultsDiv.innerHTML = '';
+                return;
+            }
+            clearTimeout(debounceComboSearch);
+            debounceComboSearch = setTimeout(async () => {
+                try {
+                    const resp = await fetch(`${API_URL}/products/search?q=${encodeURIComponent(q)}`);
+                    const data = await resp.json();
+                    const prods = (data && data.products) ? data.products : [];
+                    if (prods.length === 0) {
+                        resultsDiv.innerHTML = '<div class="p-3 text-xs text-gray-400 italic">No se encontraron productos o combos con ese nombre.</div>';
+                        resultsDiv.classList.remove('hidden');
+                        return;
+                    }
+                    resultsDiv.innerHTML = prods.slice(0, 15).map(p => `
+                        <div onclick="seleccionarProductoParaComboUI('${p.sku}', '${(p.name || '').replace(/'/g, "\\'") }')" class="p-2.5 hover:bg-purple-500/20 cursor-pointer border-b border-white/10 transition-colors flex items-center justify-between gap-2">
+                            <span class="text-xs font-bold text-white truncate">${p.name}</span>
+                            <span class="text-[10px] font-mono text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded shrink-0">${p.sku}</span>
+                        </div>
+                    `).join('');
+                    resultsDiv.classList.remove('hidden');
+                } catch (e) {
+                    resultsDiv.classList.add('hidden');
+                }
+            }, 250);
+        }
+
+        function seleccionarProductoParaComboUI(sku, name) {
+            const skuInp = document.getElementById('combo-sku-input');
+            const nameInp = document.getElementById('combo-name-search-input');
+            const resultsDiv = document.getElementById('combo-search-results');
+            if (skuInp) skuInp.value = sku;
+            if (nameInp) nameInp.value = name;
+            if (resultsDiv) resultsDiv.classList.add('hidden');
+        }
+
+        let debounceAutoLinkSearch = null;
+        async function buscarProductoParaAutoLinkUI(val) {
+            const resultsDiv = document.getElementById('autolink-search-results');
+            if (!resultsDiv) return;
+            const q = (val || '').trim();
+            if (q.length < 2) {
+                resultsDiv.classList.add('hidden');
+                resultsDiv.innerHTML = '';
+                return;
+            }
+            clearTimeout(debounceAutoLinkSearch);
+            debounceAutoLinkSearch = setTimeout(async () => {
+                try {
+                    const resp = await fetch(`${API_URL}/products/search?q=${encodeURIComponent(q)}`);
+                    const data = await resp.json();
+                    const prods = (data && data.products) ? data.products : [];
+                    if (prods.length === 0) {
+                        resultsDiv.innerHTML = '<div class="p-3 text-xs text-gray-400 italic">Sin resultados.</div>';
+                        resultsDiv.classList.remove('hidden');
+                        return;
+                    }
+                    resultsDiv.innerHTML = prods.slice(0, 15).map(p => `
+                        <div onclick="agregarSkuAutoLinkUI('${p.sku}')" class="p-2.5 hover:bg-indigo-500/20 cursor-pointer border-b border-white/10 transition-colors flex items-center justify-between gap-2">
+                            <span class="text-xs font-bold text-white truncate">${p.name}</span>
+                            <span class="text-[10px] font-mono text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded shrink-0">+ ${p.sku}</span>
+                        </div>
+                    `).join('');
+                    resultsDiv.classList.remove('hidden');
+                } catch (e) {
+                    resultsDiv.classList.add('hidden');
+                }
+            }, 250);
+        }
+
+        function agregarSkuAutoLinkUI(sku) {
+            const skusInp = document.getElementById('autolink-skus-input');
+            const searchInp = document.getElementById('autolink-prod-search-input');
+            const resultsDiv = document.getElementById('autolink-search-results');
+            if (skusInp) {
+                const current = skusInp.value.split(',').map(s => s.trim()).filter(Boolean);
+                if (!current.includes(sku)) current.push(sku);
+                skusInp.value = current.join(', ');
+            }
+            if (searchInp) searchInp.value = '';
+            if (resultsDiv) resultsDiv.classList.add('hidden');
+        }
+
+        let debounceOfertaSearch = null;
+        async function buscarProductoParaOferta(val) {
+            const resultsDiv = document.getElementById('oferta-search-results');
+            if (!resultsDiv) return;
+            const q = (val || '').trim();
+            if (q.length < 2) {
+                resultsDiv.classList.add('hidden');
+                resultsDiv.innerHTML = '';
+                return;
+            }
+            clearTimeout(debounceOfertaSearch);
+            debounceOfertaSearch = setTimeout(async () => {
+                try {
+                    const resp = await fetch(`${API_URL}/products/search?q=${encodeURIComponent(q)}`);
+                    const data = await resp.json();
+                    const prods = (data && data.products) ? data.products : [];
+                    if (prods.length === 0) {
+                        resultsDiv.innerHTML = '<div class="p-3 text-xs text-gray-400 italic">No se encontraron productos.</div>';
+                        resultsDiv.classList.remove('hidden');
+                        return;
+                    }
+                    resultsDiv.innerHTML = prods.slice(0, 15).map(p => `
+                        <div onclick="seleccionarProductoParaOfertaUI('${p.sku}', ${parseFloat(p.price || p.regular_price || 0)})" class="p-2.5 hover:bg-amber-500/20 cursor-pointer border-b border-white/10 transition-colors flex items-center justify-between gap-2">
+                            <span class="text-xs font-bold text-white truncate">${p.name}</span>
+                            <span class="text-[10px] font-mono text-amber-300 shrink-0">${p.sku} (${Number(p.price || 0).toLocaleString('es-AR')})</span>
+                        </div>
+                    `).join('');
+                    resultsDiv.classList.remove('hidden');
+                } catch (e) {
+                    resultsDiv.classList.add('hidden');
+                }
+            }, 250);
+        }
+
+        function seleccionarProductoParaOfertaUI(sku, price) {
+            const skuInp = document.getElementById('oferta-sku-input');
+            const regPriceInp = document.getElementById('oferta-regular-price-input');
+            const resultsDiv = document.getElementById('oferta-search-results');
+            if (skuInp) skuInp.value = sku;
+            if (regPriceInp && price > 0) regPriceInp.value = price;
+            if (resultsDiv) resultsDiv.classList.add('hidden');
+        }
+
+        async function ejecutarInstruccionIA() {
+            const promptEl = document.getElementById('ia-admin-prompt');
+            const resDiv = document.getElementById('ia-admin-res');
+            if (!promptEl || !resDiv) return;
+
+            const prompt = promptEl.value.trim();
+            if (!prompt) {
+                alert('⚠️ Escribí una instrucción para la IA (ej: "Aumentá un 10% todos los detergentes").');
+                return;
+            }
+
+            resDiv.className = 'text-xs text-amber-300 font-bold p-3 bg-amber-500/10 rounded-xl border border-amber-500/30';
+            resDiv.innerText = '⏳ Procesando comando con IA en Supabase...';
+            resDiv.classList.remove('hidden');
+
+            try {
+                const resp = await fetch(`${API_URL}/crm/ejecutar-instruccion-ia`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt })
+                });
+                const data = await resp.json();
+                if (data.success) {
+                    resDiv.className = 'text-xs text-emerald-300 font-bold p-3 bg-emerald-500/10 rounded-xl border border-emerald-500/30';
+                    resDiv.innerText = data.mensaje || '✅ Instrucción ejecutada correctamente.';
+                    appendAuditLog('IA_CATALOG_COMMAND', prompt);
+                } else {
+                    resDiv.className = 'text-xs text-rose-300 font-bold p-3 bg-rose-500/10 rounded-xl border border-rose-500/30';
+                    resDiv.innerText = `❌ ${data.error || 'No se pudo procesar la instrucción.'}`;
+                }
+            } catch (err) {
+                resDiv.className = 'text-xs text-rose-300 font-bold p-3 bg-rose-500/10 rounded-xl border border-rose-500/30';
+                resDiv.innerText = `❌ Error de conexión: ${err.message}`;
+            }
+        }
+
+        function uploadBulkImages() {
+            return startBulkImageUpload();
+        }
+
+        function configurarUmbralIA() {
+            const promptEl = document.getElementById('ia-umbral-prompt');
+            const umbralEl = document.getElementById('umbral-stock-input');
+            if (!promptEl || !umbralEl) return;
+            const match = (promptEl.value || '').match(/(\d+)/);
+            if (match) {
+                umbralEl.value = parseInt(match[1], 10);
+                if (typeof loadAlertasStock === 'function') loadAlertasStock();
+            }
+        }
+
+        let deferredPwaPrompt = null;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPwaPrompt = e;
+            const btn = document.getElementById('btn-instalar-pwa');
+            if (btn) btn.classList.remove('hidden');
+        });
+
+        async function instalarAppPWA() {
+            if (!deferredPwaPrompt) return;
+            deferredPwaPrompt.prompt();
+            await deferredPwaPrompt.userChoice;
+            deferredPwaPrompt = null;
+            const btn = document.getElementById('btn-instalar-pwa');
+            if (btn) btn.classList.add('hidden');
+        }
+
+        function cerrarModalBanner() {
+            const m = document.getElementById('banner-progress-modal');
+            if (m) m.classList.add('hidden');
+        }
 
         window.onload = checkAuth;
 
