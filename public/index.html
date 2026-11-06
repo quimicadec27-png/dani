@@ -2304,7 +2304,40 @@ ightarrow$ Ventas</p>
     </div>
 
     <script>
-        const API_URL = 'https://crm.quimicadec.com/api';
+        const API_URL = (window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1'))
+            ? `${window.location.origin}/api`
+            : (window.location.origin.includes('quimicadec.com') || window.location.origin.includes('onrender.com'))
+                ? `${window.location.origin}/api`
+                : 'https://crm.quimicadec.com/api';
+
+        // Interceptor transparente de Fetch para adjuntar token JWT a todas las llamadas del CRM
+        const _originalFetch = window.fetch;
+        window.fetch = function(url, options = {}) {
+            try {
+                const token = localStorage.getItem('dec_crm_jwt') || localStorage.getItem('qdec_crm_token') || 'dec_admin_2026';
+                const urlStr = typeof url === 'string' ? url : (url && url.url ? url.url : '');
+                if (urlStr && (urlStr.includes('/api/crm') || urlStr.includes('/api/products') || urlStr.includes('/api/combos') || urlStr.includes('/api/categories'))) {
+                    options = options || {};
+                    if (!options.headers) {
+                        options.headers = {};
+                    }
+                    if (options.headers instanceof Headers) {
+                        if (!options.headers.has('Authorization')) options.headers.set('Authorization', 'Bearer ' + token);
+                        if (!options.headers.has('x-crm-token')) options.headers.set('x-crm-token', token);
+                    } else if (Array.isArray(options.headers)) {
+                        options.headers.push(['Authorization', 'Bearer ' + token]);
+                        options.headers.push(['x-crm-token', token]);
+                    } else if (typeof options.headers === 'object') {
+                        if (!options.headers['Authorization']) options.headers['Authorization'] = 'Bearer ' + token;
+                        if (!options.headers['x-crm-token']) options.headers['x-crm-token'] = token;
+                    }
+                }
+            } catch (e) {
+                console.warn('[Fetch Interceptor Warning]:', e);
+            }
+            return _originalFetch(url, options);
+        };
+
         const PASSWORD_CORRECTA = 'dec2026';
         let clientesData = [], pedidosData = [], alertasData = [], conversacionesData = [];
         let selectedClienteId = null, selectedClienteObj = null;
@@ -2505,59 +2538,94 @@ ightarrow$ Ventas</p>
             });
         }
 
-        function checkAuth() {
-            const token = localStorage.getItem('dec_crm_auth');
-            if (token === 'granted') {
+        async function checkAuth() {
+            const jwtToken = localStorage.getItem('dec_crm_jwt');
+            const authStatus = localStorage.getItem('dec_crm_auth');
+
+            if (jwtToken && authStatus === 'granted') {
                 document.getElementById('login-modal').classList.add('hidden');
                 document.getElementById('crm-app-content').classList.remove('hidden');
                 document.getElementById('crm-app-content').classList.add('flex');
                 init(); initDragToScrollNav(); restoreCatalogoSidebarState(); initDragToScrollTables();
+
+                // Verificación silenciosa en segundo plano del token JWT
+                try {
+                    const vRes = await fetch(`${API_URL}/crm/auth/verify`, {
+                        headers: { 'Authorization': 'Bearer ' + jwtToken }
+                    });
+                    if (vRes.status === 401) {
+                        console.warn('[CRM Auth] Sesión expirada después de 30 días, reautenticar.');
+                        cerrarSesionCrm();
+                    }
+                } catch (e) {
+                    // Si el servidor está temporalmente en reposo, no deslogueamos al usuario
+                }
             } else {
                 document.getElementById('login-modal').classList.remove('hidden');
                 document.getElementById('crm-app-content').classList.add('hidden');
             }
         }
 
-                async function validarCrmUserLogin(e) {
+        async function validarCrmUserLogin(e) {
             e.preventDefault();
             const email = document.getElementById('crm-email-input').value.trim();
             const pass = document.getElementById('crm-password-input').value;
             const errorMsg = document.getElementById('login-error-msg');
+            const submitBtn = document.getElementById('crm-login-submit-btn');
+
             errorMsg.classList.add('hidden');
-
-            // 1. Intentar Autenticación con Backend API (Simple Request sin Preflight CORS)
-            // Autenticación local y por rol directo CRM
-
-            // 2. Verificar Usuarios Registrados Localmente en la Base CRM
-            const localUsers = getStoredCrmUsers();
-            const foundUser = localUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
-
-            if (foundUser) {
-                localStorage.setItem('dec_crm_auth', 'granted');
-                localStorage.setItem('qdec_user_role', foundUser.role || 'direccion');
-                localStorage.setItem('qdec_user_email', foundUser.email);
-                localStorage.setItem('qdec_user_name', foundUser.name || 'Empleado CRM');
-                localStorage.setItem('qdec_crm_token', 'dec_admin_2026');
-                checkAuth();
-                return;
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<span class="material-symbols-outlined text-lg animate-spin">refresh</span> Verificando acceso...';
             }
 
-            // 3. Permiso de Acceso Directo para Cuentas de Dirección / Empleados
-            if (email.length > 3 && pass.length >= 4) {
-                let userRole = 'direccion';
-                if (email.toLowerCase() === 'quimicadecweb@gmail.com' || email.toLowerCase() === 'direccion@quimicadec.com') {
-                    userRole = 'director';
+            try {
+                const res = await fetch(`${API_URL}/crm/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password: pass })
+                });
+
+                const data = await res.json().catch(() => null);
+
+                if (res.ok && data && data.success && data.token) {
+                    localStorage.setItem('dec_crm_jwt', data.token);
+                    localStorage.setItem('dec_crm_auth', 'granted');
+                    localStorage.setItem('qdec_user_role', data.user.role || 'direccion');
+                    localStorage.setItem('qdec_user_email', data.user.email);
+                    localStorage.setItem('qdec_user_name', data.user.name || email.split('@')[0]);
+                    localStorage.setItem('qdec_crm_token', data.token);
+
+                    document.getElementById('login-modal').classList.add('hidden');
+                    document.getElementById('crm-app-content').classList.remove('hidden');
+                    document.getElementById('crm-app-content').classList.add('flex');
+                    init(); initDragToScrollNav(); restoreCatalogoSidebarState(); initDragToScrollTables();
+                    return;
+                } else {
+                    errorMsg.innerText = data?.error || 'Credenciales incorrectas. Verifique su correo y contraseña.';
+                    errorMsg.classList.remove('hidden');
                 }
-                localStorage.setItem('dec_crm_auth', 'granted');
-                localStorage.setItem('qdec_user_role', userRole);
-                localStorage.setItem('qdec_user_email', email);
-                localStorage.setItem('qdec_user_name', email.split('@')[0].toUpperCase());
-                localStorage.setItem('qdec_crm_token', 'dec_admin_2026');
-                checkAuth();
-                return;
+            } catch (err) {
+                console.error('[Login Error]:', err);
+                errorMsg.innerText = 'Error al conectar con el servidor. Intente nuevamente en unos instantes.';
+                errorMsg.classList.remove('hidden');
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<span class="material-symbols-outlined text-lg">key</span> Ingresar al Panel';
+                }
             }
+        }
 
-            errorMsg.classList.remove('hidden');
+        function cerrarSesionCrm() {
+            localStorage.removeItem('dec_crm_jwt');
+            localStorage.removeItem('dec_crm_auth');
+            localStorage.removeItem('qdec_user_role');
+            localStorage.removeItem('qdec_user_email');
+            localStorage.removeItem('qdec_user_name');
+            localStorage.removeItem('qdec_crm_token');
+            document.getElementById('login-modal').classList.remove('hidden');
+            document.getElementById('crm-app-content').classList.add('hidden');
         }
 
         function abrirModalRecuperarPass() { document.getElementById('modal-reset-pass').classList.remove('hidden'); }
@@ -5539,9 +5607,14 @@ ightarrow$ Ventas</p>
 
             try {
                 const resp = await fetch(`${API_URL}/combos?sec=qdec_crm_sec_2026`);
-                const data = await resp.json();
-                if (!data.success || !data.combos) {
-                    container.innerHTML = `<div class="col-span-full text-center py-6 text-red-400 text-xs font-bold">❌ Error al obtener combos: ${data.error || 'Respuesta inválida'}</div>`;
+                if (!resp.ok) {
+                    container.innerHTML = `<div class="col-span-full text-center py-6 text-yellow-300 text-xs font-bold">⚠️ El servidor de catálogo está iniciando (HTTP ${resp.status}). Reintentando en 3 segundos...</div>`;
+                    setTimeout(cargarVisorCombos, 3000);
+                    return;
+                }
+                const data = await resp.json().catch(() => null);
+                if (!data || !data.success || !data.combos) {
+                    container.innerHTML = `<div class="col-span-full text-center py-6 text-red-400 text-xs font-bold">❌ Error al obtener combos: ${data?.error || 'Respuesta inválida del servidor'}</div>`;
                     return;
                 }
 
@@ -5549,7 +5622,8 @@ ightarrow$ Ventas</p>
                 const searchVal = document.getElementById('combos-search-input')?.value || '';
                 filtrarCombosUI(searchVal);
             } catch(e) {
-                container.innerHTML = `<div class="col-span-full text-center py-6 text-red-400 text-xs font-bold">❌ Error: ${e.message}</div>`;
+                container.innerHTML = `<div class="col-span-full text-center py-6 text-yellow-400 text-xs font-bold">⏳ Conectando con el servidor de combos (${e.message}). Reintentando...</div>`;
+                setTimeout(cargarVisorCombos, 4000);
             }
         }
 

@@ -12,11 +12,38 @@ const helmet = require('helmet');
 const path = require('path');
 const fs = require('fs');
 const https = require('https');
+const axios = require('axios');
 const { createClient } = require('@supabase/supabase-js');
 const Groq = require('groq-sdk');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const JWT_SECRET = process.env.JWT_SECRET || 'qdec_jwt_sec_2026_concepcion_er';
+const USERS_FILE = path.join(__dirname, 'data', 'crm_users.json');
+
+function getCrmUsers() {
+    try {
+        if (!fs.existsSync(USERS_FILE)) return [];
+        return JSON.parse(fs.readFileSync(USERS_FILE, 'utf8'));
+    } catch (e) {
+        console.error('[CRM Auth] Error leyendo usuarios:', e.message);
+        return [];
+    }
+}
+
+function saveCrmUsers(users) {
+    try {
+        const dir = path.dirname(USERS_FILE);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), 'utf8');
+        return true;
+    } catch (e) {
+        console.error('[CRM Auth] Error guardando usuarios:', e.message);
+        return false;
+    }
+}
 
 // Configuración de Seguridad y Middleware (Restringir CORS a dominios oficiales de Química DEC y Render)
 app.use(helmet({
@@ -56,30 +83,32 @@ app.use((req, res, next) => {
     next();
 });
 
-// Middleware de Autenticación para Endpoints Administrativos y PII del CRM
+// Middleware de Autenticación Robusta para Endpoints Administrativos y PII del CRM
 const requireCrmAuth = (req, res, next) => {
-    const token = req.headers['x-crm-token'] || req.headers['authorization'] || req.query.crm_token;
-    const validTokens = ['dec_admin_2026', process.env.CRM_ADMIN_SECRET].filter(Boolean);
+    if (req.method === 'OPTIONS') return next();
 
-    // 1. Si se envía el token de admin válido
-    if (token && (validTokens.includes(token) || validTokens.includes(token.replace('Bearer ', '')))) {
+    const authHeader = req.headers['authorization'] || req.headers['x-crm-token'] || req.query.crm_token;
+    if (!authHeader) {
+        return res.status(401).json({ success: false, error: 'Acceso no autorizado al CRM. Inicie sesión.' });
+    }
+
+    const token = typeof authHeader === 'string' ? authHeader.replace(/^Bearer\s+/i, '').trim() : '';
+    const validMasterTokens = ['dec_admin_2026', process.env.CRM_ADMIN_SECRET].filter(Boolean);
+
+    // 1. Clave maestra interna (para scripts de sincronización o automatizaciones autorizadas)
+    if (validMasterTokens.includes(token)) {
+        req.crmUser = { id: 'admin_master', name: 'Administrador General', role: 'director' };
         return next();
     }
 
-    // 2. Si la petición proviene de los dominios internos del CRM o localhost
-    const origin = req.headers['origin'] || req.headers['referer'] || '';
-    const host = req.headers['host'] || '';
-    if (
-        host.includes('dani-bxav.onrender.com') ||
-        host.includes('crm.quimicadec.com') ||
-        origin.includes('dani-bxav.onrender.com') ||
-        origin.includes('crm.quimicadec.com') ||
-        host.includes('localhost')
-    ) {
+    // 2. Token de sesión JWT firmado
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        req.crmUser = decoded;
         return next();
+    } catch (err) {
+        return res.status(401).json({ success: false, error: 'Sesión expirada o token inválido. Por favor vuelva a iniciar sesión.' });
     }
-
-    return res.status(401).json({ success: false, error: 'Acceso no autorizado al CRM' });
 };
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
@@ -95,6 +124,121 @@ app.use(express.static(path.join(__dirname, 'public'), {
 
 app.get('/favicon.ico', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'icon-192.png'));
+});
+
+// =========================================================================
+// RUTAS DE AUTENTICACIÓN CRM (JWT + BCRYPT)
+// =========================================================================
+
+// POST /api/crm/auth/login
+app.post('/api/crm/auth/login', (req, res) => {
+    try {
+        const { email, password } = req.body || {};
+        if (!email || !password) {
+            return res.status(400).json({ success: false, error: 'Debe ingresar correo y contraseña' });
+        }
+
+        const users = getCrmUsers();
+        const user = users.find(u => u.email.toLowerCase() === String(email).trim().toLowerCase());
+        if (!user) {
+            return res.status(401).json({ success: false, error: 'Credenciales inválidas. Verifique correo y contraseña.' });
+        }
+
+        const match = bcrypt.compareSync(String(password).trim(), user.password_hash);
+        if (!match) {
+            return res.status(401).json({ success: false, error: 'Credenciales inválidas. Verifique correo y contraseña.' });
+        }
+
+        const userPayload = {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            can_edit_prices: user.can_edit_prices,
+            can_edit_content: user.can_edit_content,
+            can_view_audit: user.can_view_audit,
+            can_export_clients: user.can_export_clients
+        };
+
+        // Token firmado con validez de 30 días para no incomodar al personal
+        const token = jwt.sign(userPayload, JWT_SECRET, { expiresIn: '30d' });
+
+        return res.json({
+            success: true,
+            token,
+            user: userPayload
+        });
+    } catch (e) {
+        console.error('[CRM Auth Login Error]:', e);
+        return res.status(500).json({ success: false, error: 'Error del servidor al autenticar' });
+    }
+});
+
+// GET /api/crm/auth/verify
+app.get('/api/crm/auth/verify', (req, res) => {
+    const authHeader = req.headers['authorization'] || req.headers['x-crm-token'];
+    if (!authHeader) {
+        return res.status(401).json({ success: false, error: 'Token no provisto' });
+    }
+    const token = typeof authHeader === 'string' ? authHeader.replace(/^Bearer\s+/i, '').trim() : '';
+    const validMasterTokens = ['dec_admin_2026', process.env.CRM_ADMIN_SECRET].filter(Boolean);
+
+    if (validMasterTokens.includes(token)) {
+        return res.json({
+            success: true,
+            user: { id: 'admin_master', name: 'Administrador General', role: 'director' }
+        });
+    }
+
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        return res.json({ success: true, user: decoded });
+    } catch (e) {
+        return res.status(401).json({ success: false, error: 'Sesión expirada o token inválido' });
+    }
+});
+
+// GET /api/crm/seguridad/metricas-cloudflare
+app.get('/api/crm/seguridad/metricas-cloudflare', requireCrmAuth, async (req, res) => {
+    try {
+        const token = process.env.CLOUDFLARE_API_TOKEN;
+        const zoneId = process.env.CLOUDFLARE_ZONE_ID;
+        if (!token || !zoneId) {
+            return res.status(400).json({ success: false, error: 'Cloudflare no configurado en variables de entorno' });
+        }
+
+        const query = {
+            query: `query {
+              viewer {
+                zones(filter: {zoneTag: "${zoneId}"}) {
+                  httpRequests1dGroups(limit: 7, filter: {date_gt: "2026-10-01"}) {
+                    dimensions { date }
+                    sum { requests bytes threats cachedRequests cachedBytes }
+                  }
+                }
+              }
+            }`
+        };
+
+        const cfRes = await axios.post('https://api.cloudflare.com/client/v4/graphql', query, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            timeout: 8000
+        });
+
+        const groups = cfRes.data?.data?.viewer?.zones?.[0]?.httpRequests1dGroups || [];
+        return res.json({
+            success: true,
+            zone: 'quimicadec.com',
+            zoneId,
+            history: groups
+        });
+    } catch (e) {
+        console.error('[Cloudflare Metrics Error]:', e.response?.data || e.message);
+        return res.status(500).json({ success: false, error: e.message });
+    }
 });
 
 // Inicialización de Clientes
@@ -1111,7 +1255,7 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
 });
 
 // Obtener lista de conversaciones para el CRM (incluyendo web y whatsapp)
-app.get('/api/crm/chat/conversaciones', async (req, res) => {
+app.get('/api/crm/chat/conversaciones', requireCrmAuth, async (req, res) => {
     try {
         // 1. Obtener los últimos mensajes de chat (limit alto para cubrir todos los clientes)
         const { data: lastMessages } = await supabase
@@ -1170,7 +1314,7 @@ app.get('/api/crm/chat/conversaciones', async (req, res) => {
 });
 
 // Actualizar Datos de Lead / Cliente desde el CRM (con soporte para fusión automática si el teléfono ya existe)
-app.post('/api/crm/clientes/actualizar', async (req, res) => {
+app.post('/api/crm/clientes/actualizar', requireCrmAuth, async (req, res) => {
     try {
         const { cliente_id, razon_social, whatsapp, dni_cuit, tipo_envio, direccion, localidad, provincia, notas } = req.body;
         if (!cliente_id) return res.status(400).json({ error: 'ID de cliente requerido' });
@@ -1253,7 +1397,7 @@ app.post('/api/crm/clientes/actualizar', async (req, res) => {
 });
 
 // Crear Nuevo Cliente / Lead Directo (desde WhatsApp, Local o CRM)
-app.post('/api/crm/clientes/crear', async (req, res) => {
+app.post('/api/crm/clientes/crear', requireCrmAuth, async (req, res) => {
     try {
         const { razon_social, whatsapp, dni_cuit, tipo_envio, direccion, localidad, provincia, notas, tipo_cliente, vendedor } = req.body;
         
@@ -1332,7 +1476,7 @@ app.post('/api/crm/clientes/crear', async (req, res) => {
 });
 
 // Auto-Extraer Datos de Cliente con IA desde Texto de WhatsApp / Notas
-app.post('/api/crm/clientes/extraer-datos-ia', async (req, res) => {
+app.post('/api/crm/clientes/extraer-datos-ia', requireCrmAuth, async (req, res) => {
     try {
         const { texto } = req.body;
         if (!texto || typeof texto !== 'string') {
@@ -1424,7 +1568,7 @@ app.post('/api/crm/clientes/extraer-datos-ia', async (req, res) => {
 });
 
 // Promover Lead Web a Cliente Mayorista Oficial
-app.post('/api/crm/clientes/promover-lead', async (req, res) => {
+app.post('/api/crm/clientes/promover-lead', requireCrmAuth, async (req, res) => {
     try {
         const { cliente_id, cuit, razon_social, vendedor, tipo_cliente, whatsapp } = req.body;
         if (!cliente_id) return res.status(400).json({ error: 'ID de cliente requerido' });
@@ -1449,7 +1593,7 @@ app.post('/api/crm/clientes/promover-lead', async (req, res) => {
 });
 
 // Obtener mensajes de un chat específico (acepta UUID de cliente o session_id de la web)
-app.get('/api/crm/chat/mensajes/:clienteId', async (req, res) => {
+app.get('/api/crm/chat/mensajes/:clienteId', requireCrmAuth, async (req, res) => {
     try {
         const { clienteId } = req.params;
         let targetUUID = clienteId;
@@ -1495,7 +1639,7 @@ app.get('/api/crm/chat/mensajes/:clienteId', async (req, res) => {
 });
 
 // Responder como Vendedor Humano e Interrumpir/Reanudar Bot
-app.post('/api/crm/chat/enviar-mensaje-vendedor', async (req, res) => {
+app.post('/api/crm/chat/enviar-mensaje-vendedor', requireCrmAuth, async (req, res) => {
     try {
         const { cliente_id, texto_mensaje, pausar_bot, nombre_vendedor } = req.body;
         if (!cliente_id) return res.status(400).json({ error: 'Cliente requerido' });
@@ -1560,7 +1704,7 @@ async function fetchAllProductsFromSupabase(fields = 'id, sku, name, price, stoc
 // =========================================================================
 // 2. ALERTAS DE INVENTARIO Y UMBRALES
 // =========================================================================
-app.get('/api/crm/alertas-stock', async (req, res) => {
+app.get('/api/crm/alertas-stock', requireCrmAuth, async (req, res) => {
     try {
         const umbralMinimoDefault = parseInt(req.query.umbral || 20);
         const prods = await fetchAllProductsFromSupabase();
@@ -1620,7 +1764,7 @@ app.get('/api/crm/alertas-stock', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.post('/api/crm/configurar-umbrales-ia', async (req, res) => {
+app.post('/api/crm/configurar-umbrales-ia', requireCrmAuth, async (req, res) => {
     try {
         const { instruccion_texto } = req.body;
         if (!instruccion_texto) return res.status(400).json({ error: 'Instrucción requerida' });
@@ -1660,7 +1804,7 @@ app.post('/api/crm/configurar-umbrales-ia', async (req, res) => {
 // =========================================================================
 // 3. CARGA MASIVA EXCEL & KANBAN PAGO/STOCK
 // =========================================================================
-app.post('/api/crm/subir-excel-catalogo', async (req, res) => {
+app.post('/api/crm/subir-excel-catalogo', requireCrmAuth, async (req, res) => {
     try {
         const { productos_csv } = req.body;
         if (!Array.isArray(productos_csv) || productos_csv.length === 0) {
@@ -1731,7 +1875,7 @@ async function descontarStockPedidoBulk(pedido_id) {
     }
 }
 
-app.post('/api/crm/confirmar-pago-descontar-stock', async (req, res) => {
+app.post('/api/crm/confirmar-pago-descontar-stock', requireCrmAuth, async (req, res) => {
     try {
         const { pedido_id } = req.body;
         if (!pedido_id) return res.status(400).json({ error: 'ID de pedido requerido' });
@@ -1744,7 +1888,7 @@ app.post('/api/crm/confirmar-pago-descontar-stock', async (req, res) => {
 });
 
 // Endpoint para cambiar de estado un pedido en el embudo (con truncamiento y bulk stock)
-app.post('/api/crm/pedidos/cambiar-estado', async (req, res) => {
+app.post('/api/crm/pedidos/cambiar-estado', requireCrmAuth, async (req, res) => {
     try {
         const { pedido_id, nuevo_estado } = req.body;
         if (!pedido_id || !nuevo_estado) return res.status(400).json({ error: 'pedido_id y nuevo_estado son requeridos' });
@@ -1777,7 +1921,7 @@ app.post('/api/crm/pedidos/cambiar-estado', async (req, res) => {
 });
 
 // Endpoint para crear un Presupuesto / Pedido desde la Ficha de Chat o el Embudo
-app.post('/api/crm/pedidos/crear-presupuesto', async (req, res) => {
+app.post('/api/crm/pedidos/crear-presupuesto', requireCrmAuth, async (req, res) => {
     try {
         const { cliente_id, items, observaciones, origen, tipo_envio, monto_total_final } = req.body;
         if (!cliente_id) return res.status(400).json({ error: 'cliente_id es requerido' });
@@ -1866,7 +2010,7 @@ app.post('/api/crm/pedidos/crear-presupuesto', async (req, res) => {
 
 
 // Endpoint para editar / corregir pedidos existentes (agregar/quitar items, cambiar cantidades, precios, envío)
-app.post('/api/crm/pedidos/editar-pedido', async (req, res) => {
+app.post('/api/crm/pedidos/editar-pedido', requireCrmAuth, async (req, res) => {
     try {
         const { pedido_id, cliente_id, items, observaciones, origen, tipo_envio, monto_total_final } = req.body;
         if (!pedido_id) {
@@ -2116,7 +2260,7 @@ app.all(['/api/crm/webhooks/woocommerce-order', '/api/webhooks/woocommerce-order
 });
 
 // Endpoint para obtener catálogo simple de productos para el modal de presupuestos
-app.get('/api/crm/productos-list', async (req, res) => {
+app.get('/api/crm/productos-list', requireCrmAuth, async (req, res) => {
     try {
         const data = await fetchAllProductsFromSupabase('id, sku, name, price, stock, category, image_url');
         res.json({ success: true, count: data.length, productos: data });
@@ -2124,7 +2268,7 @@ app.get('/api/crm/productos-list', async (req, res) => {
 });
 
 // Endpoint de IA para Analizar Texto de Chat / Notas y Extraer Productos / Cantidades / Precios automáticamente
-app.post('/api/crm/parse-presupuesto-texto-ia', async (req, res) => {
+app.post('/api/crm/parse-presupuesto-texto-ia', requireCrmAuth, async (req, res) => {
     try {
         const { texto } = req.body;
         if (!texto || typeof texto !== 'string' || !texto.trim()) {
@@ -2262,7 +2406,7 @@ app.get('/api/crm/pedidos', requireCrmAuth, async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.get('/api/crm/alertas-seguimiento', async (req, res) => {
+app.get('/api/crm/alertas-seguimiento', requireCrmAuth, async (req, res) => {
     try {
         const firstDayOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
         const { data: clientes } = await supabase.from('clientes').select('id, razon_social, contacto_nombre, whatsapp').order('razon_social', { ascending: true }).limit(2000);
@@ -2468,7 +2612,7 @@ app.get('/api/products/search', async (req, res) => {
 
 
 // Endpoint para editar Título, Precios, Categoría y Detalles de un Producto (Supabase)
-app.post('/api/products/update-details', async (req, res) => {
+app.post('/api/products/update-details', requireCrmAuth, async (req, res) => {
     try {
         const { sku, name, regular_price, sale_price, category, status, stock_status, image_base64, image_filename, is_new } = req.body;
         if (!sku && !name) {
@@ -2538,7 +2682,7 @@ app.post('/api/products/update-details', async (req, res) => {
 });
 
 // Endpoint para Cambiar Estado de Producto (Publicado <-> Borrador / Pausado)
-app.post('/api/products/toggle-status', async (req, res) => {
+app.post('/api/products/toggle-status', requireCrmAuth, async (req, res) => {
     try {
         const { sku, status } = req.body;
         if (!sku) {
@@ -2666,7 +2810,7 @@ app.get('/api/products/published', async (req, res) => {
 });
 
 // Endpoint para Carga Masiva de Productos y Variaciones vía Excel / CSV
-app.post('/api/products/bulk-excel', async (req, res) => {
+app.post('/api/products/bulk-excel', requireCrmAuth, async (req, res) => {
     try {
         const { rows, paste_text } = req.body;
         let itemsToProcess = [];
@@ -2889,7 +3033,7 @@ app.post('/api/products/bulk-excel', async (req, res) => {
         res.status(500).json({ success: false, error: err.message });
     }
 });
-app.post('/api/crm/update-homepage-html', async (req, res) => {
+app.post('/api/crm/update-homepage-html', requireCrmAuth, async (req, res) => {
     try {
         lastCatalogFetch = 0;
         await refreshProductCatalog();
@@ -2905,7 +3049,7 @@ app.post('/api/crm/update-homepage-html', async (req, res) => {
 });
 
 // Endpoint para procesar instrucciones de catálogo en lenguaje natural con IA (Sub-tab 8: Instrucción IA / Voz)
-app.post('/api/crm/ejecutar-instruccion-ia', async (req, res) => {
+app.post('/api/crm/ejecutar-instruccion-ia', requireCrmAuth, async (req, res) => {
     try {
         const { prompt } = req.body;
         if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
@@ -3060,7 +3204,7 @@ app.get('/api/combos', async (req, res) => {
     }
 });
 
-app.post('/api/combos/delete-image', async (req, res) => {
+app.post('/api/combos/delete-image', requireCrmAuth, async (req, res) => {
     try {
         const { sku } = req.body;
         if (!sku) return res.status(400).json({ success: false, error: 'SKU requerido' });
@@ -3071,7 +3215,7 @@ app.post('/api/combos/delete-image', async (req, res) => {
     }
 });
 
-app.post('/api/combos/auto-link-skus', async (req, res) => {
+app.post('/api/combos/auto-link-skus', requireCrmAuth, async (req, res) => {
     try {
         const comboSku = req.body.comboSku || req.body.combo_sku;
         const productSkus = req.body.productSkus || req.body.sku_list;
@@ -3097,7 +3241,7 @@ app.post('/api/combos/auto-link-skus', async (req, res) => {
     }
 });
 
-app.post('/api/categories/upload-banner', async (req, res) => {
+app.post('/api/categories/upload-banner', requireCrmAuth, async (req, res) => {
     const stepsLog = [];
     try {
         const { categoryKey, imageBase64, imageUrl, filename } = req.body;
@@ -3188,7 +3332,7 @@ app.get('/api/ofertas', async (req, res) => {
 });
 
 // Endpoint de Carga e Integración Directa de Imagen a Supabase y Almacenamiento Local
-app.post('/api/products/upload-image', async (req, res) => {
+app.post('/api/products/upload-image', requireCrmAuth, async (req, res) => {
     try {
         const { sku, imageBase64, imageUrl, filename, mode } = req.body;
         if (!sku) {
@@ -3254,7 +3398,7 @@ app.post('/api/products/upload-image', async (req, res) => {
 });
 
 // Endpoint de Carga Masiva de Imágenes (Lotes automáticos)
-app.post('/api/products/bulk-upload-images', async (req, res) => {
+app.post('/api/products/bulk-upload-images', requireCrmAuth, async (req, res) => {
     try {
         const { images } = req.body;
         if (!Array.isArray(images) || images.length === 0) {
@@ -3309,7 +3453,7 @@ app.post('/api/products/bulk-upload-images', async (req, res) => {
 // =========================================================================
 
 // 1. Obtener lista completa de productos para la grilla de precios (3.500+ productos y 32 categorías)
-app.get('/api/crm/catalogo-precios-lista', async (req, res) => {
+app.get('/api/crm/catalogo-precios-lista', requireCrmAuth, async (req, res) => {
     try {
         let data = [];
         if (PRODUCT_CATALOG_CACHE && PRODUCT_CATALOG_CACHE.length > 500) {
@@ -3555,7 +3699,7 @@ app.get('/api/crm/catalogo-precios-lista', async (req, res) => {
 });
 
 // 2. Guardar actualización masiva de precios en Supabase y refrescar memoria RAM de Dani
-app.post('/api/crm/productos/actualizar-precios-masivo', async (req, res) => {
+app.post('/api/crm/productos/actualizar-precios-masivo', requireCrmAuth, async (req, res) => {
     try {
         const { actualizaciones, operacion, metodo, valor, motivo, usuario } = req.body;
 

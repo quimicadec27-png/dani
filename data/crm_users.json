@@ -1,0 +1,35 @@
+[
+  {
+    "id": "usr_dir_1",
+    "name": "Director General",
+    "email": "quimicadecweb@gmail.com",
+    "password_hash": "$2b$10$Z6MgvC5OJ9l/8md0RdN5iOPQ13suCyHN3pO5pIQpJW5NTsYq8owD6",
+    "role": "director",
+    "can_edit_prices": 1,
+    "can_edit_content": 1,
+    "can_view_audit": 1,
+    "can_export_clients": 1
+  },
+  {
+    "id": "usr_dir_2",
+    "name": "Dirección",
+    "email": "direccion@quimicadec.com",
+    "password_hash": "$2b$10$Z6MgvC5OJ9l/8md0RdN5iOPQ13suCyHN3pO5pIQpJW5NTsYq8owD6",
+    "role": "director",
+    "can_edit_prices": 1,
+    "can_edit_content": 1,
+    "can_view_audit": 1,
+    "can_export_clients": 1
+  },
+  {
+    "id": "usr_vnt_1",
+    "name": "Equipo de Ventas",
+    "email": "ventas@quimicadec.com",
+    "password_hash": "$2b$10$Z6MgvC5OJ9l/8md0RdN5iOPQ13suCyHN3pO5pIQpJW5NTsYq8owD6",
+    "role": "gestion",
+    "can_edit_prices": 1,
+    "can_edit_content": 0,
+    "can_view_audit": 0,
+    "can_export_clients": 1
+  }
+]
