@@ -337,6 +337,44 @@ function saveBase64Image(base64Str, originalFilename, prefix = 'upload') {
 }
 
 
+
+// ===== MEDIA PERSISTENTE: el disco de Render se borra en cada deploy, por eso las imágenes
+// subidas desde el CRM se guardan también en Supabase (fila MEDIA-<archivo>) y se sirven por URL absoluta.
+const MEDIA_BASE_URL = process.env.CRM_PUBLIC_URL || 'https://crm.quimicadec.com';
+const MIME_BY_EXT = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif', avif: 'image/avif' };
+
+async function persistMedia(saved) {
+    const mime = MIME_BY_EXT[saved.ext] || 'image/jpeg';
+    const dataUrl = 'data:' + mime + ';base64,' + saved.dataBuffer.toString('base64');
+    const { error } = await supabase.from('dec_products').upsert({
+        sku: 'MEDIA-' + saved.filename,
+        name: 'MEDIA ' + saved.filename,
+        category: 'MEDIA_SISTEMA',
+        status: 'draft',
+        price: 0,
+        subcategory: dataUrl
+    }, { onConflict: 'sku' });
+    if (error) throw new Error('No se pudo guardar la imagen de forma persistente: ' + error.message);
+    return MEDIA_BASE_URL + '/api/media/' + encodeURIComponent(saved.filename) + '?v=' + Date.now();
+}
+
+app.get('/api/media/:filename', async (req, res) => {
+    try {
+        const filename = path.basename(req.params.filename);
+        const { data, error } = await supabase.from('dec_products').select('subcategory').eq('sku', 'MEDIA-' + filename).maybeSingle();
+        if (error || !data || !data.subcategory) return res.status(404).send('Imagen no encontrada');
+        const m = /^data:([^;]+);base64,(.+)$/.exec(data.subcategory);
+        if (!m) return res.status(404).send('Imagen inválida');
+        res.setHeader('Content-Type', m[1]);
+        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Cache-Control', 'public, max-age=300');
+        return res.end(Buffer.from(m[2], 'base64'));
+    } catch (e) {
+        return res.status(500).send('Error sirviendo imagen');
+    }
+});
+
 // Combos Emprendedores Oficiales inyectados en memoria RAM
 const OFFICIAL_COMBOS_BACKEND = [
     { id: 6887, sku: 'QD-CMB-EMP-001', name: 'COMBO EMPRENDEDOR N1', price: 95231.25, regular_price: 95231.25, category: 'Combos Emprendedores', stock_status: 'instock', status: 'publish' },
@@ -3287,44 +3325,22 @@ app.post('/api/categories/upload-banner', requireCrmAuth, async (req, res) => {
         let finalBannerUrl = imageUrl || '';
 
         if (imageBase64) {
-            const saved = saveBase64Image(imageBase64, filename || `banner_${categoryKey}.jpg`, `banner_${categoryKey}`);
-            finalBannerUrl = saved.publicUrl;
-            stepsLog.push(`2. Banner guardado localmente en CRM (${saved.publicUrl})`);
-
-            // Copiar a quimica_dec_web/public/categorias
-            const catWebDir = path.join(__dirname, '..', 'quimica_dec_web', 'public', 'categorias');
-            if (fs.existsSync(catWebDir)) {
-                try {
-                    const ext = saved.ext || 'jpg';
-                    const catFilename = `${categoryKey}.${ext}`;
-                    fs.writeFileSync(path.join(catWebDir, catFilename), saved.dataBuffer);
-                    finalBannerUrl = `/categorias/${catFilename}`;
-                    stepsLog.push(`3. Copia sincronizada en web (${finalBannerUrl})`);
-                } catch(e) {}
-            }
+            const saved = saveBase64Image(imageBase64, `banner_${categoryKey}_${Date.now()}.${(filename || 'x.jpg').split('.').pop().toLowerCase()}`, `banner_${categoryKey}`);
+            finalBannerUrl = await persistMedia(saved);
+            stepsLog.push('2. Imagen guardada de forma persistente (' + finalBannerUrl + ')');
         }
 
-        // Actualizar constants.ts en quimica_dec_web
-        try {
-            const constantsPath = path.join(__dirname, '..', 'quimica_dec_web', 'src', 'lib', 'constants.ts');
-            if (fs.existsSync(constantsPath)) {
-                let constCode = fs.readFileSync(constantsPath, 'utf8');
-                const catSlugRegex = new RegExp(`(slug:\\s*['"]${categoryKey}['"][\\s\\S]*?imageUrl:\\s*['"])([^'"]+)(['"])`);
-                if (catSlugRegex.test(constCode)) {
-                    constCode = constCode.replace(catSlugRegex, `$1${finalBannerUrl}$3`);
-                    fs.writeFileSync(constantsPath, constCode, 'utf8');
-                    stepsLog.push(`4. constants.ts actualizado con el nuevo banner.`);
-                }
-            }
-        } catch (errSync) {
-            stepsLog.push(`Aviso constants.ts: ${errSync.message}`);
-        }
-
-        // Actualizar en Supabase dec_categories
-        try {
-            await supabase.from('dec_categories').update({ image_url: finalBannerUrl }).eq('slug', categoryKey);
-            stepsLog.push(`5. Supabase dec_categories actualizado.`);
-        } catch (sbErr) {}
+        // Registrar el banner de la categoría para que la web lo lea en vivo
+        const { error: regErr } = await supabase.from('dec_products').upsert({
+            sku: 'BANNER-' + categoryKey,
+            name: 'BANNER ' + categoryKey,
+            category: 'BANNER_SISTEMA',
+            status: 'draft',
+            price: 0,
+            image_url: finalBannerUrl
+        }, { onConflict: 'sku' });
+        if (regErr) throw new Error('No se pudo registrar el banner: ' + regErr.message);
+        stepsLog.push('3. Banner registrado: la web lo muestra en vivo.');
 
         res.json({
             success: true,
@@ -3382,23 +3398,7 @@ app.post('/api/products/upload-image', requireCrmAuth, async (req, res) => {
             const saved = saveBase64Image(imageBase64, filename || `producto_${sku}.jpg`, `prod_${sku}`);
             uploadedUrl = saved.publicUrl;
 
-            // Intentar subir a Supabase Storage si un bucket público estuviera configurado
-            try {
-                const { data: sbUp, error: sbUpErr } = await supabase.storage
-                    .from('products')
-                    .upload(`productos/${saved.filename}`, saved.dataBuffer, {
-                        contentType: `image/${saved.ext === 'jpg' ? 'jpeg' : saved.ext}`,
-                        upsert: true
-                    });
-                if (!sbUpErr && sbUp) {
-                    const { data: pubData } = supabase.storage.from('products').getPublicUrl(`productos/${saved.filename}`);
-                    if (pubData?.publicUrl) {
-                        uploadedUrl = pubData.publicUrl;
-                    }
-                }
-            } catch (storageErr) {
-                // Silencioso: usa la ruta local pública
-            }
+            uploadedUrl = await persistMedia(saved);
         }
 
         // Actualizar Supabase (tabla dec_products)
@@ -3449,7 +3449,7 @@ app.post('/api/products/bulk-upload-images', requireCrmAuth, async (req, res) =>
 
             try {
                 const saved = saveBase64Image(imageBase64, filename || `producto_${sku}.jpg`, `prod_${sku}`);
-                const uploadedUrl = saved.publicUrl;
+                const uploadedUrl = await persistMedia(saved);
 
                 await supabase
                     .from('dec_products')
