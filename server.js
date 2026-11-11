@@ -2615,7 +2615,8 @@ function getCategorySearchPatterns(cat) {
         'JARDIN': ['%JARDIN%', '%JARDÍN%', '%VERDE%'],
         'PLASTICOS': ['%PLAST%', '%BAZAR%'],
         'AEROSOLES': ['%AEROSOL%'],
-        'PASTAS Y CONCENTRADOS': ['%PASTA%', '%CONCENTR%'],
+        'PASTAS Y CONCENTRADOS': ['%PASTA%'],
+        'PRODUCTOS PARA DILUIR': ['%DILUIR%', '%1+4%', '%1+9%'],
         'PRODUCTOS LIQUIDOS': ['%LIQUID%', '%QUIMICA GENERAL%'],
         'PRIMERAS MARCAS': ['%PRIMERAS MARCAS%', '%MARCAS%'],
         'OFERTAS SEMANALES': ['%OFERTA%'],
@@ -3568,6 +3569,8 @@ app.get('/api/crm/catalogo-precios-lista', requireCrmAuth, async (req, res) => {
             if (n.includes('SAHUMERIO') || n.includes('AMOGH') || (/\bCONOS?\b/.test(n)) || n.includes('AROMANZA') || n.includes('ILUMINARTE') || n.includes('SAGRADA MADRE') || n.includes('TUK TUK') || n.includes('PORTA SAHUMERIO')) return 'Sahumerios';
             if (n.includes('CLORO') || n.includes('BOYA') || n.includes('ALGUICIDA') || n.includes('CLARIFICANTE') || n.includes('PASTILLA PILETA') || n.includes('PILETA')) return 'Pileta';
             if (n.includes('CESTO') || n.includes('CANASTO') || n.includes('PLASTICO') || n.includes('PLÁSTICO') || n.includes('BROCHE') || n.includes('PALANGANA') || n.includes('BALDE') || n.includes('FUENTON') || n.includes('PALA')) return 'Plásticos';
+            if (n.includes('1+4') || n.includes('DILUIR') || n.includes('PARA DILUIR') || n.includes('1+9') || n.includes('1+20') || n.includes('1+50')) return 'Productos para Diluir';
+            if (n.includes('PASTA')) return 'Pastas y Concentrados';
             if (n.includes('DETERGENTE') || n.includes('DESENGRASANTE') || n.includes('LAVAVAJILLA') || n.includes('COCINA')) return 'Cocina';
             if (n.includes('BAÑO') || n.includes('INODORO') || n.includes('HARPIC') || n.includes('PATO PURIFIC')) return 'Baño';
             if (n.includes('AEROSOL') || n.includes('BLEM') || n.includes('GLADE') || n.includes('POETT AEROSOL')) return 'Aerosoles';
@@ -3575,8 +3578,7 @@ app.get('/api/crm/catalogo-precios-lista', requireCrmAuth, async (req, res) => {
             if (n.includes('JABON EN PAN') || n.includes('JABÓN EN PAN') || n.includes('PAN DE LAVAR') || n.includes('JABON BLANCO')) return 'Jabón en Pan';
             if (n.includes('JABON TOCADOR') || n.includes('JABÓN TOCADOR') || n.includes('DOVE') || n.includes('REXONA') || n.includes('LUX') || n.includes('PLUSBELLE')) return 'Jabón Tocador';
             if (n.includes('DENTAL') || n.includes('COLGATE') || n.includes('ALGODON') || n.includes('ALGODÓN') || n.includes('SHAMPOO PLUS') || n.includes('ACONDICIONADOR')) return 'Higiene Personal';
-            if (n.includes('CONCENTRADO') || n.includes('PASTA')) return 'Pastas y Concentrados';
-            if (n.includes('DILUIR') || n.includes('1+9') || n.includes('1+20') || n.includes('1+50')) return 'Productos para Diluir';
+            if (n.includes('CONCENTRADO')) return 'Pastas y Concentrados';
             if (n.includes('AUTO') || n.includes('SILICONA') || n.includes('SHAMPOO AUTO') || n.includes('REVIVIDOR') || n.includes('PINITO')) return 'Automóvil';
             if (n.includes('PAPEL') || n.includes('HIGIENICO') || n.includes('HIGIÉNICO') || n.includes('MORITA') || n.includes('HIGHPEL') || n.includes('MAXISEC') || n.includes('ROLLO COCINA') || n.includes('SERVILLETA')) return 'Papeles';
             if (n.includes('BOLSA') || n.includes('RESIDUO') || n.includes('CONSORCIO') || n.includes('CAMISETA')) return 'Bolsas';
