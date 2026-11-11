@@ -375,12 +375,14 @@ app.get('/api/media/:filename', async (req, res) => {
     }
 });
 
-// Combos Emprendedores Oficiales inyectados en memoria RAM
+// Combos Emprendedores Oficiales (precios de respaldo si Supabase no responde)
 const OFFICIAL_COMBOS_BACKEND = [
-    { id: 6887, sku: 'QD-CMB-EMP-001', name: 'COMBO EMPRENDEDOR N1', price: 95231.25, regular_price: 95231.25, category: 'Combos Emprendedores', stock_status: 'instock', status: 'publish' },
-    { id: 6888, sku: 'QD-CMB-EMP-002', name: 'COMBO EMPRENDEDOR N2', price: 118601.84, regular_price: 118601.84, category: 'Combos Emprendedores', stock_status: 'instock', status: 'publish' },
-    { id: 6889, sku: 'QD-CMB-EMP-003', name: 'COMBO EMPRENDEDOR N3', price: 148920.50, regular_price: 148920.50, category: 'Combos Emprendedores', stock_status: 'instock', status: 'publish' },
-    { id: 6890, sku: 'QD-CMB-EMP-004', name: 'COMBO EMPRENDEDOR N4', price: 198500.00, regular_price: 198500.00, category: 'Combos Emprendedores', stock_status: 'instock', status: 'publish' }
+    { id: 14966, sku: 'QD-CMB-EMP-001', name: 'COMBO EMPRENDEDOR N1', price: 101106.21, regular_price: 101106.21, category: 'Combos Emprendedores', stock_status: 'instock', status: 'publish' },
+    { id: 14967, sku: 'QD-CMB-EMP-002', name: 'COMBO EMPRENDEDOR N2', price: 124476.00, regular_price: 124476.00, category: 'Combos Emprendedores', stock_status: 'instock', status: 'publish' },
+    { id: 14968, sku: 'QD-CMB-EMP-003', name: 'COMBO EMPRENDEDOR N3', price: 136315.00, regular_price: 136315.00, category: 'Combos Emprendedores', stock_status: 'instock', status: 'publish' },
+    { id: 14969, sku: 'QD-CMB-EMP-004', name: 'COMBO EMPRENDEDOR N4', price: 162836.52, regular_price: 162836.52, category: 'Combos Emprendedores', stock_status: 'instock', status: 'publish' },
+    { id: 14970, sku: 'QD-CMB-PST-001', name: 'COMBO EMPRENDEDOR PASTAS N1', price: 86620.35, regular_price: 86620.35, category: 'Combos Emprendedores', stock_status: 'instock', status: 'publish' },
+    { id: 14971, sku: 'QD-CMB-PST-002', name: 'COMBO EMPRENDEDOR PASTAS N2', price: 106937.86, regular_price: 106937.86, category: 'Combos Emprendedores', stock_status: 'instock', status: 'publish' }
 ];
 
 // Caché en memoria RAM del catálogo de productos para respuestas ultra-rápidas en 0ms
@@ -415,7 +417,9 @@ async function refreshProductCatalog() {
                     regular_price: parseFloat(p.price || 0),
                     sku: (p.sku || '').replace(/_ID\d+$/, '')
                 }));
-            PRODUCT_CATALOG_CACHE = [...OFFICIAL_COMBOS_BACKEND, ...mapped];
+            const mappedSkus = new Set(mapped.map(p => (p.sku || '').toUpperCase()));
+            const missingCombos = OFFICIAL_COMBOS_BACKEND.filter(c => !mappedSkus.has(c.sku.toUpperCase()));
+            PRODUCT_CATALOG_CACHE = [...missingCombos, ...mapped];
             console.log(`[CATALOG CACHE] ✅ ${PRODUCT_CATALOG_CACHE.length} productos y variaciones publicados cargados en memoria RAM.`);
         } else {
             // Fallback a archivo local JSON con los productos si Supabase no responde
@@ -520,10 +524,12 @@ En Química DEC fabricamos y distribuimos productos en 4 Macro-Sectores y 32 Cat
 (Son productos desengrasantes formulados para remover grasas, NO son desodorantes ni perfuminas).
 
 ⚠️ COMBOS EMPRENDEDORES OFICIALES (FABRICACIÓN Y REVENTA):
-- Combo Emprendedor N1 (Inicial): $95.231,25 (SKU: QD-CMB-EMP-001). Rinde más de 120 litros terminados. Incluye Cloro 20L, Detergente 20L, Suavizante 20L, Jabón Eco Plus 20L, Desengrasante Naranja 1L y 3 concentrados para diluir 25L c/u.
-- Combo Emprendedor N2 (Intermedio): $118.601,84 (SKU: QD-CMB-EMP-002).
-- Combo Emprendedor N3 (Avanzado): $148.920,50 (SKU: QD-CMB-EMP-003).
-- Combo Emprendedor N4 (Máster Full): $198.500,00 (SKU: QD-CMB-EMP-004) con envío 100% bonificado en toda la provincia de Entre Ríos.
+- Combo Emprendedor N1 (Inicial): $101.106,21 (SKU: QD-CMB-EMP-001). Rinde más de 120 litros terminados. Incluye Cloro 20L, Detergente 20L, Suavizante 20L, Jabón Eco Plus 20L, Desengrasante Naranja 1L y 3 concentrados para diluir 25L c/u.
+- Combo Emprendedor N2 (Intermedio): $124.476,00 (SKU: QD-CMB-EMP-002).
+- Combo Emprendedor N3 (Avanzado): $136.315,00 (SKU: QD-CMB-EMP-003).
+- Combo Emprendedor N4 (Máster Full): $162.836,52 (SKU: QD-CMB-EMP-004) con envío 100% bonificado en toda la provincia de Entre Ríos.
+- Combo Emprendedor Pastas N1: $86.620,35 (SKU: QD-CMB-PST-001).
+- Combo Emprendedor Pastas N2: $106.937,86 (SKU: QD-CMB-PST-002).
 Cualquiera de estos combos supera los $80.000, por lo que califica y habilita automáticamente como compra mayorista para clientes nuevos.
 
 ⚠️ REGLA ABSOLUTA ANTI-INVENCIÓN DE PRECIOS:
@@ -2723,6 +2729,7 @@ app.post('/api/products/update-details', requireCrmAuth, async (req, res) => {
             if (!sbErr) {
                 sbUpdated = true;
                 refreshProductCatalog();
+                fetch('https://quimicadec.com/api/revalidate?secret=quimica_dec_deploy_secret_2026', { method: 'POST' }).catch(() => {});
             }
         } else {
             const insertDb = {
@@ -2998,7 +3005,7 @@ app.post('/api/products/bulk-excel', requireCrmAuth, async (req, res) => {
         for (const r of itemsToProcess) {
             const rawSku = (r.sku || r['SKU'] || r['Sku'] || r['ID'] || '').toString().trim();
             const rawName = (r.name || r['Nombre del Producto / Variación'] || r['Nombre del Producto / Variacin'] || r['Nombre'] || r['Producto'] || '').toString().trim();
-            const price = parseArgentinePrice(r.price || r['Precio ($)'] || r['Precio'] || r['Precio Final (Mayorista)']);
+            const price = parseArgentinePrice(r.price || r['Precio ($)'] || r['Precio'] || r['Precio normal'] || r['Precio Normal'] || r['Precio Regular'] || r['Precio Final (Mayorista)']);
             const rawCat = (r.cat || r.category || r['Categorías'] || r['Categoría'] || r['Categoría Sugerida'] || 'General').toString().trim();
             const cat = normalizeWooCategory(rawCat);
             const stockRaw = (r.stock || r.stock_status || r['Estado de Stock'] || r['Stock'] || 'instock').toString().toLowerCase();
@@ -3084,6 +3091,7 @@ app.post('/api/products/bulk-excel', requireCrmAuth, async (req, res) => {
         // Purgar y refrescar memoria caché de Dani para reflejar cambios en tiempo real
         lastCatalogFetch = 0;
         await refreshProductCatalog();
+        fetch('https://quimicadec.com/api/revalidate?secret=quimica_dec_deploy_secret_2026', { method: 'POST' }).catch(() => {});
 
         res.json({
             success: true,
@@ -3782,6 +3790,7 @@ app.post('/api/crm/productos/actualizar-precios-masivo', requireCrmAuth, async (
 
         // Refrescar memoria RAM inmediatamente para que Dani cotice con los nuevos precios en 0ms
         await refreshProductCatalog();
+        fetch('https://quimicadec.com/api/revalidate?secret=quimica_dec_deploy_secret_2026', { method: 'POST' }).catch(() => {});
 
         const descAuditoria = `Actualización Masiva de Precios: ${actualizadosCount} productos actualizados (${operacion || 'Aumento'} ${valor || ''}${metodo === 'porcentaje' ? '%' : '$'}). Motivo: ${motivo || 'Actualización de lista'}. Por: ${usuario || 'Administrador'}`;
         try {

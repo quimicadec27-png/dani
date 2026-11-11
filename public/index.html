@@ -944,13 +944,13 @@ ightarrow$ Ventas</p>
                                                 <div class="flex items-center gap-2">
                                                     <div class="relative flex-grow">
                                                         <span id="label-signo-precios" class="absolute left-3 top-2 font-black text-sm text-emerald-400">+</span>
-                                                        <input type="number" id="input-valor-precios" value="5" step="any" oninput="recalcularPreciosEnVivo()" class="w-full bg-black/60 border border-brand-yellow/50 rounded-xl pl-7 pr-10 py-2 text-base font-black text-brand-yellow focus:outline-none focus:border-brand-yellow font-mono shadow-inner">
+                                                        <input type="number" id="input-valor-precios" value="0" step="any" oninput="recalcularPreciosEnVivo()" class="w-full bg-black/60 border border-brand-yellow/50 rounded-xl pl-7 pr-10 py-2 text-base font-black text-brand-yellow focus:outline-none focus:border-brand-yellow font-mono shadow-inner">
                                                         <span id="label-unidad-precios" class="absolute right-3 top-2.5 font-bold text-xs text-gray-400">%</span>
                                                     </div>
                                                 </div>
                                                 <div class="flex items-center gap-4 mt-2">
                                                     <label class="flex items-center gap-1.5 text-xs text-gray-300 cursor-pointer">
-                                                        <input type="checkbox" id="check-descartar-decimales" checked onchange="recalcularPreciosEnVivo()" class="rounded bg-white/10 border-white/20 text-brand-yellow focus:ring-0">
+                                                        <input type="checkbox" id="check-descartar-decimales" onchange="recalcularPreciosEnVivo()" class="rounded bg-white/10 border-white/20 text-brand-yellow focus:ring-0">
                                                         <span>Descartar decimales (enteros)</span>
                                                     </label>
                                                 </div>
@@ -6332,7 +6332,7 @@ ightarrow$ Ventas</p>
                             }
                         }
                         const name = (baseName && pres) ? `${baseName} - ${pres}` : (baseName || '');
-                        const rawPrice = row['Precio Mayorista ($)'] || row['Precio ($)'] || row['Precio'] || row['price'] || row['Precio Regular'] || 0;
+                        const rawPrice = row['Precio Mayorista ($)'] || row['Precio ($)'] || row['Precio normal'] || row['Precio Normal'] || row['Precio'] || row['price'] || row['Precio Regular'] || 0;
                         const price = parseArgentinePriceClient(rawPrice);
                         const stock = row['Stock Inicial'] || row['Estado de Stock'] || row['Stock'] || row['stock_status'] || 'En Stock';
                         const cat = row['Categoría Oficial'] || row['Categorías'] || row['Categoras'] || row['Categoría'] || row['category'] || defaultCat;
@@ -8701,21 +8701,55 @@ ightarrow$ Ventas</p>
         function procesarArchivoExcelPrecios(file) {
             if (!file) return;
 
+            const isCsv = file.name.toLowerCase().endsWith('.csv');
+
             const reader = new FileReader();
             reader.onload = function(e) {
                 try {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
-                    // Preferir hoja "Productos", "Catalogo", "Precios", o la primera disponible
-                    let sheetName = workbook.SheetNames[0];
-                    for (const s of workbook.SheetNames) {
-                        if (/producto|catalogo|precios|lista/i.test(s)) {
-                            sheetName = s;
-                            break;
+                    let jsonRows = [];
+
+                    if (isCsv) {
+                        const decoder = new TextDecoder('utf-8');
+                        const textContent = decoder.decode(new Uint8Array(e.target.result)).replace(/^\uFEFF/, '');
+                        const lines = textContent.split(/\r?\n/).filter(l => l.trim().length > 0);
+                        if (lines.length > 0) {
+                            const delim = lines[0].includes(';') ? ';' : (lines[0].includes('\t') ? '\t' : ',');
+                            function parseCsvRow(line) {
+                                const vals = [];
+                                let cur = '';
+                                let inQ = false;
+                                for (let i = 0; i < line.length; i++) {
+                                    const c = line[i];
+                                    if (c === '"') inQ = !inQ;
+                                    else if (c === delim && !inQ) { vals.push(cur.trim()); cur = ''; }
+                                    else cur += c;
+                                }
+                                vals.push(cur.trim());
+                                return vals;
+                            }
+                            const headers = parseCsvRow(lines[0]);
+                            for (let i = 1; i < lines.length; i++) {
+                                const vals = parseCsvRow(lines[i]);
+                                const rowObj = {};
+                                headers.forEach((h, idx) => { rowObj[h] = vals[idx] || ''; });
+                                jsonRows.push(rowObj);
+                            }
                         }
                     }
-                    const worksheet = workbook.Sheets[sheetName];
-                    const jsonRows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+                    if (jsonRows.length === 0) {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        let sheetName = workbook.SheetNames[0];
+                        for (const s of workbook.SheetNames) {
+                            if (/producto|catalogo|precios|lista/i.test(s)) {
+                                sheetName = s;
+                                break;
+                            }
+                        }
+                        const worksheet = workbook.Sheets[sheetName];
+                        jsonRows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+                    }
 
                     if (!jsonRows || jsonRows.length === 0) {
                         mostrarBannerStatusExcel('error', '⚠️ El archivo Excel está vacío o no contiene filas con datos válidos.');
