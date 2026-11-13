@@ -65,7 +65,7 @@ const allowedOrigins = [
 app.use(cors({
     origin: (origin, callback) => {
         if (!origin) return callback(null, true);
-        if (allowedOrigins.includes(origin) || origin.endsWith('.quimicadec.com') || origin.endsWith('.onrender.com')) {
+        if (allowedOrigins.includes(origin) || origin.endsWith('.quimicadec.com')) {
             return callback(null, true);
         }
         return callback(new Error('Bloqueado por política CORS de Química DEC'));
@@ -75,7 +75,7 @@ app.use(cors({
 
 app.use((req, res, next) => {
     const origin = req.headers.origin;
-    if (origin && (allowedOrigins.includes(origin) || origin.endsWith('.quimicadec.com') || origin.endsWith('.onrender.com'))) {
+    if (origin && (allowedOrigins.includes(origin) || origin.endsWith('.quimicadec.com'))) {
         res.header('Access-Control-Allow-Origin', origin);
         res.header('Access-Control-Allow-Credentials', 'true');
     }
@@ -93,7 +93,7 @@ const requireCrmAuth = (req, res, next) => {
     }
 
     const token = typeof authHeader === 'string' ? authHeader.replace(/^Bearer\s+/i, '').trim() : '';
-    const validMasterTokens = ['dec_admin_2026', process.env.CRM_ADMIN_SECRET].filter(Boolean);
+    const validMasterTokens = [process.env.CRM_ADMIN_SECRET].filter(Boolean);
 
     // 1. Clave maestra interna (para scripts de sincronización o automatizaciones autorizadas)
     if (validMasterTokens.includes(token)) {
@@ -130,9 +130,19 @@ app.get('/favicon.ico', (req, res) => {
 // RUTAS DE AUTENTICACIÓN CRM (JWT + BCRYPT)
 // =========================================================================
 
+// Rate limiter simple en memoria para login (anti fuerza bruta)
+const loginAttemptsByIp = new Map();
+
 // POST /api/crm/auth/login
 app.post('/api/crm/auth/login', (req, res) => {
     try {
+        const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || 'unknown';
+        const now = Date.now();
+        const attemptInfo = loginAttemptsByIp.get(clientIp);
+        if (attemptInfo && now < attemptInfo.resetAt && attemptInfo.count >= 12) {
+            return res.status(429).json({ success: false, error: 'Demasiados intentos fallidos. Esperá unos minutos e intentá nuevamente.' });
+        }
+
         const { email, password } = req.body || {};
         if (!email || !password) {
             return res.status(400).json({ success: false, error: 'Debe ingresar correo y contraseña' });
@@ -144,7 +154,8 @@ app.post('/api/crm/auth/login', (req, res) => {
         let user = users.find(u => u.email.toLowerCase() === cleanEmail);
 
         // Si es un correo oficial/conocido pero no estaba en el archivo, se crea automáticamente
-        if (!user && (cleanEmail.includes('quimicadec') || cleanEmail.includes('siglo21') || cleanEmail === 'iaacademytecno@gmail.com')) {
+        const isOfficialDomain = cleanEmail.endsWith('@quimicadec.com') || cleanEmail.endsWith('@siglo21soluciones.com') || cleanEmail === 'quimicadecweb@gmail.com' || cleanEmail === 'iaacademytecno@gmail.com';
+        if (!user && isOfficialDomain) {
             const role = (cleanEmail.includes('web') || cleanEmail.includes('direcc') || cleanEmail.includes('admin')) ? 'director' : 'gestion';
             user = {
                 id: 'usr_' + Date.now(),
@@ -180,8 +191,16 @@ app.post('/api/crm/auth/login', (req, res) => {
         }
 
         if (!match) {
+            const prev = loginAttemptsByIp.get(clientIp);
+            if (!prev || now >= prev.resetAt) {
+                loginAttemptsByIp.set(clientIp, { count: 1, resetAt: now + 15 * 60 * 1000 });
+            } else {
+                prev.count++;
+            }
             return res.status(401).json({ success: false, error: 'Credenciales inválidas. Verificá tu correo y contraseña.' });
         }
+
+        loginAttemptsByIp.delete(clientIp);
 
         const userPayload = {
             id: user.id,
@@ -215,7 +234,7 @@ app.get('/api/crm/auth/verify', (req, res) => {
         return res.status(401).json({ success: false, error: 'Token no provisto' });
     }
     const token = typeof authHeader === 'string' ? authHeader.replace(/^Bearer\s+/i, '').trim() : '';
-    const validMasterTokens = ['dec_admin_2026', process.env.CRM_ADMIN_SECRET].filter(Boolean);
+    const validMasterTokens = [process.env.CRM_ADMIN_SECRET].filter(Boolean);
 
     if (validMasterTokens.includes(token)) {
         return res.json({
@@ -2516,7 +2535,7 @@ app.get('/api/crm/alertas-seguimiento', requireCrmAuth, async (req, res) => {
 
 // =========================================================================
 // Endpoint de depuración y borrado directo de productos obsoletos en Supabase
-app.get('/api/products/debug-search', async (req, res) => {
+app.get('/api/products/debug-search', requireCrmAuth, async (req, res) => {
     try {
         const { data: allProds } = await supabase
             .from('dec_products')
@@ -2536,7 +2555,7 @@ app.get('/api/products/debug-search', async (req, res) => {
 });
 
 // Endpoint para limpiar productos obsoletos/borradores de Supabase dec_products
-app.get('/api/products/cleanup-outdated', async (req, res) => {
+app.get('/api/products/cleanup-outdated', requireCrmAuth, async (req, res) => {
     try {
         const { data: delId, error: errId } = await supabase
             .from('dec_products')
@@ -2819,7 +2838,7 @@ app.post('/api/products/delete', requireCrmAuth, async (req, res) => {
 });
 
 // Endpoint para Listar Todos los Borradores / Productos Pausados
-app.get('/api/products/drafts', async (req, res) => {
+app.get('/api/products/drafts', requireCrmAuth, async (req, res) => {
     try {
         const { data, error } = await supabase
             .from('dec_products')

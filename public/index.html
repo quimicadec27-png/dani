@@ -2317,9 +2317,9 @@ ightarrow$ Ventas</p>
         const _originalFetch = window.fetch;
         window.fetch = function(url, options = {}) {
             try {
-                const token = localStorage.getItem('dec_crm_jwt') || localStorage.getItem('qdec_crm_token') || 'dec_admin_2026';
+                const token = localStorage.getItem('dec_crm_jwt') || localStorage.getItem('qdec_crm_token') || '';
                 const urlStr = typeof url === 'string' ? url : (url && url.url ? url.url : '');
-                if (urlStr && (urlStr.includes('/api/crm') || urlStr.includes('/api/products') || urlStr.includes('/api/combos') || urlStr.includes('/api/categories'))) {
+                if (token && urlStr && (urlStr.includes('/api/crm') || urlStr.includes('/api/products') || urlStr.includes('/api/combos') || urlStr.includes('/api/categories'))) {
                     options = options || {};
                     if (!options.headers) {
                         options.headers = {};
@@ -5621,7 +5621,7 @@ ightarrow$ Ventas</p>
             container.innerHTML = `<div class="col-span-full text-center py-6 text-purple-300/60 text-xs font-bold animate-pulse">⏳ Cargando datos de combos desde la base de datos...</div>`;
 
             try {
-                const resp = await fetch(`${API_URL}/combos?sec=qdec_crm_sec_2026`);
+                const resp = await fetch(`${API_URL}/combos`);
                 if (!resp.ok) {
                     container.innerHTML = `<div class="col-span-full text-center py-6 text-yellow-300 text-xs font-bold">⚠️ El servidor de catálogo está iniciando (HTTP ${resp.status}). Reintentando en 3 segundos...</div>`;
                     setTimeout(cargarVisorCombos, 3000);
@@ -5841,7 +5841,6 @@ ightarrow$ Ventas</p>
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        secret_key: 'qdec_crm_sec_2026',
                         sku: sku,
                         name: name,
                         regular_price: regPrice,
@@ -5889,7 +5888,6 @@ ightarrow$ Ventas</p>
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            secret_key: 'qdec_crm_sec_2026',
                             sku: sku,
                             regular_price: regPrice || '',
                             sale_price: salePrice || ''
@@ -6094,7 +6092,6 @@ ightarrow$ Ventas</p>
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            secret_key: 'qdec_crm_sec_2026',
                             sku: item.sku,
                             name: item.name || '',
                             regular_price: item.regPrice || '',
@@ -7447,7 +7444,6 @@ ightarrow$ Ventas</p>
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        secret_key: 'qdec_crm_sec_2026',
                         sku: currentAttrProductSku,
                         attribute_name: name,
                         regular_price: price,
@@ -8586,7 +8582,7 @@ ightarrow$ Ventas</p>
         async function cargarCatalogoCompletoUI() {
             if (window.combosDataCache && window.combosDataCache.length > 0) return;
             try {
-                const resp = await fetch(`${API_URL}/combos?sec=qdec_crm_sec_2026`);
+                const resp = await fetch(`${API_URL}/combos`);
                 const data = await resp.json();
                 if (data && data.combos) {
                     window.combosDataCache = data.combos;
