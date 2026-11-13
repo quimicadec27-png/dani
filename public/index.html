@@ -138,7 +138,7 @@
                     <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-300 mb-1">Contraseña</label>
                     <div class="relative">
                         <span class="material-symbols-outlined absolute left-3.5 top-3 text-gray-400 text-lg">lock</span>
-                        <input type="password" id="crm-password-input" required placeholder="dec2026" class="w-full bg-white/5 border border-white/10 rounded-2xl pl-11 pr-11 py-3 text-sm text-white focus:outline-none focus:border-brand-yellow transition-all">
+                        <input type="password" id="crm-password-input" required placeholder="••••••••" autocomplete="current-password" class="w-full bg-white/5 border border-white/10 rounded-2xl pl-11 pr-11 py-3 text-sm text-white focus:outline-none focus:border-brand-yellow transition-all">
                         <button type="button" onclick="togglePasswordVisibility()" class="absolute right-3.5 top-3 text-gray-400 hover:text-brand-yellow transition-colors" title="Mostrar u ocultar contraseña">
                             <span class="material-symbols-outlined text-lg" id="toggle-password-icon">visibility</span>
                         </button>
@@ -2341,7 +2341,6 @@ ightarrow$ Ventas</p>
             return _originalFetch(url, options);
         };
 
-        const PASSWORD_CORRECTA = 'dec2026';
         let clientesData = [], pedidosData = [], alertasData = [], conversacionesData = [];
         let selectedClienteId = null, selectedClienteObj = null;
 

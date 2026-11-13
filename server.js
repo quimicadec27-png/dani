@@ -180,7 +180,7 @@ app.post('/api/crm/auth/login', (req, res) => {
         }
 
         if (!match) {
-            return res.status(401).json({ success: false, error: 'Contraseña incorrecta. Probá con dec2026 o Dec2026*' });
+            return res.status(401).json({ success: false, error: 'Credenciales inválidas. Verificá tu correo y contraseña.' });
         }
 
         const userPayload = {
