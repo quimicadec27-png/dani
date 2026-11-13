@@ -151,44 +151,16 @@ app.post('/api/crm/auth/login', (req, res) => {
         const cleanEmail = String(email).trim().toLowerCase();
         const cleanPass = String(password).trim();
         const users = getCrmUsers();
-        let user = users.find(u => u.email.toLowerCase() === cleanEmail);
-
-        // Si es un correo oficial/conocido pero no estaba en el archivo, se crea automáticamente
-        const isOfficialDomain = cleanEmail.endsWith('@quimicadec.com') || cleanEmail.endsWith('@siglo21soluciones.com') || cleanEmail === 'quimicadecweb@gmail.com' || cleanEmail === 'iaacademytecno@gmail.com';
-        if (!user && isOfficialDomain) {
-            const role = (cleanEmail.includes('web') || cleanEmail.includes('direcc') || cleanEmail.includes('admin')) ? 'director' : 'gestion';
-            user = {
-                id: 'usr_' + Date.now(),
-                name: cleanEmail.split('@')[0].toUpperCase(),
-                email: cleanEmail,
-                password_hash: bcrypt.hashSync('dec2026', 10),
-                role: role,
-                can_edit_prices: 1,
-                can_edit_content: 1,
-                can_view_audit: 1,
-                can_export_clients: 1
-            };
-            users.push(user);
-            saveCrmUsers(users);
-        }
+        const user = users.find(u => u.email.toLowerCase() === cleanEmail);
 
         if (!user) {
-            return res.status(401).json({ success: false, error: 'Correo no registrado en el CRM.' });
+            return res.status(401).json({ success: false, error: 'Credenciales inválidas. Verificá tu correo y contraseña.' });
         }
 
-        // Validación de contraseñas autorizadas (soporta dec2026 original, Dec2026*, etc.)
-        const acceptedPassList = ['dec2026', 'Dec2026*', 'Dec2026', 'dec2026*', 'dec_admin_2026', 'quimicadec2026', 'QuimicaDec2026'];
         let match = false;
         try {
             match = bcrypt.compareSync(cleanPass, user.password_hash);
         } catch (e) {}
-
-        if (!match && acceptedPassList.includes(cleanPass)) {
-            match = true;
-            // Actualizar hash bcrypt al vuelo
-            user.password_hash = bcrypt.hashSync(cleanPass, 10);
-            saveCrmUsers(users);
-        }
 
         if (!match) {
             const prev = loginAttemptsByIp.get(clientIp);
