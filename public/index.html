@@ -23,6 +23,23 @@
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1" rel="stylesheet">
     <!-- SheetJS XLSX Parser para Carga Masiva de Excel en CRM -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- DOMPurify para sanitización XSS en renderizado dinámico -->
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script>
+    <script>
+        window.escapeHtml = function(val) {
+            return String(val == null ? '' : val)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        };
+        window.sanitizeHtml = function(html) {
+            return (window.DOMPurify && typeof window.DOMPurify.sanitize === 'function')
+                ? window.DOMPurify.sanitize(String(html || ''))
+                : window.escapeHtml(html);
+        };
+    </script>
     <script>
         tailwind.config = {
             darkMode: 'class',

@@ -110,6 +110,37 @@ const requireCrmAuth = (req, res, next) => {
         return res.status(401).json({ success: false, error: 'Sesión expirada o token inválido. Por favor vuelva a iniciar sesión.' });
     }
 };
+
+// Middlewares de Autorización por Rol y Permisos (RBAC / Anti-BFLA)
+const requireDirector = (req, res, next) => {
+    if (req.crmUser && (req.crmUser.role === 'director' || req.crmUser.role === 'admin')) {
+        return next();
+    }
+    return res.status(403).json({ success: false, error: 'Acceso denegado: se requieren permisos de Dirección.' });
+};
+
+const requirePermission = (permField) => (req, res, next) => {
+    if (req.crmUser && (req.crmUser.role === 'director' || req.crmUser.role === 'admin' || req.crmUser[permField] === 1)) {
+        return next();
+    }
+    return res.status(403).json({ success: false, error: 'Acceso denegado: tu cuenta no tiene permiso para esta acción.' });
+};
+
+function sanitizePostgrestVal(v) {
+    return String(v || '').replace(/[,().*%\\'"`]/g, '').trim();
+}
+
+function stripHtmlTags(v) {
+    return String(v || '').replace(/[<>]/g, '').trim();
+}
+
+function revalidateWebCache() {
+    const secret = process.env.DEPLOY_WEBHOOK_SECRET || 'quimica_dec_deploy_secret_2026';
+    fetch('https://quimicadec.com/api/revalidate', {
+        method: 'POST',
+        headers: { 'x-revalidate-secret': secret }
+    }).catch(() => {});
+}
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.static(path.join(__dirname, 'public'), {
@@ -224,7 +255,7 @@ app.get('/api/crm/auth/verify', (req, res) => {
 });
 
 // GET /api/crm/seguridad/metricas-cloudflare
-app.get('/api/crm/seguridad/metricas-cloudflare', requireCrmAuth, async (req, res) => {
+app.get('/api/crm/seguridad/metricas-cloudflare', requireCrmAuth, requirePermission('can_view_audit'), async (req, res) => {
     try {
         const token = process.env.CLOUDFLARE_API_TOKEN;
         const zoneId = process.env.CLOUDFLARE_ZONE_ID;
@@ -266,11 +297,31 @@ app.get('/api/crm/seguridad/metricas-cloudflare', requireCrmAuth, async (req, re
     }
 });
 
-// Inicialización de Clientes
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, {
-    auth: { persistSession: false }
-});
+// Inicialización de Clientes (prioriza SUPABASE_SERVICE_ROLE_KEY para compatibilidad con RLS estricto)
+const supabase = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY,
+    { auth: { persistSession: false } }
+);
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+
+const ALLOWED_IMAGE_EXTS = new Set(['jpg', 'jpeg', 'png', 'webp', 'avif', 'gif']);
+const MAX_UPLOAD_BYTES = 8 * 1024 * 1024; // 8 MB
+
+function hasValidImageMagicBytes(buf) {
+    if (!Buffer.isBuffer(buf) || buf.length < 12) return false;
+    // JPEG: FF D8 FF
+    if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return true;
+    // PNG: 89 50 4E 47 0D 0A 1A 0A
+    if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) return true;
+    // GIF: 47 49 46 38
+    if (buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x38) return true;
+    // WEBP: RIFF....WEBP
+    if (buf.subarray(0, 4).toString('ascii') === 'RIFF' && buf.subarray(8, 12).toString('ascii') === 'WEBP') return true;
+    // AVIF / HEIF: ....ftyp
+    if (buf.subarray(4, 8).toString('ascii') === 'ftyp') return true;
+    return false;
+}
 
 // Función centralizada para guardar imágenes en almacenamiento local y público
 function saveBase64Image(base64Str, originalFilename, prefix = 'upload') {
@@ -283,10 +334,14 @@ function saveBase64Image(base64Str, originalFilename, prefix = 'upload') {
     let dataBuffer;
     if (typeof base64Str === 'string' && base64Str.includes(';base64,')) {
         const parts = base64Str.split(';base64,');
-        const mime = parts[0].split(':')[1];
+        const mime = (parts[0].split(':')[1] || '').toLowerCase().trim();
         if (mime) {
-            ext = mime.split('/')[1] || 'jpg';
-            if (ext === 'jpeg') ext = 'jpg';
+            const rawExt = (mime.split('/')[1] || '').toLowerCase().trim();
+            const normalizedExt = rawExt === 'jpeg' ? 'jpg' : rawExt;
+            if (!ALLOWED_IMAGE_EXTS.has(normalizedExt)) {
+                throw new Error('Tipo de imagen no permitido. Solo se aceptan JPG, PNG, WEBP, AVIF o GIF.');
+            }
+            ext = normalizedExt;
         }
         dataBuffer = Buffer.from(parts[1], 'base64');
     } else if (typeof base64Str === 'string') {
@@ -297,10 +352,18 @@ function saveBase64Image(base64Str, originalFilename, prefix = 'upload') {
         throw new Error('Formato de imagen inválido');
     }
 
+    if (dataBuffer.length === 0 || dataBuffer.length > MAX_UPLOAD_BYTES) {
+        throw new Error('El archivo excede el tamaño máximo permitido (8 MB).');
+    }
+
+    if (!hasValidImageMagicBytes(dataBuffer)) {
+        throw new Error('El contenido del archivo no corresponde a una imagen válida.');
+    }
+
     if (originalFilename && originalFilename.includes('.')) {
         const fileExt = originalFilename.split('.').pop().toLowerCase();
-        if (['jpg', 'jpeg', 'png', 'webp', 'avif', 'gif'].includes(fileExt)) {
-            ext = fileExt;
+        if (ALLOWED_IMAGE_EXTS.has(fileExt)) {
+            ext = fileExt === 'jpeg' ? 'jpg' : fileExt;
         }
     }
 
@@ -357,6 +420,8 @@ app.get('/api/media/:filename', async (req, res) => {
         const m = /^data:([^;]+);base64,(.+)$/.exec(data.subcategory);
         if (!m) return res.status(404).send('Imagen inválida');
         res.setHeader('Content-Type', m[1]);
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        res.setHeader('Content-Disposition', 'inline');
         res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Cache-Control', 'public, max-age=300');
@@ -887,15 +952,30 @@ async function generateDaniResponse(messagesPayload) {
     return "¡Hola! Soy Dani de Química DEC. Trabajamos con venta mayorista directa de fábrica en Entre Ríos y envíos a todo el país (mínimo $80.000). ¿En qué productos o cantidades estás interesado para prepararte la cotización?";
 }
 
+// Rate limiter en memoria para /api/whatsapp/incoming-ai (anti-abuso de cuota IA)
+const aiRateLimitByIp = new Map();
+
 // =========================================================================
 // 1. ENDPOINT DE CHAT EN VIVO E IA (Utilizado por la web y WhatsApp)
 // =========================================================================
 app.post('/api/whatsapp/incoming-ai', async (req, res) => {
     try {
+        const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || 'unknown';
+        const now = Date.now();
+        const rl = aiRateLimitByIp.get(clientIp);
+        if (rl && now < rl.resetAt) {
+            if (rl.count >= 25) {
+                return res.status(429).json({ error: 'Demasiadas consultas en poco tiempo. Esperá un minuto.' });
+            }
+            rl.count++;
+        } else {
+            aiRateLimitByIp.set(clientIp, { count: 1, resetAt: now + 60 * 1000 });
+        }
+
         const { phone, user_id, session_id, cliente_id, mensaje_texto, user_message, message, messages, contents, prompt } = req.body;
         
         // 1. Extraer el texto de la última consulta del usuario
-        let textoProcesado = (prompt || mensaje_texto || user_message || message || '').trim();
+        let textoProcesado = stripHtmlTags(prompt || mensaje_texto || user_message || message || '');
 
         // 1. Extraer si viene en formato OpenAI/Groq (messages)
         if (!textoProcesado && Array.isArray(messages) && messages.length > 0) {
@@ -1320,7 +1400,7 @@ app.post('/api/whatsapp/incoming-ai', async (req, res) => {
             })();
         }
 
-    } catch (err) { res.status(500).json({ error: err.message }); }
+    } catch (err) { console.error('[CRM API 500]:', err.message); res.status(500).json({ error: 'Error interno del servidor' }); }
 });
 
 // Obtener lista de conversaciones para el CRM (incluyendo web y whatsapp)
@@ -1379,7 +1459,7 @@ app.get('/api/crm/chat/conversaciones', requireCrmAuth, async (req, res) => {
         conversacionesFormatted.sort((a, b) => new Date(b.ultimo_mensaje_el) - new Date(a.ultimo_mensaje_el));
 
         res.json({ success: true, conversaciones: conversacionesFormatted });
-    } catch (err) { res.status(500).json({ error: err.message }); }
+    } catch (err) { console.error('[CRM API 500]:', err.message); res.status(500).json({ error: 'Error interno del servidor' }); }
 });
 
 // Actualizar Datos de Lead / Cliente desde el CRM (con soporte para fusión automática si el teléfono ya existe)
@@ -1658,7 +1738,7 @@ app.post('/api/crm/clientes/promover-lead', requireCrmAuth, async (req, res) => 
         if (error) throw error;
 
         res.json({ success: true, mensaje: '🎉 Lead promovido a Cliente Mayorista Oficial con éxito.', cliente: data });
-    } catch (err) { res.status(500).json({ error: err.message }); }
+    } catch (err) { console.error('[CRM API 500]:', err.message); res.status(500).json({ error: 'Error interno del servidor' }); }
 });
 
 // Obtener mensajes de un chat específico (acepta UUID de cliente o session_id de la web)
@@ -1672,8 +1752,8 @@ app.get('/api/crm/chat/mensajes/:clienteId', requireCrmAuth, async (req, res) =>
         if (!isUUID) {
             // Probar con el sessionId completo (hasta 20 chars) para whatsapp,
             // y además con los primeros 13 chars para cuit (por retrocompatibilidad)
-            const phoneForWhatsapp = clienteId.substring(0, 20);
-            const phoneForCuit    = clienteId.substring(0, 13);
+            const phoneForWhatsapp = sanitizePostgrestVal(clienteId.substring(0, 20));
+            const phoneForCuit    = sanitizePostgrestVal(clienteId.substring(0, 13));
             const { data: cData } = await supabase
                 .from('clientes')
                 .select('id')
@@ -1704,7 +1784,7 @@ app.get('/api/crm/chat/mensajes/:clienteId', requireCrmAuth, async (req, res) =>
         const { data: cliente } = await supabase.from('clientes').select('*').eq('id', targetUUID).single();
         const botPausado = await isBotPausado(targetUUID);
         res.json({ success: true, cliente: { ...cliente, bot_pausado: botPausado }, mensajes: mensajes });
-    } catch (err) { res.status(500).json({ error: err.message }); }
+    } catch (err) { console.error('[CRM API 500]:', err.message); res.status(500).json({ error: 'Error interno del servidor' }); }
 });
 
 // Responder como Vendedor Humano e Interrumpir/Reanudar Bot
@@ -1729,7 +1809,7 @@ app.post('/api/crm/chat/enviar-mensaje-vendedor', requireCrmAuth, async (req, re
         await supabase.from('mensajes_chat').insert([{ cliente_id: cliente_id, emisor: 'vendedor', texto: textToInsert }]);
 
         res.json({ success: true, mensaje: '✅ Mensaje registrado y estado del bot actualizado.' });
-    } catch (err) { res.status(500).json({ error: err.message }); }
+    } catch (err) { console.error('[CRM API 500]:', err.message); res.status(500).json({ error: 'Error interno del servidor' }); }
 });
 
 // Helper para obtener TODOS los productos de dec_products paginando en rangos de 1000
@@ -1830,7 +1910,7 @@ app.get('/api/crm/alertas-stock', requireCrmAuth, async (req, res) => {
             categorias: estructuraCategorias
         });
 
-    } catch (err) { res.status(500).json({ error: err.message }); }
+    } catch (err) { console.error('[CRM API 500]:', err.message); res.status(500).json({ error: 'Error interno del servidor' }); }
 });
 
 app.post('/api/crm/configurar-umbrales-ia', requireCrmAuth, async (req, res) => {
@@ -1867,7 +1947,7 @@ app.post('/api/crm/configurar-umbrales-ia', requireCrmAuth, async (req, res) => 
             mensaje: parsed.mensaje_confirmacion || `✅ Umbral mínimo actualizado a ${parsed.umbral_general || 20} unidades.`
         });
 
-    } catch (err) { res.status(500).json({ error: err.message }); }
+    } catch (err) { console.error('[CRM API 500]:', err.message); res.status(500).json({ error: 'Error interno del servidor' }); }
 });
 
 // =========================================================================
@@ -1907,7 +1987,7 @@ app.post('/api/crm/subir-excel-catalogo', requireCrmAuth, async (req, res) => {
             mensaje: `🎉 ¡Éxito! Se actualizaron ${actualizados} productos masivamente en Supabase.`
         });
 
-    } catch (err) { res.status(500).json({ error: err.message }); }
+    } catch (err) { console.error('[CRM API 500]:', err.message); res.status(500).json({ error: 'Error interno del servidor' }); }
 });
 
 // Helper de deducción de stock en bulk para evitar N+1 queries y acelerar respuesta
@@ -1953,7 +2033,7 @@ app.post('/api/crm/confirmar-pago-descontar-stock', requireCrmAuth, async (req, 
         await supabase.from('pedidos').update({ estado: 'Pagado' }).eq('id', pedido_id);
 
         res.json({ success: true, mensaje: `✅ Pago confirmado y stock descontado.` });
-    } catch (err) { res.status(500).json({ error: err.message }); }
+    } catch (err) { console.error('[CRM API 500]:', err.message); res.status(500).json({ error: 'Error interno del servidor' }); }
 });
 
 // Endpoint para cambiar de estado un pedido en el embudo (con truncamiento y bulk stock)
@@ -1986,7 +2066,7 @@ app.post('/api/crm/pedidos/cambiar-estado', requireCrmAuth, async (req, res) => 
 
         if (error) throw error;
         res.json({ success: true, mensaje: `✅ Pedido movido a ${estadoNormalizado} correctamente.`, pedido: data });
-    } catch (err) { res.status(500).json({ error: err.message }); }
+    } catch (err) { console.error('[CRM API 500]:', err.message); res.status(500).json({ error: 'Error interno del servidor' }); }
 });
 
 // Endpoint para crear un Presupuesto / Pedido desde la Ficha de Chat o el Embudo
@@ -2224,10 +2304,12 @@ app.all(['/api/crm/webhooks/woocommerce-order', '/api/webhooks/woocommerce-order
 
         // Buscar o registrar cliente en Supabase
         let clienteId = null;
+        const safePhone = sanitizePostgrestVal(cleanPhone);
+        const safeNombre = sanitizePostgrestVal(nombre);
         const { data: existingClient } = await supabase
             .from('clientes')
             .select('id, localidad, provincia')
-            .or(`whatsapp.eq.${cleanPhone},razon_social.ilike.%${nombre}%`)
+            .or(`whatsapp.eq.${safePhone},razon_social.ilike.%${safeNombre}%`)
             .limit(1);
 
         if (existingClient && existingClient.length > 0) {
@@ -2333,7 +2415,7 @@ app.get('/api/crm/productos-list', requireCrmAuth, async (req, res) => {
     try {
         const data = await fetchAllProductsFromSupabase('id, sku, name, price, stock, category, image_url');
         res.json({ success: true, count: data.length, productos: data });
-    } catch (err) { res.status(500).json({ error: err.message }); }
+    } catch (err) { console.error('[CRM API 500]:', err.message); res.status(500).json({ error: 'Error interno del servidor' }); }
 });
 
 // Endpoint de IA para Analizar Texto de Chat / Notas y Extraer Productos / Cantidades / Precios automáticamente
@@ -2395,7 +2477,7 @@ app.get('/api/crm/clientes', requireCrmAuth, async (req, res) => {
         const { data, error } = await supabase.from('clientes').select('id, razon_social, contacto_nombre, whatsapp, cuit, email, localidad, tipo_cliente, estado_lead, total_comprado, creado_el').limit(2000);
         if (error) throw error;
         res.json({ success: true, count: data.length, clientes: data });
-    } catch (err) { res.status(500).json({ error: err.message }); }
+    } catch (err) { console.error('[CRM API 500]:', err.message); res.status(500).json({ error: 'Error interno del servidor' }); }
 });
 
 // Importación Masiva de Clientes desde Excel / CSV (Ultrarrápida por Lote)
@@ -2472,7 +2554,7 @@ app.get('/api/crm/pedidos', requireCrmAuth, async (req, res) => {
         const { data, error } = await query;
         if (error) throw error;
         res.json({ success: true, count: data.length, pedidos: data });
-    } catch (err) { res.status(500).json({ error: err.message }); }
+    } catch (err) { console.error('[CRM API 500]:', err.message); res.status(500).json({ error: 'Error interno del servidor' }); }
 });
 
 app.get('/api/crm/alertas-seguimiento', requireCrmAuth, async (req, res) => {
@@ -2502,12 +2584,12 @@ app.get('/api/crm/alertas-seguimiento', requireCrmAuth, async (req, res) => {
         });
 
         res.json({ success: true, mes_actual: new Date().toLocaleString('es-AR', { month: 'long', year: 'numeric' }), alertas: alertas });
-    } catch (err) { res.status(500).json({ error: err.message }); }
+    } catch (err) { console.error('[CRM API 500]:', err.message); res.status(500).json({ error: 'Error interno del servidor' }); }
 });
 
 // =========================================================================
 // Endpoint de depuración y borrado directo de productos obsoletos en Supabase
-app.get('/api/products/debug-search', requireCrmAuth, async (req, res) => {
+app.get('/api/products/debug-search', requireCrmAuth, requireDirector, async (req, res) => {
     try {
         const { data: allProds } = await supabase
             .from('dec_products')
@@ -2527,7 +2609,7 @@ app.get('/api/products/debug-search', requireCrmAuth, async (req, res) => {
 });
 
 // Endpoint para limpiar productos obsoletos/borradores de Supabase dec_products
-app.get('/api/products/cleanup-outdated', requireCrmAuth, async (req, res) => {
+app.get('/api/products/cleanup-outdated', requireCrmAuth, requireDirector, async (req, res) => {
     try {
         const { data: delId, error: errId } = await supabase
             .from('dec_products')
@@ -2650,7 +2732,8 @@ app.get('/api/products/search', async (req, res) => {
             .gt('price', 0);
 
         words.forEach(w => {
-            dbQuery = dbQuery.or(`name.ilike.%${w}%,sku.ilike.%${w}%`);
+            const safeW = sanitizePostgrestVal(w);
+            if (safeW) dbQuery = dbQuery.or(`name.ilike.%${safeW}%,sku.ilike.%${safeW}%`);
         });
 
         dbQuery = dbQuery.order('name', { ascending: true }).limit(500);
@@ -2720,7 +2803,7 @@ app.post('/api/products/update-details', requireCrmAuth, async (req, res) => {
             if (!sbErr) {
                 sbUpdated = true;
                 refreshProductCatalog();
-                fetch('https://quimicadec.com/api/revalidate?secret=quimica_dec_deploy_secret_2026', { method: 'POST' }).catch(() => {});
+                revalidateWebCache();
             }
         } else {
             const insertDb = {
@@ -2783,7 +2866,7 @@ app.post('/api/products/toggle-status', requireCrmAuth, async (req, res) => {
 });
 
 // Endpoint para Eliminar Producto (Supabase)
-app.post('/api/products/delete', requireCrmAuth, async (req, res) => {
+app.post('/api/products/delete', requireCrmAuth, requireDirector, async (req, res) => {
     try {
         const { sku } = req.body;
         if (!sku) {
@@ -2861,7 +2944,8 @@ app.get('/api/products/published', async (req, res) => {
         if (query) {
             const words = query.split(/\s+/).filter(w => w.length > 0);
             words.forEach(w => {
-                dbQuery = dbQuery.or(`name.ilike.%${w}%,sku.ilike.%${w}%`);
+                const safeW = sanitizePostgrestVal(w);
+                if (safeW) dbQuery = dbQuery.or(`name.ilike.%${safeW}%,sku.ilike.%${safeW}%`);
             });
         }
 
@@ -3082,7 +3166,7 @@ app.post('/api/products/bulk-excel', requireCrmAuth, async (req, res) => {
         // Purgar y refrescar memoria caché de Dani para reflejar cambios en tiempo real
         lastCatalogFetch = 0;
         await refreshProductCatalog();
-        fetch('https://quimicadec.com/api/revalidate?secret=quimica_dec_deploy_secret_2026', { method: 'POST' }).catch(() => {});
+        revalidateWebCache();
 
         res.json({
             success: true,
@@ -3121,7 +3205,7 @@ app.post('/api/crm/update-homepage-html', requireCrmAuth, async (req, res) => {
 });
 
 // Endpoint para procesar instrucciones de catálogo en lenguaje natural con IA (Sub-tab 8: Instrucción IA / Voz)
-app.post('/api/crm/ejecutar-instruccion-ia', requireCrmAuth, async (req, res) => {
+app.post('/api/crm/ejecutar-instruccion-ia', requireCrmAuth, requireDirector, async (req, res) => {
     try {
         const { prompt } = req.body;
         if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
@@ -3276,7 +3360,7 @@ app.get('/api/combos', async (req, res) => {
     }
 });
 
-app.post('/api/combos/delete-image', requireCrmAuth, async (req, res) => {
+app.post('/api/combos/delete-image', requireCrmAuth, requirePermission('can_edit_content'), async (req, res) => {
     try {
         const { sku } = req.body;
         if (!sku) return res.status(400).json({ success: false, error: 'SKU requerido' });
@@ -3313,7 +3397,7 @@ app.post('/api/combos/auto-link-skus', requireCrmAuth, async (req, res) => {
     }
 });
 
-app.post('/api/categories/upload-banner', requireCrmAuth, async (req, res) => {
+app.post('/api/categories/upload-banner', requireCrmAuth, requirePermission('can_edit_content'), async (req, res) => {
     const stepsLog = [];
     try {
         const { categoryKey, imageBase64, imageUrl, filename } = req.body;
@@ -3781,7 +3865,7 @@ app.post('/api/crm/productos/actualizar-precios-masivo', requireCrmAuth, async (
 
         // Refrescar memoria RAM inmediatamente para que Dani cotice con los nuevos precios en 0ms
         await refreshProductCatalog();
-        fetch('https://quimicadec.com/api/revalidate?secret=quimica_dec_deploy_secret_2026', { method: 'POST' }).catch(() => {});
+        revalidateWebCache();
 
         const descAuditoria = `Actualización Masiva de Precios: ${actualizadosCount} productos actualizados (${operacion || 'Aumento'} ${valor || ''}${metodo === 'porcentaje' ? '%' : '$'}). Motivo: ${motivo || 'Actualización de lista'}. Por: ${usuario || 'Administrador'}`;
         try {
