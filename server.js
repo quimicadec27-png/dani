@@ -498,7 +498,7 @@ async function refreshProductCatalog() {
     }
 }
 refreshProductCatalog();
-setInterval(refreshProductCatalog, 10 * 60 * 1000);
+setInterval(refreshProductCatalog, 60 * 60 * 1000);
 
 // System Prompt Oficial de "Dani"
 const SYSTEM_PROMPT_DANI = `
